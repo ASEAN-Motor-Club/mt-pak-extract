@@ -1,0 +1,9 @@
+{
+  "assets": [
+    "MotorTown/Content/DataAsset/Cargos",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles",
+    "MotorTown/Content/DataAsset/VehicleParts/Engines",
+    "MotorTown/Content/DataAsset/VehicleParts/Wheels",
+    "MotorTown/Content/DataAsset/VehicleParts/Transmissions"
+  ]
+}

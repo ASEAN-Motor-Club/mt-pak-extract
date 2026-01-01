@@ -1,0 +1,37 @@
+# Rust
+/target
+
+# .NET / C#
+csharp/**/bin/
+csharp/**/obj/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Output directory (extracted assets)
+/out/
+
+# Game files (too large for git)
+*.pak
+*.usmap
+
+# Environment variables (contains AES key)
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary/legacy files
+*.uasset
+*.uexp
+cargos*.json
+name_table.json
