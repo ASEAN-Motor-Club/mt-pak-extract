@@ -53,6 +53,30 @@
             ls -1 ../../out/*_parsed.json 2>/dev/null || echo "No parsed files found"
           '';
         };
+        
+        # Script to aggregate parsed data into SQLite
+        aggregateScript = pkgs.writeShellApplication {
+          name = "aggregate-to-sqlite";
+          runtimeInputs = with pkgs; [
+            (python312.withPackages (ps: with ps; [ ]))
+          ];
+          text = ''
+            set -euo pipefail
+            
+            echo "=== MotorTown Data Aggregation ==="
+            echo "Aggregating parsed JSON into SQLite database..."
+            echo
+            
+            python3 scripts/aggregate_to_sqlite.py
+            
+            echo
+            echo "=== Database Export ==="
+            if [ -f motortown.db ]; then
+              sqlite3 motortown.db .dump > motortown_data.sql
+              echo "Exported to motortown_data.sql"
+            fi
+          '';
+        };
       in
       {
         devShells.default = pkgs.mkShell {
@@ -73,6 +97,7 @@
             echo ""
             echo "Commands:"
             echo "  nix run .#extract        - Extract all assets from assets.json"
+            echo "  nix run .#aggregate      - Aggregate JSON to SQLite database"
             echo "  cargo run -- --list      - List available DataAssets"
             echo "  cargo run -- --config X  - Extract assets from config file"
           '';
@@ -81,6 +106,11 @@
         apps.extract = {
           type = "app";
           program = "${extractScript}/bin/extract-assets";
+        };
+        
+        apps.aggregate = {
+          type = "app";
+          program = "${aggregateScript}/bin/aggregate-to-sqlite";
         };
       }
     );
