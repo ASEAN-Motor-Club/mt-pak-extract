@@ -1,0 +1,15 @@
+# Example production configuration for adding Butter production to Cheese Factory
+
+FactoryBlueprint: Factory_Cheese
+
+ProductionConfigs:
+  # Config 1: Milk -> Butter (new)
+  - Inputs:
+      Milk: 1
+    Outputs:
+      Butter: 2
+    TimeSeconds: 15
+    SpeedMultiplier: 1.0
+    LocalFoodSupply: 0
+    StoreInputCargo: false
+    IsHidden: false

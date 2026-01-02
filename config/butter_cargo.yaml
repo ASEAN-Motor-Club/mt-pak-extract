@@ -1,0 +1,57 @@
+# Example cargo configuration for "Butter"
+# This demonstrates all 29+ fields available for cargo customization
+
+# Primary Identity
+CargoId: Butter
+Name: Butter
+
+# Type and Classification
+CargoType: Food
+VolumeSize: 1
+
+# Weight (in kg)
+WeightRange:
+  Min: 50
+  Max: 100
+
+# Payment Configuration
+PaymentPer1Km: 15
+PaymentPer1KmMultiplierByMaxWeight: 1.0
+BasePayment: 150
+PaymentSqrtRatio: 0
+PaymentSqrtRatioMinCapacity: 0
+MaxDamagePaymentMultiplier: 0.9
+DamageBonusMultiplier: 0
+ManualLoadingPayment: 0
+
+# Delivery Constraints
+MinDeliveryDistance: 0
+MaxDeliveryDistance: 0
+
+# Timer Settings
+HasTimer: false
+BaseTimeSeconds: 0
+TimerBySpeedKPH: 0
+TimerByRoadSpeedLimitRatio: 0
+
+# Actor References (blueprint path)
+# Reusing existing CheeseBox blueprint - custom models require UE Editor
+ActorClass: /Game/Objects/Mission/Delivery/CheeseBox/CheeseBox
+
+# Cargo Space Types (where it can be loaded)
+CargoSpaceTypes:
+  - Pallet
+  - Container
+
+# Behavior Flags
+AllowStacking: false
+UseDamage: false
+Fragile: 0
+
+# Spawning Configuration
+SpawnProbability: 100
+NumCargoMin: 1
+NumCargoMax: 1
+
+# Status
+IsDeprecated: false
