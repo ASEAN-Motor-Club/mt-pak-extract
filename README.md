@@ -5,7 +5,7 @@ Extract and parse game data from MotorTown's Unreal Engine 5.5 PAK files, then a
 ## Prerequisites
 
 - [Nix](https://nixos.org/download.html) with flakes enabled
-- `MotorTown-WindowsServer.pak` file
+- `MotorTown-Windows.pak` file (full client PAK)
 - `Mappings.usmap` file (generated using [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) with the Dump Usmap feature)
 - `.env` file with AES decryption key
 
@@ -13,9 +13,14 @@ Extract and parse game data from MotorTown's Unreal Engine 5.5 PAK files, then a
 
 1. Place game files in the project root:
    ```
-   MotorTown-WindowsServer.pak
-   Mappings.usmap
+   MotorTown-Windows.pak           # Full client PAK from game installation
+   Mappings.usmap                  # Generated via UE4SS
    ```
+   
+   > **Note:** The PAK file can be found at:
+   > `C:\Program Files (x86)\Steam\steamapps\common\MotorTown\MotorTown\Content\Paks\MotorTown-Windows.pak`
+   >
+   > You can also use `MotorTown-WindowsServer.pak` (smaller, server-only data) if you don't need vehicle blueprint weights.
 
 2. Create `.env` with the AES key:
    ```
@@ -26,9 +31,8 @@ Extract and parse game data from MotorTown's Unreal Engine 5.5 PAK files, then a
 
 **Full pipeline** (extract → parse → aggregate):
 ```bash
-nix run .#extract                      # Extract & parse assets
-python3 scripts/aggregate_to_sqlite.py # Aggregate to database
-sqlite3 motortown.db .dump > motortown_data.sql
+nix run .#extract      # Extract & parse assets
+nix run .#aggregate    # Aggregate to database & export SQL
 ```
 
 **Output**: `motortown.db` (SQLite) and `motortown_data.sql` (8,423 lines)
@@ -50,7 +54,7 @@ Output: `out/` directory with `.uasset`, `.uexp`, and `*_parsed.json` files.
 Transform JSON into normalized SQLite database:
 
 ```bash
-python3 scripts/aggregate_to_sqlite.py
+nix run .#aggregate
 ```
 
 **Output:**
@@ -58,11 +62,14 @@ python3 scripts/aggregate_to_sqlite.py
 - Summary stats printed to console
 
 **Database Contents:**
-- 159 vehicles with default parts and tags
-- 686 vehicle parts (engines, transmissions, wheels, etc.)
-- 84 cargos with aggregated weights from blueprints
-- 6,026 vehicle-part relationships
-- Views for common queries
+- Vehicles with default parts, tags, and chassis weights
+- Vehicle parts (engines, transmissions, wheels, cargo beds, etc.)
+- Cargos with aggregated weights from blueprints
+- Cargo bed specifications (dimensions, volume, capacity)
+- Delivery points with production configurations
+- Production configs with input/output cargo recipes
+- Vehicle-part relationships
+- Views for common queries (weights, cargo space, etc.)
 
 ### 3. Export to SQL
 
@@ -84,21 +91,6 @@ sqlite3 motortown.db "SELECT v.name, vp.id as engine, vp.mass_kg FROM vehicles_w
 ```
 
 ## Advanced Usage
-
-### Custom Asset List
-
-Edit `assets.json` to specify which assets to extract:
-
-```json
-{
-  "assets": [
-    "MotorTown/Content/DataAsset/Cargos",
-    "MotorTown/Content/DataAsset/Vehicles/Vehicles"
-  ]
-}
-```
-
-Cargo actor blueprints are listed in `cargo_actors.json`.
 
 ### Manual Commands
 
@@ -147,19 +139,28 @@ motortown_data.sql                 # SQL dump
 - `vehicles` - Vehicle metadata (name, cost, type, blueprint path)
 - `vehicle_parts` - Part metadata (cost, mass, type, asset paths)
 - `cargos` - Cargo metadata (type, volume, payment rates)
+- `delivery_points` - Delivery locations (Supermarket, Factories, Farms, Mines)
+- `production_configs` - Production recipes (inputs, outputs, timing)
+- `production_inputs` / `production_outputs` - Input/output cargos for production
 
 **Relationships:**
 - `vehicle_default_parts` - Vehicle → Part mappings (slot-based)
 - `vehicle_tags` - Vehicle GameplayTags
 - `cargo_space_types` - Cargo compatible space types
+- `part_compatible_types` - Part → Vehicle type compatibility
 
 **Aggregation:**
 - `cargo_weights` - Total weight per cargo (summed from blueprint components)
 - `cargo_weight_components` - Individual component masses
+- `vehicle_weights` - Chassis mass from vehicle blueprints
+- `cargo_bed_specs` - Cargo bed dimensions and capacity
 
 **Views:**
 - `cargos_with_weights` - Cargos with actual weights (blueprint or fallback)
+- `active_cargos` - Valid, non-deprecated cargos with weights
 - `vehicles_with_engines` - Vehicles joined with default engines
+- `vehicles_with_cargo_space` - Vehicles with cargo bed dimensions
+- `vehicles_with_weight` - Vehicles with total weight (chassis + parts)
 
 ## How It Works
 
@@ -174,18 +175,18 @@ motortown_data.sql                 # SQL dump
 ├── csharp/CargoExtractor/        # C# UAsset parser (UAssetAPI)
 ├── scripts/
 │   └── aggregate_to_sqlite.py    # Python aggregator
-├── assets.json                   # Config: DataAssets to extract
-├── cargo_actors.json             # Config: Cargo blueprints to extract
+├── assets.json                   # Config: assets to extract (DataTables + blueprints)
 ├── flake.nix                     # Nix build/dev environment
 └── out/                          # Extracted & parsed data
 ```
 
 ## Data Quality Notes
 
-- **Cargo weights**: Aggregated from blueprint `MassInKgOverride` values (35/84 cargos have blueprint data)
-- **Vehicle weights**: `CurbWeight` is 0 in DataAssets (would need vehicle blueprint extraction)
+- **Cargo weights**: Aggregated from blueprint `MassInKgOverride` values
+- **Vehicle weights**: Extracted from vehicle blueprints (chassis mass + default parts mass)
 - **Enum values**: Cleaned (`EMTVehicleType::Small` → `Small`)
 - **Object references**: Resolved to full paths where available
+- **Active cargos**: Filtered view excludes deprecated and invalid entries
 
 ## License
 
