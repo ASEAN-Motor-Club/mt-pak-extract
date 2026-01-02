@@ -38,7 +38,7 @@ def create_schema(conn: sqlite3.Connection):
     """)
     cursor.execute("""
         INSERT OR REPLACE INTO schema_version (version, game_version) 
-        VALUES (3, '0.7.17')
+        VALUES (4, '0.7.17')
     """)
     
     # Vehicles table
@@ -205,6 +205,57 @@ def create_schema(conn: sqlite3.Connection):
             chassis_mass_kg REAL,
             blueprint_path TEXT,
             FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+        )
+    """)
+    
+    # Delivery points table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS delivery_points (
+            id TEXT PRIMARY KEY,
+            mission_point_type TEXT,
+            max_passive_deliveries INTEGER,
+            destination_types TEXT,
+            blueprint_path TEXT,
+            source_file TEXT
+        )
+    """)
+    
+    # Production configurations for delivery points
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS production_configs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            delivery_point_id TEXT,
+            config_index INTEGER,
+            production_time_seconds INTEGER,
+            local_food_supply REAL,
+            production_speed_multiplier REAL,
+            store_input_cargo BOOLEAN,
+            is_hidden BOOLEAN,
+            FOREIGN KEY (delivery_point_id) REFERENCES delivery_points(id)
+        )
+    """)
+    
+    # Production input cargos
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS production_inputs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            production_config_id INTEGER,
+            cargo_id TEXT,
+            quantity INTEGER,
+            FOREIGN KEY (production_config_id) REFERENCES production_configs(id),
+            FOREIGN KEY (cargo_id) REFERENCES cargos(id)
+        )
+    """)
+    
+    # Production output cargos
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS production_outputs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            production_config_id INTEGER,
+            cargo_id TEXT,
+            quantity INTEGER,
+            FOREIGN KEY (production_config_id) REFERENCES production_configs(id),
+            FOREIGN KEY (cargo_id) REFERENCES cargos(id)
         )
     """)
     
@@ -630,6 +681,92 @@ def process_vehicle_weights(conn: sqlite3.Connection, json_files: List[Path]):
     print(f"Inserted weights for {cursor.execute('SELECT COUNT(*) FROM vehicle_weights').fetchone()[0]} vehicles")
 
 
+def process_delivery_points(conn: sqlite3.Connection, json_files: List[Path]):
+    """Process delivery point blueprints to extract production configurations."""
+    cursor = conn.cursor()
+    
+    for json_file in json_files:
+        if not json_file.name.endswith("_parsed.json"):
+            continue
+            
+        with open(json_file) as f:
+            data = json.load(f)
+        
+        # Only process Blueprint types
+        if data.get("Data", {}).get("Type") != "Blueprint":
+            continue
+        
+        # Look for DeliveryPoint properties in exports
+        for export in data["Data"].get("Exports", []):
+            props = export.get("Properties", {})
+            
+            # Check for MissionPointType (indicates DeliveryPoint)
+            mission_point_type = props.get("MissionPointType")
+            if not mission_point_type:
+                continue
+            
+            point_id = json_file.stem.replace("_parsed", "")
+            
+            print(f"Processing delivery point from {json_file.name}...")
+            
+            # Extract destination types
+            dest_types = props.get("DestinationTypes", [])
+            dest_types_json = json.dumps([strip_enum(d) for d in dest_types])
+            
+            cursor.execute("""
+                INSERT OR REPLACE INTO delivery_points VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                point_id,
+                strip_enum(mission_point_type),
+                props.get("MaxPassiveDeliveries"),
+                dest_types_json,
+                export.get("ExportName"),
+                json_file.name
+            ))
+            
+            # Process production configs
+            for idx, config in enumerate(props.get("ProductionConfigs", [])):
+                cursor.execute("""
+                    INSERT INTO production_configs 
+                    (delivery_point_id, config_index, production_time_seconds, 
+                     local_food_supply, production_speed_multiplier, 
+                     store_input_cargo, is_hidden)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    point_id, idx,
+                    config.get("ProductionTimeSeconds"),
+                    config.get("LocalFoodSupply"),
+                    config.get("ProductionSpeedMultiplier"),
+                    config.get("bStoreInputCargo"),
+                    config.get("bHidden")
+                ))
+                config_id = cursor.lastrowid
+                
+                # Process input cargos
+                input_cargos = config.get("InputCargos", {})
+                if isinstance(input_cargos, dict) and input_cargos.get("Entries"):
+                    for entry in input_cargos["Entries"]:
+                        cursor.execute("""
+                            INSERT INTO production_inputs 
+                            (production_config_id, cargo_id, quantity)
+                            VALUES (?, ?, ?)
+                        """, (config_id, entry.get("Key"), entry.get("Value")))
+                
+                # Process output cargos
+                output_cargos = config.get("OutputCargos", {})
+                if isinstance(output_cargos, dict) and output_cargos.get("Entries"):
+                    for entry in output_cargos["Entries"]:
+                        cursor.execute("""
+                            INSERT INTO production_outputs 
+                            (production_config_id, cargo_id, quantity)
+                            VALUES (?, ?, ?)
+                        """, (config_id, entry.get("Key"), entry.get("Value")))
+    
+    conn.commit()
+    print(f"Inserted {cursor.execute('SELECT COUNT(*) FROM delivery_points').fetchone()[0]} delivery points")
+    print(f"Inserted {cursor.execute('SELECT COUNT(*) FROM production_configs').fetchone()[0]} production configs")
+
+
 def create_views(conn: sqlite3.Connection):
     """Create useful views."""
     cursor = conn.cursor()
@@ -760,6 +897,7 @@ def main():
     process_cargo_weights(conn, json_files)
     process_cargo_bed_specs(conn, json_files)
     process_vehicle_weights(conn, json_files)
+    process_delivery_points(conn, json_files)
     
     # Phase 3: Views
     print("\n=== Phase 3: Creating Views ===")
@@ -779,6 +917,8 @@ def main():
         ("Cargo Weights", "SELECT COUNT(*) FROM cargo_weights"),
         ("Default Parts", "SELECT COUNT(*) FROM vehicle_default_parts"),
         ("Vehicle Tags", "SELECT COUNT(*) FROM vehicle_tags"),
+        ("Delivery Points", "SELECT COUNT(*) FROM delivery_points"),
+        ("Production Configs", "SELECT COUNT(*) FROM production_configs"),
     ]
     
     for name, query in stats:
