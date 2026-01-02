@@ -28,6 +28,19 @@ def create_schema(conn: sqlite3.Connection):
     """Create database schema."""
     cursor = conn.cursor()
     
+    # Schema version for bot compatibility
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS schema_version (
+            version INTEGER PRIMARY KEY,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            game_version TEXT
+        )
+    """)
+    cursor.execute("""
+        INSERT OR REPLACE INTO schema_version (version, game_version) 
+        VALUES (1, '0.7.17')
+    """)
+    
     # Vehicles table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS vehicles (
