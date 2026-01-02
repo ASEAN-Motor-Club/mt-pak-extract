@@ -2,8 +2,32 @@
   "assets": [
     "MotorTown/Content/DataAsset/Cargos",
     "MotorTown/Content/DataAsset/Vehicles/Vehicles",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_1",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Ambulance",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Bike",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Bus",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Jeep",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Small",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Special",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Trailers",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Truck",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Van",
+    "MotorTown/Content/DataAsset/Vehicles/Vehicles_Wrecker",
+    "MotorTown/Content/DataAsset/VehicleParts/VehicleParts",
+    "MotorTown/Content/DataAsset/VehicleParts/VehicleParts0",
     "MotorTown/Content/DataAsset/VehicleParts/Engines",
+    "MotorTown/Content/DataAsset/VehicleParts/Transmissions",
     "MotorTown/Content/DataAsset/VehicleParts/Wheels",
-    "MotorTown/Content/DataAsset/VehicleParts/Transmissions"
+    "MotorTown/Content/DataAsset/VehicleParts/Suspensions",
+    "MotorTown/Content/DataAsset/VehicleParts/BrakePads",
+    "MotorTown/Content/DataAsset/VehicleParts/BrakePower",
+    "MotorTown/Content/DataAsset/VehicleParts/BrakeBalance",
+    "MotorTown/Content/DataAsset/VehicleParts/FinalDriveRatio",
+    "MotorTown/Content/DataAsset/VehicleParts/LSD",
+    "MotorTown/Content/DataAsset/VehicleParts/AeroParts",
+    "MotorTown/Content/DataAsset/VehicleParts/CargoBed",
+    "MotorTown/Content/DataAsset/VehicleParts/Headlights",
+    "MotorTown/Content/DataAsset/VehicleParts/UtilityParts",
+    "MotorTown/Content/DataAsset/CargoBedAttachments"
   ]
 }

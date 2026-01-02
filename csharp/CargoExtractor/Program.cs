@@ -126,8 +126,9 @@ class Program
         
         Console.WriteLine($"    Exports: {asset.Exports.Count}, Imports: {asset.Imports.Count}");
         
-        // Process exports
-        object? result = null;
+        // Process all exports
+        var exports = new List<object>();
+        object? dataTable = null;
         
         foreach (var export in asset.Exports)
         {
@@ -141,12 +142,12 @@ class Program
                     
                     foreach (var prop in row.Value)
                     {
-                        rowData[prop.Name.Value.Value] = ExtractPropertyValue(prop);
+                        rowData[prop.Name.Value.Value] = ExtractPropertyValue(prop, asset);
                     }
                     rows.Add(rowData);
                 }
                 
-                result = new {
+                dataTable = new {
                     Type = "DataTable",
                     RowCount = rows.Count,
                     Rows = rows
@@ -158,35 +159,47 @@ class Program
                 var properties = new Dictionary<string, object?>();
                 foreach (var prop in normalExport.Data)
                 {
-                    properties[prop.Name.Value.Value] = ExtractPropertyValue(prop);
+                    properties[prop.Name.Value.Value] = ExtractPropertyValue(prop, asset);
                 }
                 
-                result = new {
-                    Type = "NormalExport",
-                    Class = export.GetExportClassType().Value.Value,
+                var exportData = new {
+                    ExportName = export.ObjectName?.Value?.Value,
+                    Class = export.GetExportClassType()?.Value?.Value,
                     Properties = properties
                 };
+                exports.Add(exportData);
                 Console.WriteLine($"    NormalExport: {properties.Count} properties");
             }
         }
         
-        // Save output
-        if (result != null)
+        // Save output - prefer DataTable format, otherwise collect all exports
+        object result;
+        if (dataTable != null)
         {
-            var output = new {
-                SourceAsset = Path.GetFileName(uassetPath),
-                ParsedAt = DateTime.UtcNow.ToString("o"),
-                Data = result
-            };
-            
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            var json = JsonSerializer.Serialize(output, options);
-            File.WriteAllText(outputPath, json);
-            Console.WriteLine($"    Saved: {Path.GetFileName(outputPath)}");
+            result = dataTable;
         }
+        else
+        {
+            result = new {
+                Type = "Blueprint",
+                ExportCount = exports.Count,
+                Exports = exports
+            };
+        }
+        
+        var output = new {
+            SourceAsset = Path.GetFileName(uassetPath),
+            ParsedAt = DateTime.UtcNow.ToString("o"),
+            Data = result
+        };
+            
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        var json = JsonSerializer.Serialize(output, options);
+        File.WriteAllText(outputPath, json);
+        Console.WriteLine($"    Saved: {Path.GetFileName(outputPath)}");
     }
     
-    static object? ExtractPropertyValue(PropertyData prop)
+    static object? ExtractPropertyValue(PropertyData prop, UAsset asset)
     {
         return prop switch
         {
@@ -200,45 +213,172 @@ class Program
             StrPropertyData strProp => strProp.Value?.Value,
             NamePropertyData nameProp => nameProp.Value?.Value?.Value,
             EnumPropertyData enumProp => enumProp.Value?.Value?.Value,
-            ObjectPropertyData objProp => ResolveObjectReference(objProp),
-            SoftObjectPropertyData softProp => softProp.Value.AssetPath.AssetName?.Value?.Value,
-            ArrayPropertyData arrProp => ExtractArrayValue(arrProp),
-            StructPropertyData structProp => ExtractStructValue(structProp),
+            ObjectPropertyData objProp => ResolveObjectReference(objProp, asset),
+            SoftObjectPropertyData softProp => ExtractSoftObjectValue(softProp),
+            ArrayPropertyData arrProp => ExtractArrayValue(arrProp, asset),
+            StructPropertyData structProp => ExtractStructValue(structProp, asset),
+            MapPropertyData mapProp => ExtractMapValue(mapProp, asset),
             TextPropertyData textProp => textProp.Value?.Value,
             BytePropertyData byteProp => byteProp.Value,
             Vector2DPropertyData vec2Prop => new { X = vec2Prop.Value.X, Y = vec2Prop.Value.Y },
             VectorPropertyData vecProp => new { X = vecProp.Value.X, Y = vecProp.Value.Y, Z = vecProp.Value.Z },
+            GameplayTagContainerPropertyData tagProp => ExtractGameplayTags(tagProp),
             _ => $"<{prop.GetType().Name}>"
         };
     }
     
-    static string? ResolveObjectReference(ObjectPropertyData objProp)
+    static object? ExtractSoftObjectValue(SoftObjectPropertyData softProp)
+    {
+        var assetName = softProp.Value.AssetPath.AssetName?.Value?.Value;
+        var subPath = softProp.Value.SubPathString?.Value;
+        
+        if (string.IsNullOrEmpty(assetName))
+            return null;
+            
+        if (!string.IsNullOrEmpty(subPath))
+            return $"{assetName}:{subPath}";
+            
+        return assetName;
+    }
+    
+    static object? ResolveObjectReference(ObjectPropertyData objProp, UAsset asset)
     {
         if (objProp.Value == null || objProp.Value.Index == 0)
             return null;
-        return $"ObjectRef:{objProp.Value.Index}";
+            
+        var index = objProp.Value.Index;
+        
+        // Negative indices are imports, positive are exports
+        if (index < 0)
+        {
+            // Import reference (external asset)
+            var importIdx = -index - 1;
+            if (importIdx < asset.Imports.Count)
+            {
+                var import = asset.Imports[importIdx];
+                var objectName = import.ObjectName?.Value?.Value;
+                var classPackage = import.ClassPackage?.Value?.Value;
+                var className = import.ClassName?.Value?.Value;
+                
+                // Build a meaningful path
+                if (!string.IsNullOrEmpty(objectName))
+                {
+                    // Try to build a path from the import hierarchy
+                    var path = BuildImportPath(asset, importIdx);
+                    return new {
+                        Type = "Import",
+                        Path = path,
+                        ObjectName = objectName,
+                        ClassName = className
+                    };
+                }
+            }
+        }
+        else
+        {
+            // Export reference (local to this asset)
+            var exportIdx = index - 1;
+            if (exportIdx < asset.Exports.Count)
+            {
+                var export = asset.Exports[exportIdx];
+                return new {
+                    Type = "Export",
+                    Index = exportIdx,
+                    ObjectName = export.ObjectName?.Value?.Value,
+                    ClassName = export.GetExportClassType()?.Value?.Value
+                };
+            }
+        }
+        
+        return $"UnresolvedRef:{index}";
     }
     
-    static object? ExtractArrayValue(ArrayPropertyData arrProp)
+    static string BuildImportPath(UAsset asset, int importIdx)
+    {
+        var parts = new List<string>();
+        var current = importIdx;
+        
+        // Walk up the import hierarchy
+        while (current >= 0 && current < asset.Imports.Count)
+        {
+            var import = asset.Imports[current];
+            var name = import.ObjectName?.Value?.Value;
+            if (!string.IsNullOrEmpty(name))
+            {
+                parts.Insert(0, name);
+            }
+            
+            // Get parent (OuterIndex is a FPackageIndex)
+            var outerIdx = import.OuterIndex.Index;
+            if (outerIdx < 0)
+            {
+                current = -outerIdx - 1;
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        return string.Join("/", parts);
+    }
+    
+    static object? ExtractArrayValue(ArrayPropertyData arrProp, UAsset asset)
     {
         var items = new List<object?>();
         foreach (var item in arrProp.Value)
         {
-            items.Add(ExtractPropertyValue(item));
+            items.Add(ExtractPropertyValue(item, asset));
         }
         return items;
     }
     
-    static object? ExtractStructValue(StructPropertyData structProp)
+    static object? ExtractMapValue(MapPropertyData mapProp, UAsset asset)
+    {
+        var entries = new List<object>();
+        
+        foreach (var kvp in mapProp.Value)
+        {
+            var key = ExtractPropertyValue(kvp.Key, asset);
+            var value = ExtractPropertyValue(kvp.Value, asset);
+            
+            entries.Add(new {
+                Key = key,
+                Value = value
+            });
+        }
+        
+        return new {
+            _Type = "Map",
+            KeyType = mapProp.KeyType?.Value?.Value,
+            ValueType = mapProp.ValueType?.Value?.Value,
+            Entries = entries
+        };
+    }
+    
+    static object? ExtractStructValue(StructPropertyData structProp, UAsset asset)
     {
         var result = new Dictionary<string, object?>();
         result["_StructType"] = structProp.StructType?.Value?.Value;
         
         foreach (var prop in structProp.Value)
         {
-            result[prop.Name.Value.Value] = ExtractPropertyValue(prop);
+            result[prop.Name.Value.Value] = ExtractPropertyValue(prop, asset);
         }
         
         return result;
+    }
+    
+    static object? ExtractGameplayTags(GameplayTagContainerPropertyData tagProp)
+    {
+        var tags = new List<string>();
+        foreach (var tag in tagProp.Value)
+        {
+            if (tag?.Value?.Value != null)
+            {
+                tags.Add(tag.Value.Value);
+            }
+        }
+        return tags;
     }
 }

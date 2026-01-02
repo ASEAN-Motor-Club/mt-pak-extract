@@ -73,6 +73,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     
+    // Handle --search mode
+    let search_idx = args.iter().position(|a| a == "--search");
+    if let Some(idx) = search_idx {
+        let pattern = args.get(idx + 1)
+            .ok_or("--search requires a pattern")?;
+        
+        println!("=== Searching for assets containing '{}' ===", pattern);
+        let mut count = 0;
+        for path in pak.files() {
+            if path.ends_with(".uasset") && path.to_lowercase().contains(&pattern.to_lowercase()) {
+                println!("  {}", path.trim_end_matches(".uasset"));
+                count += 1;
+            }
+        }
+        println!("Total: {} matching assets", count);
+        return Ok(());
+    }
+    
     // Handle --config mode (batch extraction)
     if let Some(idx) = config_idx {
         let config_path = args.get(idx + 1)

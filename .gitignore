@@ -19,6 +19,8 @@ __pycache__/
 
 # Environment variables (contains AES key)
 .env
+.envrc
+.direnv/
 
 # IDE
 .idea/
@@ -35,3 +37,7 @@ Thumbs.db
 *.uexp
 cargos*.json
 name_table.json
+
+# Database files (generated output)
+motortown.db
+motortown_data.sql
