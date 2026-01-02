@@ -38,7 +38,7 @@ def create_schema(conn: sqlite3.Connection):
     """)
     cursor.execute("""
         INSERT OR REPLACE INTO schema_version (version, game_version) 
-        VALUES (1, '0.7.17')
+        VALUES (3, '0.7.17')
     """)
     
     # Vehicles table
@@ -61,6 +61,8 @@ def create_schema(conn: sqlite3.Connection):
             is_disabled BOOLEAN,
             exhaust_smoke_density REAL,
             delivery_payment_multiplier REAL,
+            delivery_base_payment INTEGER,
+            body_damage_threshold REAL,
             source_file TEXT
         )
     """)
@@ -117,6 +119,17 @@ def create_schema(conn: sqlite3.Connection):
             payment_per_km INTEGER,
             payment_multiplier REAL,
             base_payment INTEGER,
+            payment_sqrt_ratio REAL,
+            payment_sqrt_ratio_min_capacity INTEGER,
+            max_damage_payment_multiplier REAL,
+            damage_bonus_multiplier REAL,
+            manual_loading_payment INTEGER,
+            min_delivery_distance INTEGER,
+            max_delivery_distance INTEGER,
+            has_timer BOOLEAN,
+            base_time_seconds INTEGER,
+            timer_by_speed_kph REAL,
+            timer_by_road_speed_limit_ratio REAL,
             actor_class_path TEXT,
             allow_stacking BOOLEAN,
             use_damage BOOLEAN,
@@ -170,6 +183,31 @@ def create_schema(conn: sqlite3.Connection):
         )
     """)
     
+    # Cargo bed specifications (dimensions and capacity)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cargo_bed_specs (
+            part_id TEXT PRIMARY KEY,
+            cargo_space_type TEXT,
+            length_cm REAL,
+            width_cm REAL,
+            height_cm REAL,
+            dump_volume_kl REAL,
+            fix_cargo BOOLEAN,
+            unlimited_height BOOLEAN,
+            FOREIGN KEY (part_id) REFERENCES vehicle_parts(id)
+        )
+    """)
+    
+    # Vehicle weights from blueprints (chassis mass)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vehicle_weights (
+            vehicle_id TEXT PRIMARY KEY,
+            chassis_mass_kg REAL,
+            blueprint_path TEXT,
+            FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+        )
+    """)
+    
     conn.commit()
 
 
@@ -193,7 +231,7 @@ def process_vehicles(conn: sqlite3.Connection, json_files: List[Path]):
             
             # Extract basic fields
             cursor.execute("""
-                INSERT OR REPLACE INTO vehicles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO vehicles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 vehicle_id,
                 row.get("VehicleName"),
@@ -212,6 +250,8 @@ def process_vehicles(conn: sqlite3.Connection, json_files: List[Path]):
                 row.get("bDisabled"),
                 row.get("ExhaustBlackSmokeDensity"),
                 row.get("DeliveryPaymentMultiplier"),
+                row.get("DeliveryBasePayment"),
+                row.get("BodyDamageThreshold"),
                 json_file.name
             ))
             
@@ -322,7 +362,7 @@ def process_cargos(conn: sqlite3.Connection, json_files: List[Path]):
             
             # Extract basic fields
             cursor.execute("""
-                INSERT OR REPLACE INTO cargos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO cargos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 cargo_id,
                 row.get("Name"),
@@ -333,6 +373,17 @@ def process_cargos(conn: sqlite3.Connection, json_files: List[Path]):
                 row.get("PaymentPer1Km"),
                 row.get("PaymentPer1KmMultiplierByMaxWeight"),
                 row.get("BasePayment"),
+                row.get("PaymentSqrtRatio"),
+                row.get("PaymentSqrtRatioMinCapcity"),
+                row.get("MaxDamagePaymentMultiplier"),
+                row.get("DamageBonusMultiplier"),
+                row.get("ManualLoadingPayment"),
+                row.get("MinDeliveryDistance"),
+                row.get("MaxDeliveryDistance"),
+                row.get("bTimer"),
+                row.get("BaseTimeSeconds"),
+                row.get("TimerBySpeedKPH"),
+                row.get("TimerByRoadSpeedLimitRatio"),
                 get_object_path(row.get("ActorClass")),
                 row.get("bAllowStacking"),
                 row.get("bUseDamage"),
@@ -445,6 +496,140 @@ def process_cargo_weights(conn: sqlite3.Connection, json_files: List[Path]):
     print(f"Inserted weights for {cursor.execute('SELECT COUNT(*) FROM cargo_weights').fetchone()[0]} cargos")
 
 
+def process_cargo_bed_specs(conn: sqlite3.Connection, json_files: List[Path]):
+    """Process cargo bed parts to extract dimensions and capacity."""
+    cursor = conn.cursor()
+    
+    for json_file in json_files:
+        if not json_file.name.startswith("CargoBed") or json_file.name.startswith("CargoBedAttachments"):
+            continue
+            
+        print(f"Processing cargo bed specs from {json_file.name}...")
+        with open(json_file) as f:
+            data = json.load(f)
+        
+        if data.get("Data", {}).get("Type") != "DataTable":
+            continue
+        
+        for row in data["Data"]["Rows"]:
+            part_id = row["RowName"]
+            cargo_bed = row.get("CargoBed", {})
+            
+            if not cargo_bed:
+                continue
+            
+            # Extract cargo space type
+            space_type = strip_enum(cargo_bed.get("CargoSpaceType", ""))
+            
+            # Extract dimensions (in Unreal units = cm)
+            cargo_size = cargo_bed.get("CargoSpaceSize", {})
+            size_data = cargo_size.get("CargoSpaceSize", {})
+            length_cm = size_data.get("X", 0)
+            width_cm = size_data.get("Y", 0)
+            height_cm = size_data.get("Z", 0)
+            
+            # Extract other properties
+            dump_volume_kl = cargo_bed.get("DumpVolume", 0)
+            fix_cargo = cargo_bed.get("bFixCargo", False)
+            unlimited_height = cargo_bed.get("bUnlimitedHeight", False)
+            
+            cursor.execute("""
+                INSERT OR REPLACE INTO cargo_bed_specs VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                part_id,
+                space_type,
+                length_cm,
+                width_cm,
+                height_cm,
+                dump_volume_kl,
+                fix_cargo,
+                unlimited_height
+            ))
+    
+    conn.commit()
+    print(f"Inserted {cursor.execute('SELECT COUNT(*) FROM cargo_bed_specs').fetchone()[0]} cargo bed specs")
+
+
+def process_vehicle_weights(conn: sqlite3.Connection, json_files: List[Path]):
+    """Process vehicle blueprints to extract chassis mass."""
+    cursor = conn.cursor()
+    
+    # Step 1: Build mapping from vehicle ID to blueprint filename
+    print("Building vehicle-to-blueprint mapping...")
+    vehicle_blueprint_map = {}  # vehicle_id -> blueprint_filename
+    
+    for row in cursor.execute("SELECT id, blueprint_path FROM vehicles WHERE blueprint_path IS NOT NULL"):
+        vehicle_id, blueprint_path = row
+        if blueprint_path:
+            # Extract blueprint name from path
+            # e.g., /Game/Cars/Models/Tuscan/Tuscan/Tuscan_C -> Tuscan
+            parts = blueprint_path.split("/")
+            if len(parts) >= 2:
+                # Last part before _C is the blueprint name
+                blueprint_name = parts[-1].replace("_C", "")
+                vehicle_blueprint_map[vehicle_id] = blueprint_name
+    
+    print(f"Mapped {len(vehicle_blueprint_map)} vehicles to blueprint names")
+    
+    # Step 2: Build reverse mapping from blueprint filename to vehicle IDs
+    blueprint_to_vehicles = {}  # blueprint_filename -> [vehicle_ids]
+    for vehicle_id, blueprint_name in vehicle_blueprint_map.items():
+        if blueprint_name not in blueprint_to_vehicles:
+            blueprint_to_vehicles[blueprint_name] = []
+        blueprint_to_vehicles[blueprint_name].append(vehicle_id)
+    
+    # Step 3: Process blueprint files
+    for json_file in json_files:
+        if not json_file.name.endswith("_parsed.json"):
+            continue
+            
+        with open(json_file) as f:
+            data = json.load(f)
+        
+        # Only process Blueprint types
+        if data.get("Data", {}).get("Type") != "Blueprint":
+            continue
+        
+        # Extract blueprint filename
+        blueprint_name = json_file.stem.replace("_parsed", "")
+        
+        # Find matching vehicle(s) using the mapping
+        matching_vehicles = blueprint_to_vehicles.get(blueprint_name, [])
+        if not matching_vehicles:
+            continue
+        
+        print(f"Processing vehicle weights from {json_file.name}...")
+        
+        # Extract all MassInKgOverride values from exports (chassis mass)
+        chassis_mass = 0
+        
+        for export in data["Data"].get("Exports", []):
+            props = export.get("Properties", {})
+            
+            # Check for BodyInstance with mass
+            body_instance = props.get("BodyInstance")
+            if isinstance(body_instance, dict):
+                mass = body_instance.get("MassInKgOverride")
+                if mass and mass > 0:
+                    chassis_mass += mass
+        
+        if chassis_mass > 0:
+            # Get blueprint path from first export
+            blueprint_path = None
+            if data["Data"].get("Exports"):
+                first_export = data["Data"]["Exports"][0]
+                blueprint_path = first_export.get("ExportName")
+            
+            # Insert weights for all matching vehicles
+            for vehicle_id in matching_vehicles:
+                cursor.execute("""
+                    INSERT OR REPLACE INTO vehicle_weights VALUES (?, ?, ?)
+                """, (vehicle_id, chassis_mass, blueprint_path))
+    
+    conn.commit()
+    print(f"Inserted weights for {cursor.execute('SELECT COUNT(*) FROM vehicle_weights').fetchone()[0]} vehicles")
+
+
 def create_views(conn: sqlite3.Connection):
     """Create useful views."""
     cursor = conn.cursor()
@@ -489,6 +674,55 @@ def create_views(conn: sqlite3.Connection):
         LEFT JOIN vehicle_parts vp ON vdp.part_id = vp.id
     """)
     
+    # View: vehicles with cargo space dimensions
+    cursor.execute("""
+        CREATE VIEW IF NOT EXISTS vehicles_with_cargo_space AS
+        SELECT 
+            v.id,
+            v.name,
+            v.vehicle_type,
+            v.truck_class,
+            cbs.cargo_space_type,
+            ROUND(cbs.length_cm / 100, 1) as length_m,
+            ROUND(cbs.width_cm / 100, 1) as width_m,
+            ROUND(cbs.height_cm / 100, 1) as height_m,
+            cbs.dump_volume_kl,
+            ROUND((cbs.length_cm * cbs.width_cm * cbs.height_cm) / 1000000, 1) as volume_m3,
+            cbs.fix_cargo,
+            cbs.unlimited_height
+        FROM vehicles v
+        JOIN vehicle_default_parts vdp ON v.id = vdp.vehicle_id 
+            AND vdp.slot LIKE 'CargoBed%'
+        JOIN cargo_bed_specs cbs ON vdp.part_id = cbs.part_id
+    """)
+    
+    # View: vehicles with full weight (chassis + default parts)
+    cursor.execute("""
+        CREATE VIEW IF NOT EXISTS vehicles_with_weight AS
+        SELECT 
+            v.id,
+            v.name,
+            v.vehicle_type,
+            v.truck_class,
+            v.cost,
+            COALESCE(vw.chassis_mass_kg, 0) as chassis_mass_kg,
+            COALESCE(pw.parts_weight_kg, 0) as parts_weight_kg,
+            COALESCE(vw.chassis_mass_kg, 0) + COALESCE(pw.parts_weight_kg, 0) as total_weight_kg,
+            COALESCE(pw.part_count, 0) as part_count
+        FROM vehicles v
+        LEFT JOIN vehicle_weights vw ON v.id = vw.vehicle_id
+        LEFT JOIN (
+            SELECT 
+                vdp.vehicle_id,
+                SUM(vp.mass_kg) as parts_weight_kg,
+                COUNT(vp.id) as part_count
+            FROM vehicle_default_parts vdp
+            JOIN vehicle_parts vp ON vdp.part_id = vp.id
+            WHERE vp.mass_kg IS NOT NULL AND vp.mass_kg > 0
+            GROUP BY vdp.vehicle_id
+        ) pw ON v.id = pw.vehicle_id
+    """)
+    
     conn.commit()
 
 
@@ -521,9 +755,11 @@ def main():
     process_vehicle_parts(conn, json_files)
     process_cargos(conn, json_files)
     
-    # Phase 2: Cargo weights
-    print("\n=== Phase 2: Cargo Weights ===")
+    # Phase 2: Cargo weights and bed specs
+    print("\n=== Phase 2: Cargo Weights & Bed Specs ===")
     process_cargo_weights(conn, json_files)
+    process_cargo_bed_specs(conn, json_files)
+    process_vehicle_weights(conn, json_files)
     
     # Phase 3: Views
     print("\n=== Phase 3: Creating Views ===")
