@@ -347,7 +347,30 @@ def process_cargo_weights(conn: sqlite3.Connection, json_files: List[Path]):
     """Process cargo actor blueprints to extract weights."""
     cursor = conn.cursor()
     
-    # Blueprint files (not DataTables)
+    # Step 1: Build mapping from ActorClass path to blueprint filename
+    print("Building cargo-to-blueprint mapping...")
+    cargo_blueprint_map = {}  # cargo_id -> blueprint_filename
+    
+    for row in cursor.execute("SELECT id, actor_class_path FROM cargos WHERE actor_class_path IS NOT NULL"):
+        cargo_id, actor_path = row
+        if actor_path:
+            # Extract blueprint name from path
+            # e.g., /Game/Objects/Mission/Delivery/BottleBox/BottleBox_C -> BottleBox
+            parts = actor_path.split("/")
+            if len(parts) >= 2:
+                blueprint_name = parts[-1].replace("_C", "")
+                cargo_blueprint_map[cargo_id] = blueprint_name
+    
+    print(f"Mapped {len(cargo_blueprint_map)} cargos to blueprint names")
+    
+    # Step 2: Build reverse mapping from blueprint filename to cargo IDs
+    blueprint_to_cargos = {}  # blueprint_filename -> [cargo_ids]
+    for cargo_id, blueprint_name in cargo_blueprint_map.items():
+        if blueprint_name not in blueprint_to_cargos:
+            blueprint_to_cargos[blueprint_name] = []
+        blueprint_to_cargos[blueprint_name].append(cargo_id)
+    
+    # Step 3: Process blueprint files
     for json_file in json_files:
         if not json_file.name.endswith("_parsed.json"):
             continue
@@ -359,12 +382,12 @@ def process_cargo_weights(conn: sqlite3.Connection, json_files: List[Path]):
         if data.get("Data", {}).get("Type") != "Blueprint":
             continue
         
-        # Extract cargo ID from filename (e.g., SmallBox_parsed.json -> SmallBox)
-        cargo_id = json_file.stem.replace("_parsed", "")
+        # Extract blueprint filename (e.g., BottleBox_parsed.json -> BottleBox)
+        blueprint_name = json_file.stem.replace("_parsed", "")
         
-        # Skip if not a cargo (check if exists in cargos table)
-        exists = cursor.execute("SELECT 1 FROM cargos WHERE id = ?", (cargo_id,)).fetchone()
-        if not exists:
+        # Find matching cargo(s) using the mapping
+        matching_cargos = blueprint_to_cargos.get(blueprint_name, [])
+        if not matching_cargos:
             continue
         
         print(f"Processing cargo weights from {json_file.name}...")
@@ -392,17 +415,18 @@ def process_cargo_weights(conn: sqlite3.Connection, json_files: List[Path]):
                 first_export = data["Data"]["Exports"][0]
                 blueprint_path = first_export.get("ExportName")
             
-            # Insert total weight
-            cursor.execute("""
-                INSERT OR REPLACE INTO cargo_weights VALUES (?, ?, ?)
-            """, (cargo_id, total_mass, blueprint_path))
-            
-            # Insert components
-            for component_name, mass in components:
+            # Insert weights for all matching cargos
+            for cargo_id in matching_cargos:
                 cursor.execute("""
-                    INSERT INTO cargo_weight_components (cargo_id, component_name, mass_kg)
-                    VALUES (?, ?, ?)
-                """, (cargo_id, component_name, mass))
+                    INSERT OR REPLACE INTO cargo_weights VALUES (?, ?, ?)
+                """, (cargo_id, total_mass, blueprint_path))
+                
+                # Insert components
+                for component_name, mass in components:
+                    cursor.execute("""
+                        INSERT INTO cargo_weight_components (cargo_id, component_name, mass_kg)
+                        VALUES (?, ?, ?)
+                    """, (cargo_id, component_name, mass))
     
     conn.commit()
     print(f"Inserted weights for {cursor.execute('SELECT COUNT(*) FROM cargo_weights').fetchone()[0]} cargos")
@@ -412,7 +436,7 @@ def create_views(conn: sqlite3.Connection):
     """Create useful views."""
     cursor = conn.cursor()
     
-    # View: vehicles with their actual cargo weights
+    # View: cargos with their actual weights (including blueprint weights)
     cursor.execute("""
         CREATE VIEW IF NOT EXISTS cargos_with_weights AS
         SELECT 
@@ -421,6 +445,20 @@ def create_views(conn: sqlite3.Connection):
             cw.blueprint_path
         FROM cargos c
         LEFT JOIN cargo_weights cw ON c.id = cw.cargo_id
+    """)
+    
+    # View: active, valid cargos (excludes deprecated and invalid entries)
+    cursor.execute("""
+        CREATE VIEW IF NOT EXISTS active_cargos AS
+        SELECT 
+            c.*,
+            COALESCE(cw.total_weight_kg, c.weight_max, 0) as actual_weight_kg,
+            cw.blueprint_path
+        FROM cargos c
+        LEFT JOIN cargo_weights cw ON c.id = cw.cargo_id
+        WHERE (c.is_deprecated = 0 OR c.is_deprecated IS NULL)
+          AND c.actor_class_path IS NOT NULL 
+          AND c.actor_class_path != ''
     """)
     
     # View: vehicle default engines
@@ -488,13 +526,27 @@ def main():
     stats = [
         ("Vehicles", "SELECT COUNT(*) FROM vehicles"),
         ("Vehicle Parts", "SELECT COUNT(*) FROM vehicle_parts"),
-        ("Cargos", "SELECT COUNT(*) FROM cargos"),
+        ("Cargos (Total)", "SELECT COUNT(*) FROM cargos"),
         ("Cargo Weights", "SELECT COUNT(*) FROM cargo_weights"),
         ("Default Parts", "SELECT COUNT(*) FROM vehicle_default_parts"),
         ("Vehicle Tags", "SELECT COUNT(*) FROM vehicle_tags"),
     ]
     
     for name, query in stats:
+        result = cursor.execute(query).fetchone()
+        count = result[0] if result else 0
+        print(f"{name}: {count}")
+    
+    # Data quality statistics
+    print("\n=== Data Quality ===")
+    quality_stats = [
+        ("Deprecated Cargos", "SELECT COUNT(*) FROM cargos WHERE is_deprecated = 1"),
+        ("Cargos Missing ActorClass", "SELECT COUNT(*) FROM cargos WHERE actor_class_path IS NULL OR actor_class_path = ''"),
+        ("Cargos with Zero WeightRange", "SELECT COUNT(*) FROM cargos WHERE weight_max = 0"),
+        ("Active Cargos (Valid)", "SELECT COUNT(*) FROM active_cargos"),
+    ]
+    
+    for name, query in quality_stats:
         result = cursor.execute(query).fetchone()
         count = result[0] if result else 0
         print(f"{name}: {count}")
