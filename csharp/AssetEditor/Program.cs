@@ -76,6 +76,24 @@ namespace AssetEditor
                     ListCargosCommand(args[1]);
                     break;
                     
+                case "add-production":
+                    if (args.Length < 2)
+                    {
+                        Console.WriteLine("Usage: add-production <config.yaml>");
+                        return;
+                    }
+                    AddProductionCommand(args[1]);
+                    break;
+                    
+                case "list-productions":
+                    if (args.Length < 2)
+                    {
+                        Console.WriteLine("Usage: list-productions <Factory.uasset>");
+                        return;
+                    }
+                    ListProductionsCommand(args[1]);
+                    break;
+                    
                 default:
                     Console.WriteLine($"Unknown command: {command}");
                     ShowUsage();
@@ -88,9 +106,11 @@ namespace AssetEditor
             Console.WriteLine("Usage: dotnet run -- <command> [args]");
             Console.WriteLine();
             Console.WriteLine("Commands:");
-            Console.WriteLine("  verify-binary <asset.uasset>     - Test binary equality (lossless read/write)");
-            Console.WriteLine("  add-cargo <config.yaml>          - Add new cargo to Cargos.uasset");
-            Console.WriteLine("  list-cargos <Cargos.uasset>      - List all cargos in DataTable");
+            Console.WriteLine("  verify-binary <asset.uasset>          - Test binary equality (lossless read/write)");
+            Console.WriteLine("  add-cargo <config.yaml>               - Add new cargo to Cargos.uasset");
+            Console.WriteLine("  list-cargos <Cargos.uasset>           - List all cargos in DataTable");
+            Console.WriteLine("  add-production <config.yaml>          - Add production configs to factory blueprint");
+            Console.WriteLine("  list-productions <Factory.uasset>     - List all production configs");
             Console.WriteLine();
         }
         
@@ -221,6 +241,87 @@ namespace AssetEditor
             {
                 var asset = new UAsset(assetPath, EngineVersion.VER_UE5_5, Mappings);
                 CargoEditor.ListCargos(asset);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ ERROR: {ex.Message}");
+            }
+        }
+        
+        static void AddProductionCommand(string configPath)
+        {
+            if (!Path.IsPathRooted(configPath))
+            {
+                configPath = Path.Combine(RootDir!, configPath);
+            }
+            
+            if (!File.Exists(configPath))
+            {
+                Console.WriteLine($"Error: Config file not found: {configPath}");
+                return;
+            }
+            
+            Console.WriteLine($"Loading production config from: {Path.GetFileName(configPath)}");
+            var prodConfig = ProductionConfig.LoadFromYaml(configPath);
+            Console.WriteLine($"  Factory: {prodConfig.FactoryBlueprint}");
+            Console.WriteLine($"  Recipes: {prodConfig.ProductionConfigs.Count}");
+            Console.WriteLine();
+            
+            // Find factory blueprint
+            string factoryPath = Path.Combine(RootDir!, "out", $"{prodConfig.FactoryBlueprint}.uasset");
+            if (!File.Exists(factoryPath))
+            {
+                Console.WriteLine($"Error: Factory blueprint not found: {factoryPath}");
+                Console.WriteLine("Run the extractor first to extract factory blueprints");
+                return;
+            }
+            
+            try
+            {
+                // Load blueprint
+                var asset = new UAsset(factoryPath, EngineVersion.VER_UE5_5, Mappings);
+                Console.WriteLine($"✓ Loaded {prodConfig.FactoryBlueprint}.uasset ({asset.Exports.Count} exports)");
+                Console.WriteLine();
+                
+                // Add production configs
+                ProductionEditor.AddProductionConfigs(asset, prodConfig);
+                
+                // Save modified asset
+                string outputPath = Path.Combine(RootDir!, "out", $"{prodConfig.FactoryBlueprint}_modified.uasset");
+                asset.Write(outputPath);
+                Console.WriteLine();
+                Console.WriteLine($"✅ Saved modified blueprint: {Path.GetFileName(outputPath)}");
+                Console.WriteLine();
+                Console.WriteLine("Next steps:");
+                Console.WriteLine($"  1. Verify with: dotnet run -- list-productions out/{prodConfig.FactoryBlueprint}_modified.uasset");
+                Console.WriteLine("  2. Repack into PAK (Phase 3)");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ ERROR: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+            }
+        }
+        
+        static void ListProductionsCommand(string assetPath)
+        {
+            if (!Path.IsPathRooted(assetPath))
+            {
+                assetPath = Path.Combine(RootDir!, assetPath);
+            }
+            
+            if (!File.Exists(assetPath))
+            {
+                Console.WriteLine($"Error: File not found: {assetPath}");
+                return;
+            }
+            
+            try
+            {
+                var asset = new UAsset(assetPath, EngineVersion.VER_UE5_5, Mappings);
+                Console.WriteLine($"Factory: {Path.GetFileNameWithoutExtension(assetPath)}");
+                Console.WriteLine();
+                ProductionEditor.ListProductionConfigs(asset);
             }
             catch (Exception ex)
             {

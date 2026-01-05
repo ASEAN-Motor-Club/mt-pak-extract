@@ -3,6 +3,18 @@ name = "mt-pak-extract"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "extract"
+path = "src/main.rs"
+
+[[bin]]
+name = "repack"
+path = "src/repack.rs"
+
+[[bin]]
+name = "verify-pak"
+path = "src/verify_pak.rs"
+
 [dependencies]
 unreal_asset = { git = "https://github.com/AstroTechies/unrealmodding", branch = "main" }
 unreal_pak = { git = "https://github.com/AstroTechies/unrealmodding", branch = "main" }
