@@ -38,7 +38,7 @@ def create_schema(conn: sqlite3.Connection):
     """)
     cursor.execute("""
         INSERT OR REPLACE INTO schema_version (version, game_version) 
-        VALUES (4, '0.7.17')
+        VALUES (5, '0.7.17')
     """)
     
     # Vehicles table
@@ -195,6 +195,39 @@ def create_schema(conn: sqlite3.Connection):
             fix_cargo BOOLEAN,
             unlimited_height BOOLEAN,
             FOREIGN KEY (part_id) REFERENCES vehicle_parts(id)
+        )
+    """)
+    
+    # Part tuning values (EAV table)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS part_tuning (
+            part_id TEXT,
+            struct_type TEXT,
+            field_name TEXT,
+            field_value REAL,
+            PRIMARY KEY (part_id, struct_type, field_name),
+            FOREIGN KEY (part_id) REFERENCES vehicle_parts(id)
+        )
+    """)
+    
+    # All unique tuning values per part_type (handles duplicate RowNames)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS part_type_values (
+            part_type TEXT,
+            struct_type TEXT,
+            field_name TEXT,
+            field_value REAL,
+            PRIMARY KEY (part_type, struct_type, field_name, field_value)
+        )
+    """)
+    
+    # Blueprint variant names (tire/LSD pak variants)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS blueprint_variants (
+            base_name TEXT,     -- e.g. 'BasicTire', '1WayClutchPackLSD'
+            variant_name TEXT,  -- full pak asset name e.g. 'BasicTire_65'
+            asset_type TEXT,    -- 'TirePhysics' or 'LSD'
+            PRIMARY KEY (variant_name)
         )
     """)
     
@@ -382,6 +415,249 @@ def process_vehicle_parts(conn: sqlite3.Connection, json_files: List[Path]):
     
     conn.commit()
     print(f"Inserted {cursor.execute('SELECT COUNT(*) FROM vehicle_parts').fetchone()[0]} parts")
+
+
+def process_part_tuning(conn: sqlite3.Connection, json_files: List[Path]):
+    """Extract tuning parameters from vehicle parts into the part_tuning EAV table."""
+    cursor = conn.cursor()
+    
+    # Sub-struct definitions: struct_key -> (struct_type_label, fields_to_extract)
+    TUNABLE_STRUCTS = {
+        "SuspensionDamper": ("SuspensionDamper", [
+            "BoundDampingRateMultiplier", "ReboundDampingRateMultiplier",
+        ]),
+        "SuspensionSpring": ("SuspensionSpring", [
+            "SpringRateMultiplier",
+        ]),
+        "SuspensionRideHeight": ("SuspensionRideHeight", [
+            "RideHeightChange",
+        ]),
+        "AntiRollBar": ("AntiRollBar", [
+            "AntiRollBarRateMultiplier",
+        ]),
+        "BrakePad": ("BrakePad", [
+            "HeatingMultiplier", "CoolingMultiplier", "FadeTemperature", "WearMultiplier",
+        ]),
+        "BrakePower": ("BrakePower", [
+            "BrakePowerMultiplier",
+        ]),
+        "BrakeBalance": ("BrakeBalance", [
+            "FrontMultiplier", "RearMultiplier",
+        ]),
+        "Turbocharger": ("Turbocharger", [
+            "bIsValid", "BaseTorqueMultiplier", "TorqueMultiplier",
+            "TurbineAspectRatio", "IntakePressureMultiplier",
+            "HeatingMultiplier", "FuelConsumptionMultiplier", "TurbineWeight",
+        ]),
+        "Intake": ("Intake", [
+            "Slope", "BaseRPMRatio", "IntakeSpeedEfficencyMultiplier",
+        ]),
+        "CoolantRadiator": ("CoolantRadiator", [
+            "CoolingPower", "CoolantWaterInLiter",
+        ]),
+        "AngleKit": ("AngleKit", [
+            "AngleIncreaseInDegree",
+        ]),
+        "WheelSpacer": ("WheelSpacer", [
+            "Space",
+        ]),
+        "Winch": ("Winch", [
+            "MaxForceKg", "MaxLength",
+        ]),
+        "FuelTank": ("FuelTank", [
+            "FuelLiter",
+        ]),
+        "ItemInventory": ("ItemInventory", [
+            "NumSlots",
+        ]),
+    }
+    
+    # Top-level numeric fields that vary per part (aero tuning)
+    TOP_LEVEL_FIELDS = [
+        "AirDragMultiplier", "TrailerAirDragMultiplier",
+        "AeroLift", "FrontAeroLift", "RearAeroLift",
+        "FrontDamageMultiplier",
+    ]
+    
+    part_files = ["VehicleParts", "VehicleParts0", "Engines", "Transmissions",
+                  "Wheels", "Suspensions", "BrakePads", "BrakePower", "BrakeBalance",
+                  "FinalDriveRatio", "LSD", "AeroParts", "CargoBed", "Headlights", "UtilityParts"]
+    
+    insert_count = 0
+    
+    for json_file in json_files:
+        if not any(json_file.name.startswith(pf) for pf in part_files):
+            continue
+        
+        with open(json_file) as f:
+            data = json.load(f)
+        
+        if data.get("Data", {}).get("Type") != "DataTable":
+            continue
+        
+        for row in data["Data"]["Rows"]:
+            part_id = row["RowName"]
+            part_type = strip_enum(row.get("PartType", ""))
+            
+            # Extract sub-struct tuning values
+            for struct_key, (struct_label, fields) in TUNABLE_STRUCTS.items():
+                struct_data = row.get(struct_key)
+                if not struct_data or not isinstance(struct_data, dict):
+                    continue
+                
+                for field_name in fields:
+                    value = struct_data.get(field_name)
+                    if value is None:
+                        continue
+                    # Convert booleans to 0/1
+                    if isinstance(value, bool):
+                        value = 1 if value else 0
+                    if isinstance(value, (int, float)):
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO part_tuning
+                            (part_id, struct_type, field_name, field_value)
+                            VALUES (?, ?, ?, ?)
+                        """, (part_id, struct_label, field_name, value))
+                        insert_count += 1
+                        
+                        # Also store in part_type_values (handles duplicate RowNames)
+                        if part_type:
+                            cursor.execute("""
+                                INSERT OR IGNORE INTO part_type_values
+                                (part_type, struct_type, field_name, field_value)
+                                VALUES (?, ?, ?, ?)
+                            """, (part_type, struct_label, field_name, value))
+            
+            # Extract Tire physics data asset path as a string value
+            tire_data = row.get("Tire")
+            if tire_data and isinstance(tire_data, dict):
+                tire_asset = tire_data.get("TirePhysicsDataAsset")
+                if tire_asset and isinstance(tire_asset, dict):
+                    path = tire_asset.get("Path", "")
+                    if path:
+                        # Store the asset name (last path component)
+                        asset_name = path.split("/")[-1]
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO part_tuning
+                            (part_id, struct_type, field_name, field_value)
+                            VALUES (?, 'Tire', 'TirePhysicsDataAsset', ?)
+                        """, (part_id, hash(asset_name) % 1000000))  # numeric hash for REAL column
+                
+                dual = tire_data.get("bIsDualRearWheel")
+                if dual is not None:
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO part_tuning
+                        (part_id, struct_type, field_name, field_value)
+                        VALUES (?, 'Tire', 'bIsDualRearWheel', ?)
+                    """, (part_id, 1 if dual else 0))
+                    insert_count += 1
+            
+            # Extract top-level aero/numeric fields
+            for field_name in TOP_LEVEL_FIELDS:
+                value = row.get(field_name)
+                if value is not None and isinstance(value, (int, float)):
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO part_tuning
+                        (part_id, struct_type, field_name, field_value)
+                        VALUES (?, 'TopLevel', ?, ?)
+                    """, (part_id, field_name, value))
+                    insert_count += 1
+                    
+                    if part_type:
+                        cursor.execute("""
+                            INSERT OR IGNORE INTO part_type_values
+                            (part_type, struct_type, field_name, field_value)
+                            VALUES (?, 'TopLevel', ?, ?)
+                        """, (part_type, field_name, value))
+    
+    conn.commit()
+    type_values_count = cursor.execute("SELECT COUNT(*) FROM part_type_values").fetchone()[0]
+    print(f"Inserted {insert_count} part tuning values, {type_values_count} part type values")
+
+
+def process_blueprint_variants(conn: sqlite3.Connection, json_files: List[Path]):
+    """Extract tire/LSD blueprint variant names from parsed blueprint JSONs.
+    
+    Tire variants (BasicTire_45, BasicTire_65) and LSD variants (1WayClutchPackLSD_50)
+    are separate blueprint files in the pak. Their names encode tuning parameters
+    that appear as suffixes in player part keys.
+    """
+    cursor = conn.cursor()
+    variant_count = 0
+    
+    ASSET_TYPES = {
+        "MTTirePhysicsDataAsset": "TirePhysics",
+        "MTLSDDataAsset": "LSD",
+    }
+    
+    for json_file in json_files:
+        with open(json_file) as f:
+            data = json.load(f)
+        
+        if data.get("Data", {}).get("Type") != "Blueprint":
+            continue
+        
+        for export in data["Data"].get("Exports", []):
+            export_class = export.get("Class", "")
+            asset_type = ASSET_TYPES.get(export_class)
+            if not asset_type:
+                continue
+            
+            # ExportName is the base name (e.g. 'BasicTire' for BasicTire_65.uasset)
+            base_name = export.get("ExportName", "")
+            # Source asset filename is the variant name
+            source = data.get("SourceAsset", "")
+            variant_name = source.replace(".uasset", "")
+            
+            if base_name and variant_name:
+                cursor.execute("""
+                    INSERT OR REPLACE INTO blueprint_variants
+                    (base_name, variant_name, asset_type)
+                    VALUES (?, ?, ?)
+                """, (base_name, variant_name, asset_type))
+                variant_count += 1
+    
+    # Supplementary variants: stock tire/LSD values from live game data
+    # that are delivered via hotfix patches NOT present in the main pak.
+    # These are confirmed stock from observing hundreds of player vehicles.
+    SUPPLEMENTARY_VARIANTS = [
+        # Tire profile values observed in live data but missing from pak
+        ("PerformanceTire", "PerformanceTire_15", "TirePhysics"),
+        ("PerformanceTire", "PerformanceTire_25", "TirePhysics"),
+        ("PerformanceTire", "PerformanceTire_30", "TirePhysics"),
+        ("PerformanceTire", "PerformanceTire_46", "TirePhysics"),
+    ]
+    for base_name, variant_name, asset_type in SUPPLEMENTARY_VARIANTS:
+        cursor.execute("""
+            INSERT OR IGNORE INTO blueprint_variants
+            (base_name, variant_name, asset_type)
+            VALUES (?, ?, ?)
+        """, (base_name, variant_name, asset_type))
+        variant_count += 1
+    
+    # Supplementary vehicle_parts: stock parts from game updates not in DataTable.
+    # Confirmed stock from observing hundreds of player vehicles.
+    SUPPLEMENTARY_PARTS = []
+    
+    # RideHeight: DataTable has _-10 to _+10, game has up to _-20 / _+20
+    for i in range(11, 21):
+        SUPPLEMENTARY_PARTS.append((f"RideHeight_+{i}", "Suspension_RideHeight"))
+        SUPPLEMENTARY_PARTS.append((f"RideHeight_-{i}", "Suspension_RideHeight"))
+    
+    # Spring: DataTable has 50-500, game has additional values up to 1000
+    for v in [550, 600, 700, 800, 1000]:
+        SUPPLEMENTARY_PARTS.append((f"Spring{v}", "Suspension_Spring"))
+    
+    supp_count = 0
+    for part_id, part_type in SUPPLEMENTARY_PARTS:
+        cursor.execute("""
+            INSERT OR IGNORE INTO vehicle_parts (id, part_type)
+            VALUES (?, ?)
+        """, (part_id, part_type))
+        supp_count += 1
+    
+    conn.commit()
+    print(f"Inserted {variant_count} blueprint variants, {supp_count} supplementary parts")
 
 
 def process_cargos(conn: sqlite3.Connection, json_files: List[Path]):
@@ -890,6 +1166,11 @@ def main():
     print("\n=== Phase 1: Core Tables ===")
     process_vehicles(conn, json_files)
     process_vehicle_parts(conn, json_files)
+    process_part_tuning(conn, json_files)
+    # Include blueprint JSONs from the blueprints/ subdirectory
+    bp_dir = out_dir / "blueprints"
+    bp_files = sorted(bp_dir.glob("*_parsed.json")) if bp_dir.exists() else []
+    process_blueprint_variants(conn, json_files + bp_files)
     process_cargos(conn, json_files)
     
     # Phase 2: Cargo weights and bed specs
@@ -913,6 +1194,7 @@ def main():
     stats = [
         ("Vehicles", "SELECT COUNT(*) FROM vehicles"),
         ("Vehicle Parts", "SELECT COUNT(*) FROM vehicle_parts"),
+        ("Part Tuning Values", "SELECT COUNT(*) FROM part_tuning"),
         ("Cargos (Total)", "SELECT COUNT(*) FROM cargos"),
         ("Cargo Weights", "SELECT COUNT(*) FROM cargo_weights"),
         ("Default Parts", "SELECT COUNT(*) FROM vehicle_default_parts"),

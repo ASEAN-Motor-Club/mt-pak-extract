@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let aes_key = Aes256::new_from_slice(&key_bytes)?;
     
     // Open the PAK file
-    let pak_path = "MotorTown-WindowsServer.pak";
+    let pak_path = "MotorTown-Windows.pak";
     let mut file = BufReader::new(File::open(pak_path)?);
     
     println!("Opening PAK file: {}", pak_path);

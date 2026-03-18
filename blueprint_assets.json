@@ -1,0 +1,24 @@
+{
+  "assets": [
+    "MotorTown/Content/Cars/Parts/Tire/BasicTire_45",
+    "MotorTown/Content/Cars/Parts/Tire/BasicTire_65",
+    "MotorTown/Content/Cars/Parts/Tire/DriftTire",
+    "MotorTown/Content/Cars/Parts/Tire/HeavyDutyFrontTire",
+    "MotorTown/Content/Cars/Parts/Tire/HeavyDutyRearTire",
+    "MotorTown/Content/Cars/Parts/Tire/HeavyDuty_Load1_FrontTire",
+    "MotorTown/Content/Cars/Parts/Tire/HeavyDuty_Load1_RearTire",
+    "MotorTown/Content/Cars/Parts/Tire/HeavyMachine_20Ton_FrontTire",
+    "MotorTown/Content/Cars/Parts/Tire/HeavyMachine_20Ton_RearTire",
+    "MotorTown/Content/Cars/Parts/Tire/Motorcycle_Front",
+    "MotorTown/Content/Cars/Parts/Tire/Motorcycle_Rear",
+    "MotorTown/Content/Cars/Parts/Tire/OffroadTire",
+    "MotorTown/Content/Cars/Parts/Tire/PerformanceTire_45",
+
+    "MotorTown/Content/Cars/Parts/LSD/1-5WayClutchPackLSD_50_30",
+    "MotorTown/Content/Cars/Parts/LSD/1WayClutchPackLSD_50",
+    "MotorTown/Content/Cars/Parts/LSD/2WayClutchPackLSD_100",
+    "MotorTown/Content/Cars/Parts/LSD/LockableDifferential",
+    "MotorTown/Content/Cars/Parts/LSD/LockedDifferential",
+    "MotorTown/Content/Cars/Parts/LSD/OpenDifferential"
+  ]
+}
