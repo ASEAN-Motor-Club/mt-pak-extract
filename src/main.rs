@@ -91,6 +91,94 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     
+    // Handle --extract-maps mode: scan .umap files for DeliveryPoint actors
+    if args.contains(&"--extract-maps".to_string()) {
+        let filter_idx = args.iter().position(|a| a == "--filter");
+        let filter = filter_idx
+            .and_then(|idx| args.get(idx + 1))
+            .map(|s| s.to_lowercase())
+            .unwrap_or_else(|| "deliverypoint".to_lowercase());
+        
+        let out_dir = Path::new("out").join("maps");
+        fs::create_dir_all(&out_dir)?;
+        
+        println!("=== Extracting .umap files containing '{}' ===", filter);
+        
+        // Collect .umap paths first
+        let umap_paths: Vec<String> = pak.files()
+            .into_iter()
+            .filter(|p| p.ends_with(".umap"))
+            .map(|p| p.to_string())
+            .collect();
+        
+        println!("Scanning {} .umap files...", umap_paths.len());
+        
+        let mut manifest = Manifest { extracted: Vec::new() };
+        let mut scanned = 0;
+        
+        for umap_path in &umap_paths {
+            scanned += 1;
+            if scanned % 500 == 0 {
+                eprint!("\r  Scanned {}/{}", scanned, umap_paths.len());
+            }
+            
+            match pak.get(umap_path, &mut file) {
+                Ok(data) => {
+                    // Quick check: does the raw bytes contain our filter string?
+                    let data_lower: Vec<u8> = data.iter().map(|b| b.to_ascii_lowercase()).collect();
+                    let filter_bytes = filter.as_bytes();
+                    
+                    let contains = data_lower.windows(filter_bytes.len())
+                        .any(|window| window == filter_bytes);
+                    
+                    if contains {
+                        let name = Path::new(umap_path)
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("unknown");
+                        
+                        let out_path = out_dir.join(format!("{}.umap", name));
+                        fs::write(&out_path, &data)?;
+                        
+                        // Also extract companion .uexp if it exists
+                        let uexp_path_str = umap_path.replace(".umap", ".uexp");
+                        let uexp_out = match pak.get(&uexp_path_str, &mut file) {
+                            Ok(uexp_data) => {
+                                let path = out_dir.join(format!("{}.uexp", name));
+                                fs::write(&path, &uexp_data)?;
+                                Some(format!("{}.uexp", name))
+                            }
+                            Err(_) => None,
+                        };
+                        
+                        println!("\n  Found: {} ({} bytes)", name, data.len());
+                        
+                        manifest.extracted.push(ExtractedAsset {
+                            name: name.to_string(),
+                            pak_path: umap_path.trim_end_matches(".umap").to_string(),
+                            uasset: format!("{}.umap", name),
+                            uexp: uexp_out,
+                        });
+                    }
+                }
+                Err(_) => {}
+            }
+        }
+        
+        eprintln!("\r  Scanned {}/{}", umap_paths.len(), umap_paths.len());
+        
+        // Write manifest for map files
+        let manifest_path = out_dir.join("manifest.json");
+        let manifest_json = serde_json::to_string_pretty(&manifest)?;
+        fs::write(&manifest_path, &manifest_json)?;
+        
+        println!("\n=== Found {} .umap files containing '{}' ===", manifest.extracted.len(), filter);
+        println!("Output: {}/", out_dir.display());
+        println!("Manifest: {}", manifest_path.display());
+        
+        return Ok(());
+    }
+    
     // Handle --config mode (batch extraction)
     if let Some(idx) = config_idx {
         let config_path = args.get(idx + 1)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text.Json;
 using System.Collections.Generic;
@@ -25,9 +25,11 @@ class Program
         
         // Check for batch mode
         bool batchMode = args.Contains("--batch");
+        bool batchMapsMode = args.Contains("--batch-maps");
         
-        Console.WriteLine($"Usage: dotnet run -- [--batch] [path/to/asset.uasset]");
+        Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [path/to/asset.uasset]");
         Console.WriteLine($"  --batch: Parse all assets in out/ folder");
+        Console.WriteLine($"  --batch-maps: Parse all .umap files in out/maps/ folder");
         Console.WriteLine();
         
         // Check mappings exist
@@ -42,7 +44,11 @@ class Program
         Mappings = new Usmap(usmapPath);
         Console.WriteLine($"Loaded {Mappings.Schemas.Count} schemas");
         
-        if (batchMode)
+        if (batchMapsMode)
+        {
+            ProcessBatchMaps();
+        }
+        else if (batchMode)
         {
             ProcessBatch();
         }
@@ -109,6 +115,49 @@ class Program
         }
         
         Console.WriteLine($"\n=== Batch complete: {success} succeeded, {failed} failed ===");
+    }
+    
+    static void ProcessBatchMaps()
+    {
+        var mapsDir = Path.Combine(RootDir!, "out", "maps");
+        var manifestPath = Path.Combine(mapsDir, "manifest.json");
+        
+        if (!File.Exists(manifestPath))
+        {
+            Console.WriteLine($"Error: No manifest.json in {mapsDir}");
+            Console.WriteLine("Run Rust extractor first: cargo run -- --extract-maps");
+            return;
+        }
+        
+        Console.WriteLine($"\nBatch processing .umap files in {mapsDir}");
+        
+        var manifestJson = File.ReadAllText(manifestPath);
+        using var doc = JsonDocument.Parse(manifestJson);
+        var extracted = doc.RootElement.GetProperty("extracted");
+        
+        int success = 0, failed = 0;
+        
+        foreach (var asset in extracted.EnumerateArray())
+        {
+            var name = asset.GetProperty("name").GetString()!;
+            var uassetFile = asset.GetProperty("uasset").GetString()!;
+            var filePath = Path.Combine(mapsDir, uassetFile);
+            
+            Console.WriteLine($"\n  Processing map: {name}");
+            
+            try
+            {
+                ProcessSingleFile(filePath, mapsDir);
+                success++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"    FAILED: {ex.Message}");
+                failed++;
+            }
+        }
+        
+        Console.WriteLine($"\n=== Batch maps complete: {success} succeeded, {failed} failed ===");
     }
     
     static void ProcessSingleFile(string uassetPath, string outputDir)
@@ -223,6 +272,7 @@ class Program
             Vector2DPropertyData vec2Prop => new { X = vec2Prop.Value.X, Y = vec2Prop.Value.Y },
             VectorPropertyData vecProp => new { X = vecProp.Value.X, Y = vecProp.Value.Y, Z = vecProp.Value.Z },
             GameplayTagContainerPropertyData tagProp => ExtractGameplayTags(tagProp),
+            GuidPropertyData guidProp => guidProp.Value.ToString("N"),
             _ => $"<{prop.GetType().Name}>"
         };
     }
