@@ -648,6 +648,24 @@ def process_blueprint_variants(conn: sqlite3.Connection, json_files: List[Path])
     for v in [550, 600, 700, 800, 1000]:
         SUPPLEMENTARY_PARTS.append((f"Spring{v}", "Suspension_Spring"))
     
+    # FinalDriveRatio: game encodes ratio as FD + str(ratio).replace('.', '_')
+    # e.g. ratio 2.5 → FD2_5, ratio 0.55 → FD0_55, ratio 7.0 → FD7_0 or FD_7
+    # DataTable RowNames use dot notation (FD_1.33) and are already in the DB.
+    # Generate underscore-encoded variants for ratios 0.05 to 25.0 (step 0.05).
+    for hundredths in range(5, 2505, 5):
+        int_part = hundredths // 100
+        frac_part = hundredths % 100
+        if frac_part == 0:
+            # Integer ratios appear in two formats
+            SUPPLEMENTARY_PARTS.append((f"FD{int_part}_0", "FinalDriveRatio"))
+            SUPPLEMENTARY_PARTS.append((f"FD_{int_part}", "FinalDriveRatio"))
+        else:
+            # Fractional: preserve leading zeros, strip trailing
+            frac_str = f"{frac_part:02d}".rstrip('0')
+            SUPPLEMENTARY_PARTS.append((f"FD{int_part}_{frac_str}", "FinalDriveRatio"))
+    
+    # Transmission: EF6 with opaque suffix observed in production
+    SUPPLEMENTARY_PARTS.append(("EF6_4106", "Transmission"))
     supp_count = 0
     for part_id, part_type in SUPPLEMENTARY_PARTS:
         cursor.execute("""
