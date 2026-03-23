@@ -41,3 +41,7 @@ name_table.json
 # Database files (generated output)
 motortown.db
 motortown_data.sql
+game_data.db
+
+# Generated parsed output
+*_parsed.json
