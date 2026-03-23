@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 default-run = "mt-pak-extract"
 
+[[bin]]
+name = "mod_explore"
+path = "src/bin/mod_explore.rs"
+
 [dependencies]
 unreal_asset = { git = "https://github.com/AstroTechies/unrealmodding", branch = "main" }
 unreal_pak = { git = "https://github.com/AstroTechies/unrealmodding", branch = "main" }
