@@ -28,6 +28,7 @@
             dotnet-sdk_8
             openssl
             pkg-config
+            gcc.cc.lib  # libstdc++.so.6 for Oodle decompression
           ];
           text = ''
             set -euo pipefail
@@ -85,6 +86,7 @@
             pkg-config
             openssl
             dotnet-sdk_8
+            gcc.cc.lib  # libstdc++.so.6 for Oodle decompression
             (python312.withPackages (ps: with ps; [
               pip
             ]))
