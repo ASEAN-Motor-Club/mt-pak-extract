@@ -8,6 +8,10 @@ default-run = "mt-pak-extract"
 name = "mod_explore"
 path = "src/bin/mod_explore.rs"
 
+[[bin]]
+name = "mod_pack"
+path = "src/bin/mod_pack.rs"
+
 [dependencies]
 unreal_asset = { git = "https://github.com/AstroTechies/unrealmodding", branch = "main" }
 unreal_pak = { git = "https://github.com/AstroTechies/unrealmodding", branch = "main" }

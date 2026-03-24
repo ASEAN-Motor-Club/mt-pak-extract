@@ -32,9 +32,7 @@ UTEX_VERSIONS = [
 ]
 
 # Supported file extensions.
-TEXTURES = ["dds", "tga", "hdr"]
-if is_windows():
-    TEXTURES += ["bmp", "jpg", "png"]
+TEXTURES = ["dds", "tga", "hdr", "bmp", "jpg", "png"]
 
 # Supported image filters.
 IMAGE_FILTERS = ["point", "linear", "cubic"]
