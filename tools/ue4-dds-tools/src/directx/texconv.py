@@ -114,7 +114,8 @@ class Texconv:
                        image_filter="LINEAR",
                        export_as_cubemap=False,
                        cubemap_layout="h-cross",
-                       verbose=True, allow_slow_codec=False):
+                       verbose=True, allow_slow_codec=False,
+                       resize_width=None, resize_height=None):
         """Convert texture to dds."""
 
         dds_fmt = dxgi_format.name
@@ -140,6 +141,10 @@ class Texconv:
             args += ["-m", "1"]
         if image_filter.upper() != "LINEAR":
             args += ["-if", image_filter.upper()]
+        if resize_width:
+            args += ["-w", str(resize_width)]
+        if resize_height:
+            args += ["-h", str(resize_height)]
 
         if ("BC5" in dds_fmt or dds_fmt == "R8G8_UNORM") and invert_normals:
             args += ["-inverty"]

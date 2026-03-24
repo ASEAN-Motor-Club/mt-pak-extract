@@ -235,6 +235,9 @@ def inject(folder, file, args, texture_file=None):
 
             with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
                 print(f"convert: {src}")
+                # Auto-resize to match template dimensions
+                target_w = tex.mipmaps[0].width if tex.mipmaps else None
+                target_h = tex.mipmaps[0].height if tex.mipmaps else None
                 if tex.is_array or tex.is_3d:
                     src_base, src_ext = os.path.splitext(src)
                     src_base = src_base[:-2]
@@ -248,7 +251,8 @@ def inject(folder, file, args, texture_file=None):
                                                           out=temp_dir, export_as_cubemap=tex.is_cube,
                                                           no_mip=len(tex.mipmaps) <= 1 or args.no_mipmaps,
                                                           image_filter=args.image_filter,
-                                                          allow_slow_codec=True, verbose=False)
+                                                          allow_slow_codec=True, verbose=False,
+                                                          resize_width=target_w, resize_height=target_h)
                         dds_list.append(DDS.load(temp_dds))
                         i += 1
                     dds = DDS.assemble(dds_list, is_array=tex.is_array)
@@ -257,7 +261,8 @@ def inject(folder, file, args, texture_file=None):
                                                       out=temp_dir, export_as_cubemap=tex.is_cube,
                                                       no_mip=len(tex.mipmaps) <= 1 or args.no_mipmaps,
                                                       image_filter=args.image_filter,
-                                                      allow_slow_codec=True, verbose=False)
+                                                      allow_slow_codec=True, verbose=False,
+                                                      resize_width=target_w, resize_height=target_h)
                     dds = DDS.load(temp_dds)
 
         # inject the DDS
