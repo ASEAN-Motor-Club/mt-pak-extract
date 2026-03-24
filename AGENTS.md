@@ -33,10 +33,10 @@ Output: `motortown.db` (SQLite), `out/*_parsed.json`.
 
 - **`MotorTown-Windows.pak`** — game PAK file (2.9 GB, already in repo root)
 - **`.env`** — AES key (`KEY=0x...`), gitignored
-- **`Mappings.usmap`** — UE5 type mappings, gitignored. Source: `/tmp/UAssetAPI-source/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap` (clone https://github.com/atenfyr/UAssetAPI to `/tmp/UAssetAPI-source`)
-- **UAssetAPI** — C# dependency at `/tmp/UAssetAPI-source/UAssetAPI/UAssetAPI.csproj`. Clone if missing:
+- **`Mappings.usmap`** — UE5 type mappings, gitignored. Source: `csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap`
+- **UAssetAPI** — C# dependency, included as a git submodule at `csharp/UAssetAPI` (fork: `ASEAN-Motor-Club/UAssetAPI`). Initialize with:
   ```bash
-  git clone --depth 1 https://github.com/atenfyr/UAssetAPI /tmp/UAssetAPI-source
+  git submodule update --init
   ```
 
 ## Decal Pack Creation
@@ -159,7 +159,7 @@ C# dependency: ASEAN-Motor-Club fork of UAssetAPI at `/tmp/UAssetAPI-fork` (fix/
   export LD_LIBRARY_PATH=$(nix develop --command bash -c 'echo $LIBRARY_PATH' | tr : '\n' | xargs -I{} echo {}/lib | tr '\n' :)
   ```
 - **Large output**: Parser output is massive. Redirect to file: `> /tmp/parser-output.log 2>&1`
-- **`Mappings.usmap` permissions**: Must be owned by `opencode`. If copied from git clone, re-copy: `rm Mappings.usmap && cp /tmp/UAssetAPI-source/.../MotorTown.usmap Mappings.usmap`
+- **`Mappings.usmap` permissions**: Must be owned by `opencode`. If copied from submodule, re-copy: `rm Mappings.usmap && cp csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap Mappings.usmap`
 
 ## Lint / Typecheck
 

@@ -1,0 +1,3 @@
+[submodule "csharp/UAssetAPI"]
+	path = csharp/UAssetAPI
+	url = git@github.com:ASEAN-Motor-Club/UAssetAPI.git

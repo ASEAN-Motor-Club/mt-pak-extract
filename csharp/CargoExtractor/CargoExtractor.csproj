@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="/tmp/UAssetAPI-fork/UAssetAPI/UAssetAPI.csproj" />
+    <ProjectReference Include="../UAssetAPI/UAssetAPI/UAssetAPI.csproj" />
   </ItemGroup>
 
 </Project>
