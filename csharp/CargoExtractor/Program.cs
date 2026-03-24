@@ -23,13 +23,15 @@ class Program
         RootDir = Path.GetFullPath(Path.Combine("..", ".."));
         var usmapPath = Path.Combine(RootDir, "Mappings.usmap");
         
-        // Check for batch mode
+        // Check for modes
         bool batchMode = args.Contains("--batch");
         bool batchMapsMode = args.Contains("--batch-maps");
+        bool modifyDecalsMode = args.Contains("--add-decals");
         
-        Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [path/to/asset.uasset]");
+        Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-decals config.json template.uasset output_dir] [path/to/asset.uasset]");
         Console.WriteLine($"  --batch: Parse all assets in out/ folder");
         Console.WriteLine($"  --batch-maps: Parse all .umap files in out/maps/ folder");
+        Console.WriteLine($"  --add-decals: Add new decal rows to Decals DataTable");
         Console.WriteLine();
         
         // Check mappings exist
@@ -51,6 +53,16 @@ class Program
         else if (batchMode)
         {
             ProcessBatch();
+        }
+        else if (modifyDecalsMode)
+        {
+            // --add-decals config.json template.uasset output_dir
+            var configIdx = Array.IndexOf(args, "--add-decals");
+            var configPath = args.ElementAtOrDefault(configIdx + 1) ?? "decal_entries.json";
+            var templatePath = args.ElementAtOrDefault(configIdx + 2) ?? Path.Combine(RootDir, "Decals.uasset");
+            var outputDir = args.ElementAtOrDefault(configIdx + 3) ?? RootDir;
+            
+            ModifyDecals(configPath, templatePath, outputDir);
         }
         else
         {
@@ -430,5 +442,140 @@ class Program
             }
         }
         return tags;
+    }
+    
+    static void ModifyDecals(string configPath, string templatePath, string outputDir)
+    {
+        if (!File.Exists(configPath))
+        {
+            Console.WriteLine($"Error: Config not found: {configPath}");
+            return;
+        }
+        if (!File.Exists(templatePath))
+        {
+            Console.WriteLine($"Error: Template not found: {templatePath}");
+            return;
+        }
+        
+        // Load decal entries from config
+        var configJson = File.ReadAllText(configPath);
+        using var doc = JsonDocument.Parse(configJson);
+        var entries = doc.RootElement.GetProperty("entries");
+        
+        Console.WriteLine($"Loading template: {Path.GetFileName(templatePath)}");
+        var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
+        
+        // Find the DataTable export
+        DataTableExport? dtExport = null;
+        foreach (var export in asset.Exports)
+        {
+            if (export is DataTableExport dt)
+            {
+                dtExport = dt;
+                break;
+            }
+        }
+        
+        if (dtExport == null)
+        {
+            Console.WriteLine("Error: No DataTable found in template");
+            return;
+        }
+        
+        Console.WriteLine($"Existing rows: {dtExport.Table.Data.Count}");
+        
+        // Find the BrushMaterial import (index -3 in most cases)
+        // It's the M_DecalBounds_Test import
+        int brushMaterialIdx = -3;
+        for (int i = 0; i < asset.Imports.Count; i++)
+        {
+            var imp = asset.Imports[i];
+            if (imp.ObjectName?.Value?.Value == "M_DecalBounds_Test")
+            {
+                brushMaterialIdx = -(i + 1);
+                break;
+            }
+        }
+        Console.WriteLine($"BrushMaterial import index: {brushMaterialIdx}");
+        
+        int added = 0;
+        foreach (var entry in entries.EnumerateArray())
+        {
+            var rowName = entry.GetProperty("row_name").GetString()!;
+            var folder = entry.GetProperty("folder").GetString()!;
+            var file = entry.GetProperty("file").GetString()!;
+            var cost = entry.GetProperty("cost").GetInt32();
+            var flags = entry.GetProperty("flags").GetInt32();
+            
+            // Build asset path
+            var packagePath = $"/Game/Materials/Decal/DecalTextures/{folder}/{file}";
+            
+            // Create the DataTable row struct
+            var rowStruct = new StructPropertyData(FName.FromString(asset, rowName))
+            {
+                StructType = FName.FromString(asset, "MTDecalRow"),
+                Value = new List<PropertyData>()
+            };
+            
+            // Texture property (SoftObjectProperty)
+            var textureProp = new SoftObjectPropertyData(FName.FromString(asset, "Texture"))
+            {
+                Value = new FSoftObjectPath(
+                    new FTopLevelAssetPath(
+                        FName.FromString(asset, packagePath),
+                        FName.FromString(asset, file)
+                    ),
+                    null
+                )
+            };
+            rowStruct.Value.Add(textureProp);
+            
+            // BrushMaterial property (ObjectProperty)
+            var brushProp = new ObjectPropertyData(FName.FromString(asset, "BrushMaterial"))
+            {
+                Value = new FPackageIndex(brushMaterialIdx)
+            };
+            rowStruct.Value.Add(brushProp);
+            
+            // Flags property (IntProperty)
+            var flagsProp = new IntPropertyData(FName.FromString(asset, "Flags"))
+            {
+                Value = flags,
+                IsZero = (flags == 0)
+            };
+            rowStruct.Value.Add(flagsProp);
+            
+            // Cost property (IntProperty)
+            var costProp = new IntPropertyData(FName.FromString(asset, "Cost"))
+            {
+                Value = cost
+            };
+            rowStruct.Value.Add(costProp);
+            
+            // Clone ancestry from existing row for correct serialization
+            if (dtExport.Table.Data.Count > 0)
+            {
+                var templateRow = dtExport.Table.Data[^1];
+                rowStruct.Ancestry = (AncestryInfo)templateRow.Ancestry.Clone();
+            }
+            
+            // Add row to DataTable
+            dtExport.Table.Data.Add(rowStruct);
+            Console.WriteLine($"  Added: {rowName} -> {packagePath}");
+            added++;
+        }
+        
+        Console.WriteLine($"\nAdded {added} rows. Total rows: {dtExport.Table.Data.Count}");
+        
+        // Resolve ancestries for manually constructed rows
+        asset.ResolveAncestries();
+        
+        // Write output — both .uasset and .uexp are fresh and consistent.
+        // Always build the mod PAK from these files, never reuse stale outputs.
+        Directory.CreateDirectory(outputDir);
+        var outputBase = Path.Combine(outputDir, "Decals.uasset");
+        asset.Write(outputBase);
+        
+        Console.WriteLine($"Written: {Path.GetFileName(outputBase)} + Decals.uexp");
     }
 }
