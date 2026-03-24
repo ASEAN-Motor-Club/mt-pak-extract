@@ -90,6 +90,80 @@ sqlite3 motortown.db "SELECT id, actual_weight_kg FROM cargos_with_weights WHERE
 sqlite3 motortown.db "SELECT v.name, vp.id as engine, vp.mass_kg FROM vehicles_with_engines v JOIN vehicle_parts vp ON v.engine_id = vp.id LIMIT 5;"
 ```
 
+## Decal Pack Creation
+
+Create mod PAKs that add custom decal textures to the in-game decal selection.
+
+```bash
+# Quick: one command from images to mod PAK
+nix develop --command bash -c '
+python3 scripts/create_decal_pack.py --input logos/ --output MyPack_P.pak
+'
+```
+
+Each image in `logos/` becomes a decal named after its filename. Images are automatically resized to 512×512 and compressed to DXT5.
+
+### Options
+
+```
+--input, -i      Directory of images (PNG/TGA/BMP/JPG) [required]
+--output, -o     Output .pak file path [required]
+--category, -c   Category folder name (default: Custom)
+--cost           In-game price (default: 100)
+--template, -t   Override template texture (auto-detects from out/)
+--decals, -d     Override Decals.uasset (auto-detects from out/)
+```
+
+### How It Works
+
+1. **Extract** a base game decal texture as template (512×512 PF_DXT5)
+2. **Inject** each image into the template using [UE4-DDS-Tools](https://github.com/hypermodule/UE4-DDS-Tools/tree/5.5) (auto-resizes to 512×512, compresses to DXT5)
+3. **Patch** uasset internal metadata (asset path, name, hashes)
+4. **Generate** Decals DataTable entries — adds a row per decal with texture reference, material, cost
+5. **Package** into a UE5 V11 mod PAK with mount point `../../../`
+
+### PAK Structure
+
+```
+MyPack_P.pak
+└── MotorTown/
+    └── Content/
+        ├── DataAsset/
+        │   ├── Decals.uasset      # DataTable with decal entries
+        │   └── Decals.uexp
+        └── Materials/
+            └── Decal/
+                └── DecalTextures/
+                    └── Custom_01/
+                        ├── Driftweld.uasset  # Texture asset
+                        └── Driftweld.uexp    # Texture pixel data (512×512 DXT5)
+```
+
+### Mod PAK Tools
+
+```bash
+# List files in a mod PAK
+nix develop --command bash -c 'cargo build --release --bin mod_explore && LD_LIBRARY_PATH=$(echo $LIBRARY_PATH | tr : \n | xargs -I{} echo {}/lib | tr \n :) ./target/release/mod_explore MyMod.pak --list'
+
+# Search for files in a mod PAK
+./target/release/mod_explore MyMod.pak --search "decal"
+
+# Extract all files from a mod PAK
+./target/release/mod_explore MyMod.pak --extract-all
+
+# Create a mod PAK from a directory
+./target/release/mod_pack input_dir/ output.pak
+```
+
+### Decal Assets (423 base game decals)
+
+```bash
+# Extract all base game decal textures
+nix develop --command bash -c 'cargo run --release --quiet -- --config decal_assets.json'
+```
+
+Extracts the Decals DataTable + all 423 decal texture assets (512×512 PF_DXT5) from the game PAK.
+
 ## Advanced Usage
 
 ### Manual Commands
@@ -171,13 +245,22 @@ motortown_data.sql                 # SQL dump
 ## Project Structure
 
 ```
-├── src/main.rs                   # Rust PAK extractor
-├── csharp/CargoExtractor/        # C# UAsset parser (UAssetAPI)
+├── src/main.rs                      # Rust PAK extractor
+├── src/bin/mod_pack.rs              # Rust mod PAK creator
+├── src/bin/mod_explore.rs           # Rust mod PAK reader/explorer
+├── csharp/CargoExtractor/           # C# UAsset parser (UAssetAPI)
 ├── scripts/
-│   └── aggregate_to_sqlite.py    # Python aggregator
-├── assets.json                   # Config: assets to extract (DataTables + blueprints)
-├── flake.nix                     # Nix build/dev environment
-└── out/                          # Extracted & parsed data
+│   ├── aggregate_to_sqlite.py       # Python aggregator
+│   └── create_decal_pack.py         # Decal pack creator (full pipeline)
+├── tools/
+│   └── ue4-dds-tools/               # Vendored UE4-DDS-Tools (texture injection)
+│       └── src/directx/libtexconv.so # Pre-built DXT5 compressor
+├── assets.json                      # Config: assets to extract
+├── decal_assets.json                # Config: decal texture assets
+├── pyproject.toml                   # Python project (uv2nix)
+├── uv.lock                          # Python lock file
+├── flake.nix                        # Nix build/dev environment
+└── out/                             # Extracted & parsed data
 ```
 
 ## Data Quality Notes

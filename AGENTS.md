@@ -39,6 +39,96 @@ Output: `motortown.db` (SQLite), `out/*_parsed.json`.
   git clone --depth 1 https://github.com/atenfyr/UAssetAPI /tmp/UAssetAPI-source
   ```
 
+## Decal Pack Creation
+
+Create decal mod PAKs from images in one command:
+
+```bash
+nix develop --command bash -c '
+python3 scripts/create_decal_pack.py --input images/ --output MyPack_P.pak
+'
+```
+
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--input, -i` | (required) | Directory of images (PNG/TGA/BMP/JPG) |
+| `--output, -o` | (required) | Output .pak path |
+| `--category, -c` | `Custom` | Category folder name |
+| `--cost` | `100` | In-game decal price |
+| `--template, -t` | auto from `out/` | Template decal texture .uasset |
+| `--decals, -d` | auto from `out/` | Template Decals.uasset |
+
+### Pipeline (automated by script)
+
+1. **Inject** each image into a base game decal texture template (auto-resizes to 512×512 via texconv)
+2. **Patch** uasset internal metadata (asset path, name, hashes from template)
+3. **Generate** Decals DataTable entries via C# `--add-decals` mode (uses ASEAN-Motor-Club/UAssetAPI fork)
+4. **Package** into mod PAK with `mod_pack` binary (V11, mount `../../../`)
+
+### Decal Texture Format
+
+- Resolution: **512×512** (auto-resized if different)
+- Pixel format: **PF_DXT5** (BC3_UNORM, compressed with alpha)
+- Template: Any base game decal texture from `out/` (prefers `GeomShape_01/001-circle`)
+- uasset metadata must match PAK file path (script patches automatically)
+
+### Decals DataTable
+
+Each decal needs a row in `Decals.uasset` with:
+- `RowName`: `{Category}_{Name}` (e.g. `Custom_01_Driftweld`)
+- `Texture`: SoftObject path to `/Game/Materials/Decal/DecalTextures/{Category}/{Name}`
+- `BrushMaterial`: `M_DecalBounds_Test` import reference
+- `Flags`: integer (usually 0)
+- `Cost`: integer (in-game price)
+
+### C# Tool (for manual DataTable editing)
+
+```bash
+cd csharp/CargoExtractor
+dotnet run -- --add-decals decal_entries.json Decals.uasset output_dir/
+```
+
+`decal_entries.json` format:
+```json
+{
+  "entries": [
+    {"row_name": "Custom_01_MyDecal", "folder": "Custom_01", "file": "MyDecal", "cost": 100, "flags": 0}
+  ]
+}
+```
+
+### Mod PAK Explorer
+
+```bash
+cargo build --release --bin mod_explore  # List/extract mod PAKs
+cargo build --release --bin mod_pack     # Create mod PAKs
+
+mod_explore MyMod.pak --list             # List files
+mod_explore MyMod.pak --search "decal"   # Search files
+mod_pack input_dir/ output.pak           # Pack directory to PAK
+```
+
+### Key Files
+
+- `tools/ue4-dds-tools/` — Vendored [UE4-DDS-Tools](https://github.com/hypermodule/UE4-DDS-Tools/tree/5.5) (MIT) with UE5.5 support
+- `tools/ue4-dds-tools/src/directx/libtexconv.so` — Pre-built [Texconv-Custom-DLL](https://github.com/matyalatte/Texconv-Custom-DLL/releases/tag/v0.6.0) for DXT5 compression
+- `scripts/create_decal_pack.py` — Main decal pack creator script
+- `src/bin/mod_pack.rs` — PAK creator binary
+- `src/bin/mod_explore.rs` — PAK reader/explorer binary
+- `decal_assets.json` — Config for batch extraction of 423 base game decal textures
+
+### Dependency Management
+
+Python dependencies managed via **uv2nix** (not pip/venv):
+- `pyproject.toml` — Project metadata (empty deps, UE4-DDS-Tools is stdlib-only)
+- `uv.lock` — Lock file
+- `flake.nix` — uv2nix inputs create virtualenv via `pythonSet.mkVirtualEnv()`
+- `UV_NO_SYNC=1` in devShell prevents uv from managing the venv (Nix handles it)
+
+C# dependency: ASEAN-Motor-Club fork of UAssetAPI at `/tmp/UAssetAPI-fork` (fix/unversioned-header-serialization branch).
+
 ## Gotchas
 
 - **Oodle/libstdc++**: The Rust extractor uses Oodle decompression via `repak`, which `dlopen`s `libstdc++.so.6`. The dev shell includes `gcc.cc.lib` for this, but `LD_LIBRARY_PATH` may need to be set if running outside `nix develop`:
