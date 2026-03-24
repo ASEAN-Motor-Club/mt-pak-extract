@@ -129,6 +129,8 @@
             gcc.cc.lib  # libstdc++.so.6 for Oodle decompression + libgomp for texconv
             uv
             virtualenv
+            imagemagick   # convert, mogrify, identify (resize, crop, format, alpha)
+            librsvg       # rsvg-convert (SVG→PNG + ImageMagick SVG delegate)
           ];
 
           env = {
@@ -153,6 +155,12 @@
             echo "  cargo run -- --list      - List available DataAssets"
             echo "  cargo run -- --config X  - Extract assets from config file"
             echo "  mt-decal-inject          - Inject image into texture asset"
+            echo ""
+            echo "Image tools:"
+            echo "  convert img.png -resize 512x512! out.png       - Resize decal"
+            echo "  convert img.png -gravity center -background none -extent 512x512 out.png"
+            echo "  rsvg-convert logo.svg -w 512 -h 512            - SVG to PNG"
+            echo "  mogrify -resize 512x512! -path out/ *.png       - Batch resize"
           '';
         };
 

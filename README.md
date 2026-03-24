@@ -103,6 +103,29 @@ python3 scripts/create_decal_pack.py --input logos/ --output MyPack_P.pak
 
 Each image in `logos/` becomes a decal named after its filename. Images are automatically resized to 512×512 and compressed to DXT5.
 
+### Preparing Images
+
+Use the image tools available in the dev shell (`nix develop`):
+
+```bash
+# Resize + pad to 512x512 square (preserves aspect, transparent padding)
+convert input.png -resize 512x512 -gravity center -background none -extent 512x512 prepared.png
+
+# SVG vector logo → PNG
+rsvg-convert logo.svg -w 512 -h 512 -o logo.png
+
+# Remove white background
+convert logo.png -fuzz 10% -transparent white logo_alpha.png
+
+# Batch resize a folder
+mogrify -resize 512x512! -path prepared/ input/*.png
+```
+
+**Tips:**
+- Use 512×512 PNGs with transparent backgrounds for best results
+- Add a subtle black or colored outline to prevent ugly edge artifacts
+- The script auto-resizes non-512×512 images via texconv, but preparing them manually gives better quality control
+
 ### Options
 
 ```

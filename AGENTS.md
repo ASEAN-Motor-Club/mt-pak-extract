@@ -110,6 +110,29 @@ mod_explore MyMod.pak --search "decal"   # Search files
 mod_pack input_dir/ output.pak           # Pack directory to PAK
 ```
 
+### Image Tools
+
+Available in the devShell for preparing decal images:
+
+```bash
+# Resize to 512x512 (exact, may distort)
+convert input.png -resize 512x512! output.png
+
+# Resize + pad to 512x512 square (preserves aspect, transparent padding)
+convert input.png -resize 512x512 -gravity center -background none -extent 512x512 output.png
+
+# SVG → PNG
+rsvg-convert logo.svg -w 512 -h 512 -o output.png
+
+# Remove white background, make transparent
+convert input.png -fuzz 10% -transparent white output.png
+
+# Batch resize a folder
+mogrify -resize 512x512! -path prepared/ input/*.png
+```
+
+Packages: `imagemagick` (convert/mogrify/identify), `librsvg` (rsvg-convert + SVG delegate for ImageMagick).
+
 ### Key Files
 
 - `tools/ue4-dds-tools/` — Vendored [UE4-DDS-Tools](https://github.com/hypermodule/UE4-DDS-Tools/tree/5.5) (MIT) with UE5.5 support
