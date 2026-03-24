@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="/tmp/UAssetAPI-source/UAssetAPI/UAssetAPI.csproj" />
+    <ProjectReference Include="/tmp/UAssetAPI-fork/UAssetAPI/UAssetAPI.csproj" />
   </ItemGroup>
 
 </Project>
