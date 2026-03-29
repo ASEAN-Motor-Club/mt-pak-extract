@@ -1,0 +1,20 @@
+{
+  "entries": [
+    {
+      "row_name": "Money",
+      "display_name": ["Money", "Stack"],
+      "cargo_type": "SmallPackage",
+      "cargo_space_types": ["Flatbed", "Box"],
+      "weight_min": 5,
+      "weight_max": 10,
+      "volume_size": 1,
+      "payment_per_km": 1000,
+      "spawn_probability": 10,
+      "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_Money_Stack_01",
+      "mass_kg": 8,
+      "blueprint_name": "Money",
+      "cargo_flags": 11,
+      "allow_stacking": true
+    }
+  ]
+}

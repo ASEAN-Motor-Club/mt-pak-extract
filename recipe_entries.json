@@ -1,0 +1,16 @@
+{
+  "sources": [
+    {
+      "delivery_point": "Harbor_Export",
+      "template_path": "out/Harbor_Export.uasset",
+      "recipes": [{"cargo": "Money", "production_time": 60}]
+    }
+  ],
+  "sinks": [
+    {
+      "delivery_point": "Factory_Toy",
+      "template_path": "out/Factory_Toy.uasset",
+      "recipes": [{"cargo": "Money", "production_time": 300, "hidden": false}]
+    }
+  ]
+}
