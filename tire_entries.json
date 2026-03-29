@@ -1,0 +1,17 @@
+{
+  "tire_physics": {
+    "name": "APF_77_Tire",
+    "template": "BasicTire_45",
+    "static_mu": 2.2,
+    "sliding_mu": 2.0,
+    "offroad_friction": 2.0
+  },
+  "tire_part": {
+    "row_name": "APF_77",
+    "display_name": ["AMC Police 77"],
+    "cost": 2000,
+    "mass_kg": 10,
+    "vehicle_types": ["Small"],
+    "tire_asset_path": "/Game/Cars/Parts/Tire/APF_77_Tire/APF_77_Tire"
+  }
+}
