@@ -23,9 +23,7 @@ Usage:
 """
 
 import argparse
-import json
 import os
-import sys
 
 from modbase import ModBuilder, add_common_args
 
@@ -46,8 +44,89 @@ class TireModBuilder(ModBuilder):
         else:
             self.tire_entries = [self.config]  # Single-tire backward compat
 
-        self.tire_assets = []  # List of (tire_name, uasset_path, uexp_path)
-        self.parts_outputs = {}  # {dt_name: (uasset_path, uexp_path)}
+        self.tire_assets = []  # List of (tire_name, uasset_path)
+        self.parts_outputs = {}  # {dt_name: uasset_path}
+
+    # ── Config generation ──────────────────────────────────────────────
+
+    def _clone_config(self, entry):
+        """Generate --clone-asset config for a single tire physics asset."""
+        tp = entry["tire_physics"]
+        tire_name = tp["name"]
+
+        patches = []
+        for param in ["static_mu", "sliding_mu", "offroad_friction",
+                       "spring_x", "spring_y", "damping_x", "damping_y"]:
+            if param in tp:
+                # Map snake_case to PascalCase
+                pascal = "".join(w.capitalize() for w in param.split("_"))
+                patches.append({
+                    "path": f"TirePhysicsParams.{pascal}",
+                    "op": "set_or_add_float",
+                    "value": tp[param],
+                })
+
+        return {
+            "new_name": tire_name,
+            "new_path": f"/Game/Cars/Parts/Tire/{tire_name}",
+            "rename_exports": True,
+            "rename_imports": True,
+            "patch_namemap_0": True,
+            "fname_number": 0,
+            "export_patches": [{
+                "match_class": "MTTirePhysicsDataAsset",
+                "patches": patches,
+            }] if patches else [],
+        }
+
+    def _parts_row_config(self, entry):
+        """Generate --add-rows config for a single tire in VehicleParts."""
+        tp = entry["tire_part"]
+        tire_name = entry["tire_physics"]["name"]
+
+        patches = [
+            {"path": "Name", "op": "set_localization_guid"},
+            {"path": "Cost", "op": "set", "value": tp["cost"]},
+            {"path": "bIsHidden", "op": "set", "value": False},
+            {"path": "MassKg", "op": "set", "value": tp.get("mass_kg", 10.0)},
+            {"path": "VehicleTypes", "op": "set_enum_array",
+             "enum_type": "EMTVehicleType",
+             "values": tp["vehicle_types"]},
+            {"path": "Tire.TirePhysicsDataAsset", "op": "set_import_ref",
+             "class_package": "/Script/MotorTown",
+             "class_name": "MTTirePhysicsDataAsset",
+             "package_path": f"/Game/Cars/Parts/Tire/{tire_name}",
+             "asset_name": tire_name},
+            {"path": "Tire.TirePhysicsDataAsset_BikeRear", "op": "null_ref"},
+            {"path": "GameplayTags", "op": "clear_tags"},
+        ]
+
+        if "display_name" in tp:
+            patches.append({"path": "Name2", "op": "set_display_name",
+                            "value": tp["display_name"]})
+            patches.append({"path": "Desciption", "op": "set_description",
+                            "value": tp["display_name"][0]})
+
+        if "vehicle_keys" in tp:
+            patches.append({"path": "VehicleKeys", "op": "set_name_array",
+                            "values": tp["vehicle_keys"]})
+
+        if "level_requirement" in tp:
+            patches.append({"path": "LevelRequirementToBuy",
+                            "op": "set_name_int_map",
+                            "value": tp["level_requirement"]})
+
+        return {
+            "template_row_match": {"PartType": "*Tire*"},
+            "output_filename": "VehicleParts0",
+            "rows": [{
+                "row_name": tp["row_name"],
+                "row_name_number": 0,
+                "patches": patches,
+            }],
+        }
+
+    # ── Build hooks ────────────────────────────────────────────────────
 
     def transform_assets(self):
         """Create tire physics assets by cloning and patching templates."""
@@ -63,29 +142,21 @@ class TireModBuilder(ModBuilder):
             if not os.path.exists(tire_template):
                 self.fail(f"Tire template not found: {tire_template}")
 
-            # Write single-entry config for C# tool
-            single_config = os.path.join(self.build_dir, f"tire_{i}.json")
-            with open(single_config, 'w') as f:
-                json.dump(entry, f)
-
             self.log_step(f"1.{i}", f"Create tire physics asset ({tire_name})")
             tire_out = os.path.join(self.build_dir, f"tire_physics_{i}")
             os.makedirs(tire_out, exist_ok=True)
 
-            self.run_dotnet(
-                ["--patch-tire", single_config, tire_template, tire_out],
-                f"--patch-tire {tire_name}",
-            )
+            config = self._clone_config(entry)
+            self.run_generic("--clone-asset", config, tire_template, tire_out,
+                             f"clone-tire-{i}")
 
             tire_asset = os.path.join(tire_out, tire_name, f"{tire_name}.uasset")
-            tire_uexp = os.path.join(tire_out, tire_name, f"{tire_name}.uexp")
             if not os.path.exists(tire_asset):
                 self.fail(f"Tire asset not created: {tire_asset}")
-            self.tire_assets.append((tire_name, tire_asset, tire_uexp))
+            self.tire_assets.append((tire_name, tire_asset))
 
     def register_in_tables(self):
         """Add tire parts to VehicleParts0 DataTable."""
-        # Resolve VehicleParts0 template (base game or compat mod)
         base_template = os.path.join(self.repo_root, "out", "VehicleParts0.uasset")
         parts0_template = self.resolve_template_with_compat(
             base_template, self.PARTS0_PAK_PATH,
@@ -93,44 +164,34 @@ class TireModBuilder(ModBuilder):
         if not os.path.exists(parts0_template):
             self.fail(f"VehicleParts0 template not found: {parts0_template}")
 
-        parts_templates = {"VehicleParts0": parts0_template}
+        self.log_step(2, f"Add {len(self.tire_entries)} tire(s) to VehicleParts0")
 
-        for dt_name, dt_template in parts_templates.items():
-            self.log_step(2, f"Add {len(self.tire_entries)} tire(s) to {dt_name}")
+        # Chain additions: each tire is added sequentially
+        current_template = parts0_template
+        parts_out = None
 
-            # Chain additions: each tire is added sequentially to the same DataTable
-            current_template = dt_template
-            parts_out = None
+        for i, entry in enumerate(self.tire_entries, 1):
+            tire_name = entry["tire_physics"]["name"]
+            parts_out = os.path.join(self.build_dir, f"parts_VehicleParts0_{i}")
+            os.makedirs(parts_out, exist_ok=True)
 
-            for i, entry in enumerate(self.tire_entries, 1):
-                tire_name = entry["tire_physics"]["name"]
-                single_config = os.path.join(self.build_dir, f"tire_{i}.json")
+            config = self._parts_row_config(entry)
+            self.run_generic("--add-rows", config, current_template, parts_out,
+                             f"add-tire-{i}")
+            current_template = os.path.join(parts_out, "VehicleParts0.uasset")
 
-                parts_out = os.path.join(self.build_dir, f"parts_{dt_name}_{i}")
-                os.makedirs(parts_out, exist_ok=True)
-
-                self.run_dotnet(
-                    ["--add-tire-parts", single_config, current_template, parts_out],
-                    f"--add-tire-parts {tire_name} to {dt_name}",
-                )
-                # Chain: use output as input for the next tire
-                current_template = os.path.join(parts_out, f"{dt_name}.uasset")
-
-            # Final output is the last iteration
-            parts_asset = os.path.join(parts_out, f"{dt_name}.uasset")
-            if not os.path.exists(parts_asset):
-                self.fail(f"{dt_name} not created: {parts_asset}")
-            self.parts_outputs[dt_name] = parts_asset
+        parts_asset = os.path.join(parts_out, "VehicleParts0.uasset")
+        if not os.path.exists(parts_asset):
+            self.fail(f"VehicleParts0 not created: {parts_asset}")
+        self.parts_outputs["VehicleParts0"] = parts_asset
 
     def assemble_pak(self):
         """Stage tire assets (flat) and VehicleParts DataTables."""
         self.log_step(3, "Assemble PAK directory")
 
-        # Tire physics assets — FLAT path (no subfolder!)
-        for tire_name, tire_asset, _tire_uexp in self.tire_assets:
+        for tire_name, tire_asset in self.tire_assets:
             self.stage_asset(tire_asset, "Cars/Parts/Tire", name=tire_name)
 
-        # VehicleParts DataTables
         for dt_name, asset_path in self.parts_outputs.items():
             self.stage_datatable(asset_path, dt_name, "DataAsset/VehicleParts")
 

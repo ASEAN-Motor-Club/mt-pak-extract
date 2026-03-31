@@ -44,7 +44,7 @@ class ModBuilder:
         self.compat_mods = [os.path.abspath(m) for m in (compat_mods or [])]
 
         self.repo_root = str(Path(__file__).resolve().parent.parent)
-        self.csharp_dir = os.path.join(self.repo_root, "csharp", "CargoExtractor")
+        self.csharp_dir = os.path.join(self.repo_root, "csharp", "UAssetTool")
 
         # Set during build()
         self.build_dir: str | None = None
@@ -73,7 +73,7 @@ class ModBuilder:
         print(f"\n=== Step {step_num}: {label} ===")
 
     def run_dotnet(self, args: list[str], label: str):
-        """Run a C# dotnet command in the CargoExtractor project.
+        """Run a C# dotnet command in the UAssetTool project.
 
         Args:
             args: command-line arguments after '--'
@@ -91,6 +91,25 @@ class ModBuilder:
             print(f"Error: {label} failed:\n{result.stderr}", file=sys.stderr)
             sys.exit(1)
         return result
+
+    def run_generic(self, operation: str, config: dict,
+                    template: str, output_dir: str, label: str):
+        """Run a generic C# UAssetTool operation with a generated config.
+
+        Writes config to a temp JSON file in the build dir and invokes
+        the C# tool with the specified operation.
+
+        Args:
+            operation: one of '--add-rows', '--clone-asset', '--patch-cdo-arrays'
+            config: dict to serialize as the operation's config JSON
+            template: path to the template .uasset file
+            output_dir: directory for output files
+            label: human-readable label for error messages
+        """
+        config_path = os.path.join(self.build_dir, f"{label.replace(' ', '_')}.json")
+        with open(config_path, 'w') as f:
+            json.dump(config, f)
+        self.run_dotnet([operation, config_path, template, output_dir], label)
 
     def ensure_mod_pack(self) -> str:
         """Ensure mod_pack binary is built. Returns path to binary."""

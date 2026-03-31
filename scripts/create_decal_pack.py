@@ -276,19 +276,40 @@ class DecalModBuilder(ModBuilder):
         self.log(f"\n  {ok} injected, {fail} failed")
 
     def register_in_tables(self):
-        """Generate Decals DataTable entries."""
+        """Generate Decals DataTable entries using construct_rows mode."""
         self.log_step(2, "Generating Decals DataTable")
-        config_path = os.path.join(self.build_dir, "decal_entries.json")
-        with open(config_path, "w") as f:
-            json.dump({"entries": self.decal_entries}, f, indent=2)
 
         self.decals_output_dir = os.path.join(self.build_dir, "decals")
         os.makedirs(self.decals_output_dir)
 
-        self.run_dotnet(
-            ["--add-decals", config_path, self.decals_template, self.decals_output_dir],
-            "--add-decals",
-        )
+        # Build construct_rows config from decal entries
+        construct_rows = []
+        for entry in self.decal_entries:
+            row_name = entry["row_name"]
+            folder = entry["folder"]
+            file_name = entry["file"]
+            cost = entry["cost"]
+            flags = entry["flags"]
+
+            package_path = f"/Game/Materials/Decal/DecalTextures/{folder}/{file_name}"
+            construct_rows.append({
+                "row_name": row_name,
+                "struct_type": "MTDecalRow",
+                "copy_ancestry": True,
+                "properties": [
+                    {"name": "Texture", "type": "SoftObject",
+                     "package": package_path, "asset": file_name},
+                    {"name": "BrushMaterial", "type": "ObjectRef",
+                     "match_import": "M_DecalBounds_Test"},
+                    {"name": "Flags", "type": "Int", "value": flags},
+                    {"name": "Cost", "type": "Int", "value": cost},
+                ],
+            })
+
+        config = {"construct_rows": construct_rows}
+        self.run_generic("--add-rows", config,
+                         self.decals_template, self.decals_output_dir,
+                         "add-decal-rows")
 
         # UAssetAPI writes without .uasset extension — fix if needed
         raw_path = os.path.join(self.decals_output_dir, "Decals")

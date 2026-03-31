@@ -212,7 +212,7 @@ class TestModBuilderRunDotnet(unittest.TestCase):
         mock_run.return_value = MagicMock(
             returncode=0, stdout="ok", stderr="")
 
-        self.builder.run_dotnet(["--add-cargos", "config.json"], "add cargos")
+        self.builder.run_dotnet(["--add-rows", "config.json"], "add rows")
 
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
@@ -221,7 +221,7 @@ class TestModBuilderRunDotnet(unittest.TestCase):
             "--verbosity", "quiet"
         ])
         self.assertEqual(args[6], "--")
-        self.assertEqual(args[7:], ["--add-cargos", "config.json"])
+        self.assertEqual(args[7:], ["--add-rows", "config.json"])
 
     @patch('subprocess.run')
     def test_run_dotnet_exits_on_failure(self, mock_run):
@@ -234,14 +234,14 @@ class TestModBuilderRunDotnet(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_run_dotnet_uses_csharp_dir(self, mock_run):
-        """run_dotnet runs in the CargoExtractor directory."""
+        """run_dotnet runs in the UAssetTool directory."""
         mock_run.return_value = MagicMock(
             returncode=0, stdout="", stderr="")
 
         self.builder.run_dotnet(["--dump", "test.uasset"], "dump")
 
         cwd = mock_run.call_args[1]['cwd']
-        self.assertTrue(cwd.endswith("csharp/CargoExtractor"))
+        self.assertTrue(cwd.endswith("csharp/UAssetTool"))
 
 
 class TestModBuilderBuildFlow(unittest.TestCase):

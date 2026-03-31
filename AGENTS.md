@@ -21,7 +21,7 @@ Always use the Nix dev shell — do not rely on system tools:
 nix develop --command bash -c 'cargo run --release --quiet -- --config assets.json'
 
 # 2. Parse extracted .uasset files (C#)
-nix develop --command bash -c 'cd csharp/CargoExtractor && dotnet run --configuration Release --verbosity quiet -- --batch'
+nix develop --command bash -c 'cd csharp/UAssetTool && dotnet run --configuration Release --verbosity quiet -- --batch'
 
 # 3. Aggregate to SQLite (Python)
 nix develop --command bash -c 'python3 scripts/aggregate_to_sqlite.py'
@@ -64,7 +64,7 @@ python3 scripts/create_decal_pack.py --input images/ --output MyPack_P.pak
 
 1. **Inject** each image into a base game decal texture template (auto-resizes to 512×512 via texconv)
 2. **Patch** uasset internal metadata (asset path, name, hashes from template)
-3. **Generate** Decals DataTable entries via C# `--add-decals` mode (uses ASEAN-Motor-Club/UAssetAPI fork)
+3. **Generate** Decals DataTable entries via C# `--add-rows` construct mode (uses ASEAN-Motor-Club/UAssetAPI fork)
 4. **Package** into mod PAK with `mod_pack` binary (V11, mount `../../../`)
 
 ### Decal Texture Format
@@ -83,21 +83,28 @@ Each decal needs a row in `Decals.uasset` with:
 - `Flags`: integer (usually 0)
 - `Cost`: integer (in-game price)
 
-### C# Tool (for manual DataTable editing)
+### C# UAssetTool (generic UAsset SDK)
+
+The C# tool provides 3 generic operations driven by JSON configs:
 
 ```bash
-cd csharp/CargoExtractor
-dotnet run -- --add-decals decal_entries.json Decals.uasset output_dir/
+cd csharp/UAssetTool
+
+# Add rows to any DataTable (clone or construct mode)
+dotnet run -- --add-rows config.json template.uasset output_dir/
+
+# Clone and rename any asset with property patches
+dotnet run -- --clone-asset config.json template.uasset output_dir/
+
+# Patch arrays in blueprint CDO exports
+dotnet run -- --patch-cdo-arrays config.json template.uasset output_dir/
+
+# Diagnostic: dump asset structure
+dotnet run -- --dump path/to/asset.uasset
 ```
 
-`decal_entries.json` format:
-```json
-{
-  "entries": [
-    {"row_name": "Custom_01_MyDecal", "folder": "Custom_01", "file": "MyDecal", "cost": 100, "flags": 0}
-  ]
-}
-```
+Python mod builder scripts generate the JSON configs and call these operations.
+See `scripts/create_tirepack.py`, `scripts/create_cargopack.py`, `scripts/create_decal_pack.py`.
 
 ### Mod PAK Explorer
 
@@ -169,7 +176,7 @@ No lint or typecheck commands defined for this project. Rust is checked by `carg
 
 ```
 src/main.rs                    # Rust PAK extractor (AES decrypt + Oodle decompress)
-csharp/CargoExtractor/         # C# UAsset parser (uses UAssetAPI)
+csharp/UAssetTool/            # C# generic UAsset SDK (3 operations: --add-rows, --clone-asset, --patch-cdo-arrays)
 csharp/LevelExtractor/         # C# map/level actor extractor
 scripts/aggregate_to_sqlite.py # Python: parsed JSON → normalized SQLite
 assets.json                    # List of 264 asset paths to extract
