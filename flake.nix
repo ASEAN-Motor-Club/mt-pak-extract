@@ -32,13 +32,16 @@
           ];
           text = ''
             set -euo pipefail
-            
+
             CONFIG="''${1:-assets.json}"
-            
+
             echo "=== MotorTown Asset Extractor ==="
             echo "Config: $CONFIG"
             echo
-            
+
+            # Set LD_LIBRARY_PATH for Oodle (needs libstdc++.so.6)
+            export LD_LIBRARY_PATH="${pkgs.gcc.cc.lib}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
             # Step 1: Extract from PAK using Rust
             echo "Step 1: Extracting assets from PAK..."
             cargo run --release --quiet -- --config "$CONFIG"
