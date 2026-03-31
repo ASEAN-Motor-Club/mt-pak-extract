@@ -10,10 +10,19 @@ Create mod PAKs that add new tire types to MotorTown with custom friction and ph
 ## Quick Start
 
 ```bash
+# Standalone
 nix develop --command bash -c '
 python3 scripts/create_tirepack.py \
   --config tire_entries.json \
-  --output AMCBetterTires_P.pak
+  --output ASEAN_PoliceTyres_P.pak
+'
+
+# Compatible with another mod
+nix develop --command bash -c '
+python3 scripts/create_tirepack.py \
+  --config tire_entries.json \
+  --output ASEAN_PoliceTyres_MoreTuningCompat_P.pak \
+  --compat-mod path/to/qxZap_MoreTuning_P.pak
 '
 ```
 
@@ -21,11 +30,14 @@ python3 scripts/create_tirepack.py \
 
 | Step | Tool | Input | Output |
 |------|------|-------|--------|
+| 0. Extract compat base | Rust `mod_explore` | `--compat-mod` PAK | VehicleParts0 template |
 | 1. Patch tire physics | C# `--patch-tire` | `tire_entries.json` + `BasicTire_45.uasset` | New tire `.uasset/.uexp` |
-| 2a. Add to VehicleParts | C# `--add-tire-parts` | `tire_entries.json` + `VehicleParts.uasset` | Modified `VehicleParts.uasset` |
-| 2b. Add to VehicleParts0 | C# `--add-tire-parts` | `tire_entries.json` + `VehicleParts0.uasset` | Modified `VehicleParts0.uasset` |
+| 2. Add to VehicleParts0 | C# `--add-tire-parts` | `tire_entries.json` + `VehicleParts0.uasset` | Modified `VehicleParts0.uasset` |
 | 3. Assemble PAK dir | Python | All outputs | Directory structure |
 | 4. Build PAK | Rust `mod_pack` | Directory | `.pak` file |
+
+> [!IMPORTANT]
+> Only patch `VehicleParts0` (50 rows), NOT `VehicleParts` (713 rows). This minimizes conflict surface with mods that modify engines, transmissions, etc. See the `general-modding` skill for details.
 
 ## Configuration
 
@@ -33,44 +45,59 @@ python3 scripts/create_tirepack.py \
 
 ```json
 {
-  "tire_physics": {
-    "name": "APF_77_Tire",
-    "template": "BasicTire_45",
-    "static_mu": 1.5,
-    "sliding_mu": 1.3,
-    "offroad_friction": 1.8
-  },
-  "tire_part": {
-    "row_name": "APF_77",
-    "display_name": ["AMC Police 77"],
-    "cost": 2000,
-    "mass_kg": 10,
-    "vehicle_types": ["Small"],
-    "tire_asset_path": "/Game/Cars/Parts/Tire/APF_77_Tire/APF_77_Tire"
-  }
+  "tires": [
+    {
+      "tire_physics": {
+        "name": "APF_79_Tire",
+        "template": "BasicTire_45",
+        "static_mu": 1.6,
+        "sliding_mu": 1.3,
+        "offroad_friction": 1.4,
+        "spring_x": 150000
+      },
+      "tire_part": {
+        "row_name": "APF_79",
+        "display_name": ["AMC Police 79"],
+        "cost": 2000,
+        "mass_kg": 10,
+        "vehicle_types": ["Small"],
+        "vehicle_keys": ["Elisa_Police", "Muhan_Police", "Zydro_Police"],
+        "level_requirement": {"CL_Police": 10},
+        "tire_asset_path": "/Game/Cars/Parts/Tire/APF_79_Tire/APF_79_Tire"
+      }
+    }
+  ]
 }
 ```
 
+Multi-tire configs use a `"tires"` array. Single-tire configs (without the array) are also supported for backward compatibility.
+
 #### Tire Physics Fields
 
-| Field | Description |
-|-------|-------------|
-| `name` | Internal asset name (becomes the `.uasset` filename) |
-| `template` | Base game tire to clone from (filename without extension in `out/`) |
-| `static_mu` | Static friction coefficient (grip at rest / low speed) |
-| `sliding_mu` | Sliding friction coefficient (grip while skidding) |
-| `offroad_friction` | Off-road friction multiplier. Only set if you want offroad capability. Omit to inherit template default. |
+| Field | Default | Description |
+|-------|---------|-------------|
+| `name` | required | Internal asset name (becomes the `.uasset` filename) |
+| `template` | required | Base game tire to clone from (filename without extension in `out/`) |
+| `static_mu` | inherited | Static friction coefficient (grip at rest / low speed) |
+| `sliding_mu` | inherited | Sliding friction coefficient (grip while skidding) |
+| `offroad_friction` | inherited | Off-road friction multiplier |
+| `spring_x` | inherited (180000) | Lateral stiffness — lower values reduce rollover risk |
+| `spring_y` | inherited | Longitudinal stiffness |
+| `damping_x` | inherited | Lateral damping |
+| `damping_y` | inherited | Longitudinal damping |
 
 #### Tire Part Fields
 
-| Field | Description |
-|-------|-------------|
-| `row_name` | DataTable row name (visible as internal ID) |
-| `display_name` | Array of strings for in-game display (set via `Name2.Texts`) |
-| `cost` | In-game purchase price |
-| `mass_kg` | Tire mass in kilograms |
-| `vehicle_types` | Array: `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle` |
-| `tire_asset_path` | UE package path: `/Game/Cars/Parts/Tire/{Name}/{Name}` |
+| Field | Default | Description |
+|-------|---------|-------------|
+| `row_name` | required | DataTable row name (visible as internal ID) |
+| `display_name` | required | Array of strings for in-game display (set via `Name2.Texts`) |
+| `cost` | required | In-game purchase price |
+| `mass_kg` | `10` | Tire mass in kilograms |
+| `vehicle_types` | required | Array: `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle` |
+| `vehicle_keys` | `[]` (all) | Restrict to specific vehicles (e.g., `["Elisa_Police"]`) |
+| `level_requirement` | `{}` (none) | Career level gate: `{"CL_Police": 10}` |
+| `tire_asset_path` | required | UE package path: `/Game/Cars/Parts/Tire/{Name}/{Name}` |
 
 ## Base Game Tire Physics Reference
 
@@ -87,15 +114,20 @@ python3 scripts/create_tirepack.py \
 
 ### Recommended Value Ranges
 
-| Feel | StaticMu | SlidingMu | OffroadFriction |
-|------|----------|-----------|-----------------|
-| Stock-like | 1.0–1.1 | 0.85–1.0 | — |
-| Grippy (natural) | 1.3–1.5 | 1.1–1.3 | 1.6–1.8 |
-| Racing slick | 1.5–1.7 | 1.3–1.5 | — |
-| Unrealistic max grip | 2.0+ | 2.0+ | 2.0+ |
+| Feel | StaticMu | SlidingMu | OffroadFriction | SpringX |
+|------|----------|-----------|-----------------|----------|
+| Stock-like | 1.0–1.1 | 0.85–1.0 | — | 180000 |
+| Cruiser (mild upgrade) | 1.3–1.4 | 1.1–1.2 | 1.3 | 180000 |
+| Anti-rollover pursuit | 1.5–1.6 | 1.2–1.4 | 1.4 | 130000–150000 |
+| High-grip pursuit | 1.6–1.8 | 1.4–1.6 | 1.6 | 180000 |
+| Racing slick | 1.8–2.0 | 1.5–1.7 | — | 180000 |
+| Unrealistic max grip | 2.0+ | 2.0+ | 2.0+ | 200000+ |
 
 > [!TIP]
 > Real-world tire Mu values: road tires ~0.7–1.0, performance ~1.0–1.3, racing slicks ~1.4–1.7. Values above 2.0 feel "glued to the road" and unnatural.
+
+> [!WARNING]
+> **Rollover risk:** High StaticMu (1.8+) on tall vehicles (SUVs, police cars) generates so much lateral G-force that the car rolls over instead of sliding. Fix: lower SpringX to ~150000 for a progressive breakaway, or reduce StaticMu to ~1.5.
 
 ## Critical Rules (Gotchas)
 

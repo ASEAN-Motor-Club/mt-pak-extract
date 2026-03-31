@@ -871,10 +871,16 @@ class Program
         var staticMu = tirePhysics.TryGetProperty("static_mu", out var smProp) ? smProp.GetSingle() : -1f;
         var slidingMu = tirePhysics.TryGetProperty("sliding_mu", out var slProp) ? slProp.GetSingle() : -1f;
         var offroadFriction = tirePhysics.TryGetProperty("offroad_friction", out var ofProp) ? ofProp.GetSingle() : -1f;
+        var springX = tirePhysics.TryGetProperty("spring_x", out var sxProp) ? sxProp.GetSingle() : -1f;
+        var springY = tirePhysics.TryGetProperty("spring_y", out var syProp) ? syProp.GetSingle() : -1f;
+        var dampingX = tirePhysics.TryGetProperty("damping_x", out var dxProp) ? dxProp.GetSingle() : -1f;
+        var dampingY = tirePhysics.TryGetProperty("damping_y", out var dyProp) ? dyProp.GetSingle() : -1f;
         
         Console.WriteLine($"\nPatching tire physics: {tireName}");
         Console.WriteLine($"  Template: {Path.GetFileName(templatePath)}");
         Console.WriteLine($"  StaticMu: {staticMu}, SlidingMu: {slidingMu}, OffroadFriction: {offroadFriction}");
+        if (springX >= 0 || dampingX >= 0)
+            Console.WriteLine($"  SpringX: {springX}, SpringY: {springY}, DampingX: {dampingX}, DampingY: {dampingY}");
         
         // Load fresh copy of template
         var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
@@ -984,6 +990,22 @@ class Program
                                     if (offroadFriction >= 0) SetNumericProperty(tp, offroadFriction);
                                     hasOffroadFriction = true;
                                     Console.WriteLine($"    OffroadFriction = {offroadFriction}");
+                                    break;
+                                case "SpringX":
+                                    if (springX >= 0) SetNumericProperty(tp, springX);
+                                    Console.WriteLine($"    SpringX = {springX}");
+                                    break;
+                                case "SpringY":
+                                    if (springY >= 0) SetNumericProperty(tp, springY);
+                                    Console.WriteLine($"    SpringY = {springY}");
+                                    break;
+                                case "DampingX":
+                                    if (dampingX >= 0) SetNumericProperty(tp, dampingX);
+                                    Console.WriteLine($"    DampingX = {dampingX}");
+                                    break;
+                                case "DampingY":
+                                    if (dampingY >= 0) SetNumericProperty(tp, dampingY);
+                                    Console.WriteLine($"    DampingY = {dampingY}");
                                     break;
                             }
                         }
@@ -1248,6 +1270,42 @@ class Program
                                 tagContainer.Value = Array.Empty<FName>();
                             }
                         }
+                    }
+                    break;
+                    
+                case "VehicleKeys":
+                    // Restrict to specific vehicle keys (e.g., ["Elisa_Police", "Muhan_Police"])
+                    if (prop is ArrayPropertyData vkArr && tirePart.TryGetProperty("vehicle_keys", out var vkProp))
+                    {
+                        var vkList = new List<PropertyData>();
+                        foreach (var vk in vkProp.EnumerateArray())
+                        {
+                            var nameProp = new NamePropertyData(FName.FromString(asset, "VehicleKeys"));
+                            nameProp.Value = FName.FromString(asset, vk.GetString()!);
+                            vkList.Add(nameProp);
+                        }
+                        vkArr.Value = vkList.ToArray();
+                        if (vkList.Count > 0)
+                            Console.WriteLine($"  Restricted to vehicles: {string.Join(", ", vkProp.EnumerateArray().Select(v => v.GetString()))}");
+                    }
+                    break;
+                    
+                case "LevelRequirementToBuy":
+                    // Set level requirement (e.g., {"CL_Police": 10})
+                    if (prop is MapPropertyData levelMap && tirePart.TryGetProperty("level_requirement", out var lvlProp))
+                    {
+                        levelMap.Value.Clear();
+                        foreach (var lvlEntry in lvlProp.EnumerateObject())
+                        {
+                            var keyProp = new NamePropertyData(new FName(asset, "LevelRequirementToBuy", 0));
+                            keyProp.Value = FName.FromString(asset, lvlEntry.Name);
+                            
+                            var valProp = new IntPropertyData(new FName(asset, "LevelRequirementToBuy", 0));
+                            valProp.Value = lvlEntry.Value.GetInt32();
+                            
+                            levelMap.Value.Add(keyProp, valProp);
+                        }
+                        Console.WriteLine($"  Level requirements: {string.Join(", ", lvlProp.EnumerateObject().Select(e => $"{e.Name}={e.Value}"))}");
                     }
                     break;
             }
