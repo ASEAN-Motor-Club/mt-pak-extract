@@ -5,6 +5,7 @@ Aggregate MotorTown JSON data into SQLite database.
 
 import json
 import sqlite3
+import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -1304,8 +1305,8 @@ def create_views(conn: sqlite3.Connection):
 
 def main():
     """Main aggregation pipeline."""
-    out_dir = Path("out")
-    db_path = Path("motortown.db")
+    out_dir = Path(os.environ.get("MT_OUT_DIR", "out"))
+    db_path = Path(os.environ.get("MT_DB_PATH", "motortown.db"))
     
     if not out_dir.exists():
         print(f"Error: {out_dir} directory not found")
