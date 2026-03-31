@@ -28,7 +28,7 @@
             dotnet-sdk_8
             openssl
             pkg-config
-            gcc.cc.lib  # libstdc++.so.6 for Oodle + C linker for cargo
+            gcc  # C linker (cc) for cargo + libstdc++.so.6 for Oodle
           ];
           text = ''
             set -euo pipefail
