@@ -46,3 +46,5 @@ game_data.db
 # Generated parsed output
 *_parsed.json
 mod_out/
+qxZap_*/
+*.zip
