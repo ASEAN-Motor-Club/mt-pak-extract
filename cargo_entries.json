@@ -15,6 +15,22 @@
       "blueprint_name": "Money",
       "cargo_flags": 11,
       "allow_stacking": true
+    },
+    {
+      "row_name": "Ganja",
+      "display_name": ["Ganja", "Pack"],
+      "cargo_type": "SmallPackage",
+      "cargo_space_types": ["Flatbed", "Box"],
+      "weight_min": 3,
+      "weight_max": 8,
+      "volume_size": 1,
+      "payment_per_km": 2000,
+      "spawn_probability": 5,
+      "mesh_path": "/Game/Models/PolygonShops/Meshes/Props/SM_Prop_Bag_Paper_01",
+      "mass_kg": 5,
+      "blueprint_name": "Ganja",
+      "cargo_flags": 11,
+      "allow_stacking": true
     }
   ]
 }

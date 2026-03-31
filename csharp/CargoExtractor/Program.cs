@@ -185,17 +185,8 @@ class Program
         Console.WriteLine($"Loading Cargos template: {Path.GetFileName(templatePath)}");
         var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
         
-        // Find the DataTable export
-        DataTableExport? dtExport = null;
-        foreach (var export in asset.Exports)
-        {
-            if (export is DataTableExport dt) { dtExport = dt; break; }
-        }
-        if (dtExport == null)
-        {
-            Console.WriteLine("Error: No DataTable found in template");
-            return;
-        }
+        var dtExport = FindDataTable(asset);
+        if (dtExport == null) return;
         
         Console.WriteLine($"Existing rows: {dtExport.Table.Data.Count}");
         
@@ -236,37 +227,11 @@ class Program
                         break;
                         
                     case "Name":
-                        // Generate a random GUID-like hex string
-                        if (prop is TextPropertyData nameTxt)
-                        {
-                            var guid = Guid.NewGuid().ToString("N").ToUpper();
-                            nameTxt.Value = FString.FromString(guid.Substring(0, 32));
-                            nameTxt.HistoryType = TextHistoryType.None;
-                        }
+                        SetLocalizationGuid(prop);
                         break;
                         
                     case "Name2":
-                        // MTTextByTexts struct — set display name texts
-                        if (prop is StructPropertyData name2Struct)
-                        {
-                            foreach (var sp in name2Struct.Value)
-                            {
-                                if (sp.Name.Value.Value == "Texts" && sp is ArrayPropertyData textsArr)
-                                {
-                                    var textList = new List<PropertyData>();
-                                    foreach (var txt in displayName.EnumerateArray())
-                                    {
-                                        var textVal = txt.GetString();
-                                        var textProp = new TextPropertyData(FName.FromString(asset, "Texts"));
-                                        textProp.Value = FString.FromString(textVal);
-                                        textProp.CultureInvariantString = FString.FromString(textVal);
-                                        textProp.HistoryType = TextHistoryType.None;
-                                        textList.Add(textProp);
-                                    }
-                                    textsArr.Value = textList.ToArray();
-                                }
-                            }
-                        }
+                        SetDisplayName(prop, displayName, asset);
                         break;
                         
                     case "CargoType":
@@ -278,23 +243,9 @@ class Program
                         break;
                         
                     case "CargoSpaceTypes":
-                        if (prop is ArrayPropertyData cstArr && cstArr.Value.Length > 0)
+                        if (prop is ArrayPropertyData cstArr && entry.TryGetProperty("cargo_space_types", out var cstJson))
                         {
-                            // Array-context enums serialize as FName (not byte index)
-                            // Must use FName.FromString with full EnumType::Value format
-                            var spaceTypes = new List<PropertyData>();
-                            if (entry.TryGetProperty("cargo_space_types", out var cstJson))
-                            {
-                                var templateEnum = (EnumPropertyData)cstArr.Value[0];
-                                var enumTypeName = templateEnum.EnumType?.Value?.Value ?? "EMTCargoSpaceType";
-                                foreach (var st in cstJson.EnumerateArray())
-                                {
-                                    var stProp = (EnumPropertyData)templateEnum.Clone();
-                                    stProp.Value = FName.FromString(asset, $"{enumTypeName}::{st.GetString()!}");
-                                    spaceTypes.Add(stProp);
-                                }
-                            }
-                            cstArr.Value = spaceTypes.ToArray();
+                            SetEnumArray(cstArr, cstJson, asset, "EMTCargoSpaceType");
                         }
                         break;
                         
@@ -335,33 +286,15 @@ class Program
                         break;
                         
                     case "ActorClass":
-                        // ActorClass is ObjectPropertyData (Import reference), NOT SoftObjectPropertyData
-                        // We need to add a new Import chain for the blueprint class:
-                        //   1. Package import: /Game/Objects/Mission/Delivery/{name}/{name}
-                        //   2. Class import: {name}_C (BlueprintGeneratedClass, outer=package)
+                        // ActorClass is ObjectPropertyData (Import reference)
+                        // Add a Package + BlueprintGeneratedClass import chain
                         if (prop is ObjectPropertyData actorProp)
                         {
                             var pkgPath = $"/Game/Objects/Mission/Delivery/{blueprintName}";
-                            
-                            // Add package import (outer = 0 = top-level)
-                            var pkgImport = new Import(
-                                "/Script/CoreUObject", "Package",
-                                FPackageIndex.FromRawIndex(0),
-                                pkgPath, false, asset
+                            var (_, classImportIdx) = AddImportChain(
+                                asset, "/Script/Engine", "BlueprintGeneratedClass",
+                                pkgPath, $"{blueprintName}_C"
                             );
-                            asset.Imports.Add(pkgImport);
-                            int pkgImportIdx = asset.Imports.Count; // 1-indexed
-                            
-                            // Add class import (outer = package import, negative index)
-                            var classImport = new Import(
-                                "/Script/Engine", "BlueprintGeneratedClass",
-                                FPackageIndex.FromImport(pkgImportIdx - 1),
-                                $"{blueprintName}_C", false, asset
-                            );
-                            asset.Imports.Add(classImport);
-                            int classImportIdx = asset.Imports.Count; // 1-indexed
-                            
-                            // Set ActorClass to reference new import
                             actorProp.Value = FPackageIndex.FromImport(classImportIdx - 1);
                         }
                         break;
@@ -602,7 +535,20 @@ class Program
     
     // ========================================================================
     // --add-recipes: Deep-clone ProductionConfigs in delivery point blueprints
+    // Supports sources, sinks, transforms, and storage sections.
+    // Groups all entries by delivery_point to avoid overwrite conflicts.
     // ========================================================================
+    
+    enum RecipeMode { Source, Sink, Transform }
+    
+    // Collected work items for a single delivery point
+    class DeliveryPointWork
+    {
+        public string TemplatePath { get; set; } = "";
+        public List<(RecipeMode Mode, JsonElement Recipe)> Recipes { get; } = new();
+        public List<JsonElement> StorageEntries { get; } = new();
+    }
+    
     static void AddRecipes(string configPath, string outputDir)
     {
         if (!File.Exists(configPath))
@@ -614,40 +560,86 @@ class Program
         var configJson = File.ReadAllText(configPath);
         using var doc = JsonDocument.Parse(configJson);
         
-        // Process sources
+        // Group all work by delivery_point name
+        var workByDp = new Dictionary<string, DeliveryPointWork>();
+        
+        DeliveryPointWork GetOrCreate(string dpName, string templatePath)
+        {
+            if (!workByDp.TryGetValue(dpName, out var work))
+            {
+                work = new DeliveryPointWork { TemplatePath = templatePath };
+                workByDp[dpName] = work;
+            }
+            return work;
+        }
+        
+        string ResolveTemplatePath(JsonElement entry)
+        {
+            var tp = entry.GetProperty("template_path").GetString()!;
+            return Path.IsPathRooted(tp) ? tp : Path.Combine(RootDir!, tp);
+        }
+        
+        // Collect sources
         if (doc.RootElement.TryGetProperty("sources", out var sources))
         {
             foreach (var source in sources.EnumerateArray())
             {
                 var dpName = source.GetProperty("delivery_point").GetString()!;
-                var templatePath = source.GetProperty("template_path").GetString()!;
-                if (!Path.IsPathRooted(templatePath))
-                    templatePath = Path.Combine(RootDir!, templatePath);
-                var recipes = source.GetProperty("recipes");
-                
-                Console.WriteLine($"\nProcessing SOURCE: {dpName}");
-                AddProductionConfigs(templatePath, dpName, recipes, isSource: true, outputDir);
+                var work = GetOrCreate(dpName, ResolveTemplatePath(source));
+                foreach (var recipe in source.GetProperty("recipes").EnumerateArray())
+                    work.Recipes.Add((RecipeMode.Source, recipe));
             }
         }
         
-        // Process sinks
+        // Collect sinks
         if (doc.RootElement.TryGetProperty("sinks", out var sinks))
         {
             foreach (var sink in sinks.EnumerateArray())
             {
                 var dpName = sink.GetProperty("delivery_point").GetString()!;
-                var templatePath = sink.GetProperty("template_path").GetString()!;
-                if (!Path.IsPathRooted(templatePath))
-                    templatePath = Path.Combine(RootDir!, templatePath);
-                var recipes = sink.GetProperty("recipes");
-                
-                Console.WriteLine($"\nProcessing SINK: {dpName}");
-                AddProductionConfigs(templatePath, dpName, recipes, isSource: false, outputDir);
+                var work = GetOrCreate(dpName, ResolveTemplatePath(sink));
+                foreach (var recipe in sink.GetProperty("recipes").EnumerateArray())
+                    work.Recipes.Add((RecipeMode.Sink, recipe));
             }
+        }
+        
+        // Collect transforms
+        if (doc.RootElement.TryGetProperty("transforms", out var transforms))
+        {
+            foreach (var transform in transforms.EnumerateArray())
+            {
+                var dpName = transform.GetProperty("delivery_point").GetString()!;
+                var work = GetOrCreate(dpName, ResolveTemplatePath(transform));
+                foreach (var recipe in transform.GetProperty("recipes").EnumerateArray())
+                    work.Recipes.Add((RecipeMode.Transform, recipe));
+            }
+        }
+        
+        // Collect storage
+        if (doc.RootElement.TryGetProperty("storage", out var storage))
+        {
+            foreach (var storageEntry in storage.EnumerateArray())
+            {
+                var dpName = storageEntry.GetProperty("delivery_point").GetString()!;
+                var work = GetOrCreate(dpName, ResolveTemplatePath(storageEntry));
+                foreach (var entry in storageEntry.GetProperty("entries").EnumerateArray())
+                    work.StorageEntries.Add(entry);
+            }
+        }
+        
+        // Process each delivery point once
+        foreach (var (dpName, work) in workByDp)
+        {
+            Console.WriteLine($"\nProcessing delivery point: {dpName}");
+            ProcessDeliveryPoint(work.TemplatePath, dpName, work.Recipes, work.StorageEntries, outputDir);
         }
     }
     
-    static void AddProductionConfigs(string templatePath, string dpName, JsonElement recipes, bool isSource, string outputDir)
+    static void ProcessDeliveryPoint(
+        string templatePath, string dpName,
+        List<(RecipeMode Mode, JsonElement Recipe)> recipes,
+        List<JsonElement> storageEntries,
+        string outputDir)
     {
         if (!File.Exists(templatePath))
         {
@@ -658,28 +650,60 @@ class Program
         Console.WriteLine($"  Loading: {Path.GetFileName(templatePath)}");
         var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
         
-        // Find the Default__ CDO export that has ProductionConfigs
+        // Find the Default__ CDO export
         NormalExport? cdoExport = null;
-        ArrayPropertyData? productionConfigsProp = null;
-        
         foreach (var export in asset.Exports)
         {
             if (export is NormalExport ne && export.ObjectName.Value.Value.StartsWith("Default__"))
             {
-                foreach (var prop in ne.Data)
-                {
-                    if (prop.Name.Value.Value == "ProductionConfigs" && prop is ArrayPropertyData arrProp)
-                    {
-                        cdoExport = ne;
-                        productionConfigsProp = arrProp;
-                        break;
-                    }
-                }
-                if (cdoExport != null) break;
+                cdoExport = ne;
+                break;
             }
         }
         
-        if (cdoExport == null || productionConfigsProp == null)
+        if (cdoExport == null)
+        {
+            Console.WriteLine($"  Error: No Default__ CDO export found");
+            return;
+        }
+        
+        // Process production config recipes
+        if (recipes.Count > 0)
+        {
+            AddProductionConfigs(asset, cdoExport, dpName, recipes);
+        }
+        
+        // Process storage entries
+        if (storageEntries.Count > 0)
+        {
+            AddStorageConfigs(asset, cdoExport, dpName, storageEntries);
+        }
+        
+        // Resolve ancestries for new structs
+        asset.ResolveAncestries();
+        
+        // Write output — single write per delivery point
+        Directory.CreateDirectory(outputDir);
+        var outputPath = Path.Combine(outputDir, $"{dpName}.uasset");
+        asset.Write(outputPath);
+        Console.WriteLine($"  Written: {dpName}.uasset + .uexp to {outputDir}");
+    }
+    
+    static void AddProductionConfigs(
+        UAsset asset, NormalExport cdoExport, string dpName,
+        List<(RecipeMode Mode, JsonElement Recipe)> recipes)
+    {
+        ArrayPropertyData? productionConfigsProp = null;
+        foreach (var prop in cdoExport.Data)
+        {
+            if (prop.Name.Value.Value == "ProductionConfigs" && prop is ArrayPropertyData arrProp)
+            {
+                productionConfigsProp = arrProp;
+                break;
+            }
+        }
+        
+        if (productionConfigsProp == null)
         {
             Console.WriteLine($"  Error: No ProductionConfigs found in CDO export");
             return;
@@ -687,23 +711,40 @@ class Program
         
         Console.WriteLine($"  Existing ProductionConfigs: {productionConfigsProp.Value.Length}");
         
-        // Get the existing configs as a list
         var configList = new List<PropertyData>(productionConfigsProp.Value);
-        
-        // Use the first existing config as our clone template
         var templateConfig = (StructPropertyData)productionConfigsProp.Value[0];
         
-        foreach (var recipe in recipes.EnumerateArray())
+        foreach (var (mode, recipe) in recipes)
         {
-            var cargoName = recipe.GetProperty("cargo").GetString()!;
-            var productionTime = recipe.GetProperty("production_time").GetInt32();
-            // hidden defaults to !isSource (sources visible, sinks hidden)
-            bool hidden = recipe.TryGetProperty("hidden", out var hiddenProp) ? hiddenProp.GetBoolean() : !isSource;
+            // Read recipe fields based on mode
+            string cargoName;
+            string? inputCargo = null;
+            int inputCount = 1;
+            string? outputCargo = null;
+            int outputCount = 1;
+            int productionTime;
+            bool hidden;
+            
+            if (mode == RecipeMode.Transform)
+            {
+                inputCargo = recipe.GetProperty("input_cargo").GetString()!;
+                inputCount = recipe.TryGetProperty("input_count", out var icProp) ? icProp.GetInt32() : 1;
+                outputCargo = recipe.GetProperty("output_cargo").GetString()!;
+                outputCount = recipe.TryGetProperty("output_count", out var ocProp) ? ocProp.GetInt32() : 1;
+                productionTime = recipe.GetProperty("production_time").GetInt32();
+                hidden = recipe.TryGetProperty("hidden", out var hProp) ? hProp.GetBoolean() : false;
+                cargoName = $"{inputCargo}->{outputCargo}";
+            }
+            else
+            {
+                cargoName = recipe.GetProperty("cargo").GetString()!;
+                productionTime = recipe.GetProperty("production_time").GetInt32();
+                hidden = recipe.TryGetProperty("hidden", out var hProp) ? hProp.GetBoolean() : (mode == RecipeMode.Sink);
+            }
             
             // Deep-clone the template config
             var newConfig = (StructPropertyData)templateConfig.Clone();
             
-            // Modify the cloned config
             foreach (var prop in newConfig.Value)
             {
                 var propName = prop.Name.Value.Value;
@@ -713,50 +754,48 @@ class Program
                     case "InputCargos":
                         if (prop is MapPropertyData inputMap)
                         {
-                            if (isSource)
+                            inputMap.Value = new TMap<PropertyData, PropertyData>();
+                            if (mode == RecipeMode.Sink)
                             {
-                                // Source: no inputs needed
-                                inputMap.Value = new TMap<PropertyData, PropertyData>();
-                            }
-                            else
-                            {
-                                // Sink: add the cargo as input
-                                inputMap.Value = new TMap<PropertyData, PropertyData>();
                                 var key = new NamePropertyData(FName.FromString(asset, "InputCargos"))
-                                {
-                                    Value = FName.FromString(asset, cargoName)
-                                };
+                                    { Value = FName.FromString(asset, cargoName) };
                                 var val = new IntPropertyData(FName.FromString(asset, "InputCargos"))
-                                {
-                                    Value = 1
-                                };
+                                    { Value = 1 };
                                 inputMap.Value.Add(key, val);
                             }
+                            else if (mode == RecipeMode.Transform)
+                            {
+                                var key = new NamePropertyData(FName.FromString(asset, "InputCargos"))
+                                    { Value = FName.FromString(asset, inputCargo!) };
+                                var val = new IntPropertyData(FName.FromString(asset, "InputCargos"))
+                                    { Value = inputCount };
+                                inputMap.Value.Add(key, val);
+                            }
+                            // Source: leave empty (no inputs)
                         }
                         break;
                         
                     case "OutputCargos":
                         if (prop is MapPropertyData outputMap)
                         {
-                            if (isSource)
+                            outputMap.Value = new TMap<PropertyData, PropertyData>();
+                            if (mode == RecipeMode.Source)
                             {
-                                // Source: output the cargo
-                                outputMap.Value = new TMap<PropertyData, PropertyData>();
                                 var key = new NamePropertyData(FName.FromString(asset, "OutputCargos"))
-                                {
-                                    Value = FName.FromString(asset, cargoName)
-                                };
+                                    { Value = FName.FromString(asset, cargoName) };
                                 var val = new IntPropertyData(FName.FromString(asset, "OutputCargos"))
-                                {
-                                    Value = 1
-                                };
+                                    { Value = 1 };
                                 outputMap.Value.Add(key, val);
                             }
-                            else
+                            else if (mode == RecipeMode.Transform)
                             {
-                                // Sink: no outputs
-                                outputMap.Value = new TMap<PropertyData, PropertyData>();
+                                var key = new NamePropertyData(FName.FromString(asset, "OutputCargos"))
+                                    { Value = FName.FromString(asset, outputCargo!) };
+                                var val = new IntPropertyData(FName.FromString(asset, "OutputCargos"))
+                                    { Value = outputCount };
+                                outputMap.Value.Add(key, val);
                             }
+                            // Sink: leave empty (no outputs)
                         }
                         break;
                         
@@ -770,7 +809,6 @@ class Program
                         
                     case "InputCargoGameplayTagQuery":
                     case "OutputCargoRowGameplayTagQuery":
-                        // Clear gameplay tag queries
                         if (prop is StructPropertyData tagQuery)
                         {
                             foreach (var sp in tagQuery.Value)
@@ -829,22 +867,94 @@ class Program
             }
             
             configList.Add(newConfig);
-            var role = isSource ? "OUTPUT" : "INPUT";
-            Console.WriteLine($"  Added recipe: {cargoName} ({role}, time={productionTime}s, hidden={hidden})");
+            var roleLabel = mode switch
+            {
+                RecipeMode.Source => $"OUTPUT={cargoName}",
+                RecipeMode.Sink => $"INPUT={cargoName}",
+                RecipeMode.Transform => $"TRANSFORM {inputCargo}×{inputCount}->{outputCargo}×{outputCount}",
+                _ => cargoName
+            };
+            Console.WriteLine($"  Added recipe: {roleLabel} (time={productionTime}s, hidden={hidden})");
         }
         
-        // Update the array
         productionConfigsProp.Value = configList.ToArray();
         Console.WriteLine($"  Total ProductionConfigs: {productionConfigsProp.Value.Length}");
+    }
+    
+    static void AddStorageConfigs(
+        UAsset asset, NormalExport cdoExport, string dpName,
+        List<JsonElement> storageEntries)
+    {
+        ArrayPropertyData? storageConfigsProp = null;
+        foreach (var prop in cdoExport.Data)
+        {
+            if (prop.Name.Value.Value == "StorageConfigs" && prop is ArrayPropertyData arrProp)
+            {
+                storageConfigsProp = arrProp;
+                break;
+            }
+        }
         
-        // Resolve ancestries for the new structs
-        asset.ResolveAncestries();
+        if (storageConfigsProp == null)
+        {
+            Console.WriteLine($"  Error: No StorageConfigs found in CDO export");
+            return;
+        }
         
-        // Write output
-        Directory.CreateDirectory(outputDir);
-        var outputPath = Path.Combine(outputDir, $"{dpName}.uasset");
-        asset.Write(outputPath);
-        Console.WriteLine($"  Written: {dpName}.uasset + .uexp to {outputDir}");
+        Console.WriteLine($"  Existing StorageConfigs: {storageConfigsProp.Value.Length}");
+        
+        var configList = new List<PropertyData>(storageConfigsProp.Value);
+        var templateEntry = (StructPropertyData)storageConfigsProp.Value[0];
+        
+        foreach (var entry in storageEntries)
+        {
+            var cargoKey = entry.GetProperty("cargo_key").GetString()!;
+            var maxStorage = entry.TryGetProperty("max_storage", out var msProp) ? msProp.GetInt32() : 10;
+            
+            var newEntry = (StructPropertyData)templateEntry.Clone();
+            
+            foreach (var prop in newEntry.Value)
+            {
+                var propName = prop.Name.Value.Value;
+                
+                switch (propName)
+                {
+                    case "CargoType":
+                        // Leave as cloned template value — CargoKey takes priority
+                        // when set. Setting enum to "None" crashes the ByteProperty
+                        // serializer in UE5's unversioned header format.
+                        break;
+                        
+                    case "CargoKey":
+                        if (prop is NamePropertyData keyProp)
+                        {
+                            keyProp.Value = FName.FromString(asset, cargoKey);
+                        }
+                        break;
+                        
+                    case "MaxStorage":
+                        SetNumericProperty(prop, maxStorage);
+                        break;
+                        
+                    case "MaxStorageRandomRange":
+                        // Clear random range — use fixed MaxStorage
+                        if (prop is StructPropertyData rangeProp)
+                        {
+                            foreach (var sp in rangeProp.Value)
+                            {
+                                SetNumericProperty(sp, 0);
+                            }
+                        }
+                        break;
+                }
+            }
+            
+            configList.Add(newEntry);
+            Console.WriteLine($"  Added storage: CargoKey={cargoKey}, MaxStorage={maxStorage}");
+        }
+        
+        storageConfigsProp.Value = configList.ToArray();
+        Console.WriteLine($"  Total StorageConfigs: {storageConfigsProp.Value.Length}");
     }
     
     // ========================================================================
@@ -1090,17 +1200,8 @@ class Program
         
         var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
         
-        // Find the DataTable export
-        DataTableExport? dtExport = null;
-        foreach (var export in asset.Exports)
-        {
-            if (export is DataTableExport dt) { dtExport = dt; break; }
-        }
-        if (dtExport == null)
-        {
-            Console.WriteLine("Error: No DataTable found in template");
-            return;
-        }
+        var dtExport = FindDataTable(asset);
+        if (dtExport == null) return;
         
         Console.WriteLine($"Existing rows: {dtExport.Table.Data.Count}");
         
@@ -1131,26 +1232,10 @@ class Program
         }
         
         // Add import entries for the new tire physics asset
-        // 1. Package import
-        var pkgImport = new Import(
-            "/Script/CoreUObject", "Package",
-            FPackageIndex.FromRawIndex(0),
-            tirePackagePath, false, asset
+        var (pkgImportIdx, tireImportIdx) = AddImportChain(
+            asset, "/Script/MotorTown", "MTTirePhysicsDataAsset",
+            tirePackagePath, tireAssetName
         );
-        asset.Imports.Add(pkgImport);
-        int pkgImportIdx = asset.Imports.Count; // 1-indexed
-        
-        // 2. MTTirePhysicsDataAsset import (outer = package)
-        var tireImport = new Import(
-            "/Script/MotorTown", "MTTirePhysicsDataAsset",
-            FPackageIndex.FromImport(pkgImportIdx - 1),
-            tireAssetName, false, asset
-        );
-        asset.Imports.Add(tireImport);
-        int tireImportIdx = asset.Imports.Count; // 1-indexed
-        
-        Console.WriteLine($"  Added imports: Package [{pkgImportIdx}] = {tirePackagePath}");
-        Console.WriteLine($"  Added imports: Asset [{tireImportIdx}] = {tireAssetName}");
         
         // Deep-clone the template row
         var newRow = (StructPropertyData)templateRow.Clone();
@@ -1166,50 +1251,17 @@ class Program
             switch (propName)
             {
                 case "Name":
-                    if (prop is TextPropertyData nameTxt)
-                    {
-                        // Generate unique GUID key for localization system
-                        var guid = Guid.NewGuid().ToString("N").ToUpper();
-                        nameTxt.Value = FString.FromString(guid.Substring(0, 32));
-                        nameTxt.HistoryType = TextHistoryType.None;
-                    }
+                    SetLocalizationGuid(prop);
                     break;
                     
                 case "Name2":
-                    // MTTextByTexts struct — set display name texts (this is what the game actually shows)
-                    if (prop is StructPropertyData name2Struct && displayName.HasValue)
-                    {
-                        foreach (var sp in name2Struct.Value)
-                        {
-                            if (sp.Name.Value.Value == "Texts" && sp is ArrayPropertyData textsArr)
-                            {
-                                var textList = new List<PropertyData>();
-                                foreach (var txt in displayName.Value.EnumerateArray())
-                                {
-                                    var textVal = txt.GetString();
-                                    var textProp = new TextPropertyData(FName.FromString(asset, "Texts"));
-                                    textProp.Value = FString.FromString(textVal);
-                                    textProp.CultureInvariantString = FString.FromString(textVal);
-                                    textProp.HistoryType = TextHistoryType.None;
-                                    textList.Add(textProp);
-                                }
-                                textsArr.Value = textList.ToArray();
-                            }
-                        }
-                    }
+                    if (displayName.HasValue)
+                        SetDisplayName(prop, displayName.Value, asset);
                     break;
                     
                 case "Desciption":
-                    if (prop is TextPropertyData descTxt)
-                    {
-                        // Set description to display name for fallback display
-                        var descText = displayName.HasValue 
-                            ? displayName.Value[0].GetString() ?? rowName 
-                            : rowName;
-                        descTxt.Value = FString.FromString(descText);
-                        descTxt.CultureInvariantString = FString.FromString(descText);
-                        descTxt.HistoryType = TextHistoryType.None;
-                    }
+                    SetDescriptionFallback(prop, displayName.HasValue 
+                        ? displayName.Value[0].GetString() ?? rowName : rowName);
                     break;
                     
                 case "Cost":
@@ -1225,19 +1277,8 @@ class Program
                     break;
                     
                 case "VehicleTypes":
-                    if (prop is ArrayPropertyData vtArr && vtArr.Value.Length > 0)
-                    {
-                        var vtList = new List<PropertyData>();
-                        var templateEnum = (EnumPropertyData)vtArr.Value[0];
-                        var enumTypeName = templateEnum.EnumType?.Value?.Value ?? "EMTVehicleType";
-                        foreach (var vt in vehicleTypes.EnumerateArray())
-                        {
-                            var vtProp = (EnumPropertyData)templateEnum.Clone();
-                            vtProp.Value = FName.FromString(asset, $"{enumTypeName}::{vt.GetString()!}");
-                            vtList.Add(vtProp);
-                        }
-                        vtArr.Value = vtList.ToArray();
-                    }
+                    if (prop is ArrayPropertyData vtArr)
+                        SetEnumArray(vtArr, vehicleTypes, asset, "EMTVehicleType");
                     break;
                     
                 case "Tire":
@@ -1377,6 +1418,133 @@ class Program
             if (sp.Name.Value.Value == "X") SetNumericProperty(sp, x);
             else if (sp.Name.Value.Value == "Y") SetNumericProperty(sp, y);
         }
+    }
+    
+    // ========================================================================
+    // Shared DataTable helpers — used by cargo, tire, and decal commands
+    // ========================================================================
+    
+    /// <summary>Find the first DataTableExport in an asset.</summary>
+    static DataTableExport? FindDataTable(UAsset asset)
+    {
+        foreach (var export in asset.Exports)
+        {
+            if (export is DataTableExport dt) return dt;
+        }
+        Console.WriteLine("Error: No DataTable found in template");
+        return null;
+    }
+    
+    /// <summary>
+    /// Set a Name property to a random GUID for localization uniqueness.
+    /// Used by cargo and tire DataTable rows.
+    /// </summary>
+    static void SetLocalizationGuid(PropertyData prop)
+    {
+        if (prop is TextPropertyData nameTxt)
+        {
+            var guid = Guid.NewGuid().ToString("N").ToUpper();
+            nameTxt.Value = FString.FromString(guid.Substring(0, 32));
+            nameTxt.HistoryType = TextHistoryType.None;
+        }
+    }
+    
+    /// <summary>
+    /// Set the Name2 (MTTextByTexts) struct's Texts array from a JSON array of strings.
+    /// This is the actual display name shown in the game shop UI.
+    /// Used by cargo and tire DataTable rows.
+    /// </summary>
+    static void SetDisplayName(PropertyData prop, JsonElement displayName, UAsset asset)
+    {
+        if (prop is StructPropertyData name2Struct)
+        {
+            foreach (var sp in name2Struct.Value)
+            {
+                if (sp.Name.Value.Value == "Texts" && sp is ArrayPropertyData textsArr)
+                {
+                    var textList = new List<PropertyData>();
+                    foreach (var txt in displayName.EnumerateArray())
+                    {
+                        var textVal = txt.GetString();
+                        var textProp = new TextPropertyData(FName.FromString(asset, "Texts"));
+                        textProp.Value = FString.FromString(textVal);
+                        textProp.CultureInvariantString = FString.FromString(textVal);
+                        textProp.HistoryType = TextHistoryType.None;
+                        textList.Add(textProp);
+                    }
+                    textsArr.Value = textList.ToArray();
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Set the Desciption (sic) text property as a fallback display name.
+    /// </summary>
+    static void SetDescriptionFallback(PropertyData prop, string text)
+    {
+        if (prop is TextPropertyData descTxt)
+        {
+            descTxt.Value = FString.FromString(text);
+            descTxt.CultureInvariantString = FString.FromString(text);
+            descTxt.HistoryType = TextHistoryType.None;
+        }
+    }
+    
+    /// <summary>
+    /// Add a Package + Asset import chain to an asset.
+    /// Returns (packageImportIdx, assetImportIdx) — 1-indexed.
+    /// Used by cargo (ActorClass) and tire (TirePhysicsDataAsset) commands.
+    /// </summary>
+    static (int pkgIdx, int assetIdx) AddImportChain(
+        UAsset asset, string classPackage, string className,
+        string packagePath, string assetName)
+    {
+        // 1. Package import (outer = 0 = top-level)
+        var pkgImport = new Import(
+            "/Script/CoreUObject", "Package",
+            FPackageIndex.FromRawIndex(0),
+            packagePath, false, asset
+        );
+        asset.Imports.Add(pkgImport);
+        int pkgIdx = asset.Imports.Count; // 1-indexed
+        
+        // 2. Asset import (outer = package)
+        var assetImport = new Import(
+            classPackage, className,
+            FPackageIndex.FromImport(pkgIdx - 1),
+            assetName, false, asset
+        );
+        asset.Imports.Add(assetImport);
+        int assetIdx = asset.Imports.Count; // 1-indexed
+        
+        Console.WriteLine($"  Added imports: Package [{pkgIdx}] = {packagePath}");
+        Console.WriteLine($"  Added imports: Asset [{assetIdx}] = {assetName}");
+        
+        return (pkgIdx, assetIdx);
+    }
+    
+    /// <summary>
+    /// Set an enum array property from a JSON array of enum value strings.
+    /// Handles the UE5 clone + FName pattern for unversioned enum arrays.
+    /// Used by CargoSpaceTypes and VehicleTypes.
+    /// </summary>
+    static void SetEnumArray(ArrayPropertyData arr, JsonElement values,
+        UAsset asset, string defaultEnumTypeName)
+    {
+        if (arr.Value.Length == 0) return;
+        
+        var templateEnum = (EnumPropertyData)arr.Value[0];
+        var enumTypeName = templateEnum.EnumType?.Value?.Value ?? defaultEnumTypeName;
+        var list = new List<PropertyData>();
+        
+        foreach (var val in values.EnumerateArray())
+        {
+            var clone = (EnumPropertyData)templateEnum.Clone();
+            clone.Value = FName.FromString(asset, $"{enumTypeName}::{val.GetString()!}");
+            list.Add(clone);
+        }
+        arr.Value = list.ToArray();
     }
     
     // ========================================================================

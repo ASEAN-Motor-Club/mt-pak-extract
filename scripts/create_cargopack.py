@@ -10,175 +10,149 @@ Pipeline:
   5. Build mod PAK via mod_pack
 
 Usage:
-  python3 scripts/create_cargopack.py --config cargo_entries.json --recipes recipe_entries.json --output CarPartsImport_P.pak
+  python3 scripts/create_cargopack.py \\
+    --config cargo_entries.json \\
+    --recipes recipe_entries.json \\
+    --output CarPartsImport_P.pak
 """
 
 import argparse
 import json
 import os
-import shutil
-import subprocess
 import sys
-from pathlib import Path
+
+from modbase import ModBuilder, add_common_args
 
 
-def run(cmd, cwd=None, check=True):
-    """Run a command and print output."""
-    print(f"  $ {cmd}")
-    result = subprocess.run(cmd, shell=True, cwd=cwd, capture_output=True, text=True)
-    if result.stdout.strip():
-        print(result.stdout.strip())
-    if result.stderr.strip():
-        print(result.stderr.strip(), file=sys.stderr)
-    if check and result.returncode != 0:
-        print(f"  FAILED (exit {result.returncode})")
-        sys.exit(1)
-    return result
+class CargoModBuilder(ModBuilder):
+    """Builds cargo mod PAKs with new cargo types and delivery routes."""
+
+    CARGOS_PAK_PATH = "MotorTown/Content/DataAsset/Cargos.uasset"
+
+    def __init__(self, config_path, output_path, recipes_path,
+                 compat_mods=None, cargos_template=None,
+                 blueprint_template=None):
+        super().__init__("cargo mod", config_path, output_path, compat_mods)
+        self.recipes_path = os.path.abspath(recipes_path)
+        self.cargos_template = cargos_template or os.path.join(
+            self.repo_root, "out", "Cargos.uasset")
+        self.blueprint_template = blueprint_template or os.path.join(
+            self.repo_root, "out", "SmallBox.uasset")
+
+        if not os.path.exists(self.recipes_path):
+            self.fail(f"Recipes not found: {self.recipes_path}")
+
+        with open(self.recipes_path) as f:
+            self.recipe_config = json.load(f)
+
+        self.cargo_names = [e["blueprint_name"] for e in self.config["entries"]]
+
+        # Outputs
+        self.cargos_output_dir: str | None = None
+        self.blueprints_output_dir: str | None = None
+        self.recipes_output_dir: str | None = None
+
+        self.log(f"\n=== Cargo Mod ===")
+        self.log(f"  Cargos: {', '.join(self.cargo_names)}")
+        self.log(f"  Sources: {[s['delivery_point'] for s in self.recipe_config.get('sources', [])]}")
+        self.log(f"  Sinks: {[s['delivery_point'] for s in self.recipe_config.get('sinks', [])]}")
+
+    def transform_assets(self):
+        """Patch SmallBox template into new cargo blueprints."""
+        self.log_step(1, "Patch cargo blueprints")
+        self.blueprints_output_dir = os.path.join(self.build_dir, "blueprints")
+        os.makedirs(self.blueprints_output_dir)
+
+        self.run_dotnet(
+            ["--patch-blueprint", self.config_path,
+             self.blueprint_template, self.blueprints_output_dir],
+            "--patch-blueprint",
+        )
+
+    def register_in_tables(self):
+        """Add cargo rows to Cargos DataTable and delivery point recipes."""
+        # Resolve Cargos template (base game or compat mod)
+        cargos_template = self.resolve_template_with_compat(
+            self.cargos_template, self.CARGOS_PAK_PATH,
+        )
+
+        # Step: Add cargo rows
+        self.log_step(2, "Add cargo rows to Cargos DataTable")
+        self.cargos_output_dir = os.path.join(self.build_dir, "cargos")
+        os.makedirs(self.cargos_output_dir)
+
+        self.run_dotnet(
+            ["--add-cargos", self.config_path,
+             cargos_template, self.cargos_output_dir],
+            "--add-cargos",
+        )
+
+        # Step: Add production config recipes
+        self.log_step(3, "Add delivery point recipes")
+        self.recipes_output_dir = os.path.join(self.build_dir, "recipes")
+        os.makedirs(self.recipes_output_dir)
+
+        self.run_dotnet(
+            ["--add-recipes", self.recipes_path, self.recipes_output_dir],
+            "--add-recipes",
+        )
+
+    def assemble_pak(self):
+        """Stage Cargos DataTable, blueprints, and delivery point assets."""
+        self.log_step(4, "Assemble PAK directory")
+
+        # Cargos DataTable
+        cargos_asset = os.path.join(self.cargos_output_dir, "Cargos.uasset")
+        self.stage_datatable(cargos_asset, "Cargos", "DataAsset")
+
+        # Cargo blueprints — placed directly in Delivery/ (no subfolder!)
+        for name in self.cargo_names:
+            bp_asset = os.path.join(
+                self.blueprints_output_dir, name, f"{name}.uasset")
+            if os.path.exists(bp_asset):
+                self.stage_asset(bp_asset, "Objects/Mission/Delivery", name=name)
+
+        # Delivery point assets — collect from all recipe sections
+        all_dps = set()
+        for section in ["sources", "sinks", "transforms"]:
+            for dp in self.recipe_config.get(section, []):
+                all_dps.add(dp["delivery_point"])
+        for dp in self.recipe_config.get("storage", []):
+            all_dps.add(dp["delivery_point"])
+
+        for dp_name in all_dps:
+            dp_asset = os.path.join(self.recipes_output_dir, f"{dp_name}.uasset")
+            if os.path.exists(dp_asset):
+                self.stage_asset(
+                    dp_asset,
+                    "Objects/Mission/Delivery/DeliveryPoint",
+                    name=dp_name,
+                )
+
+    def print_summary(self):
+        self.log(f"  Cargos: {', '.join(self.cargo_names)}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Create MotorTown cargo mod PAK")
-    parser.add_argument("--config", "-c", default="cargo_entries.json",
-                       help="Cargo entries JSON config")
+    add_common_args(parser)
     parser.add_argument("--recipes", "-r", default="recipe_entries.json",
-                       help="Delivery point recipe entries JSON config")
-    parser.add_argument("--output", "-o", default="CarPartsImport_P.pak",
-                       help="Output PAK file path")
-    parser.add_argument("--cargos-template", default="out/Cargos.uasset",
-                       help="Base game Cargos.uasset template")
-    parser.add_argument("--blueprint-template", default="out/SmallBox.uasset",
-                       help="Base game SmallBox.uasset template")
+                        help="Delivery point recipe entries JSON config")
+    parser.add_argument("--cargos-template", default=None,
+                        help="Base game Cargos.uasset template")
+    parser.add_argument("--blueprint-template", default=None,
+                        help="Base game SmallBox.uasset template")
     args = parser.parse_args()
 
-    root = Path(__file__).resolve().parent.parent
-    build_dir = root / "cargo_build"
-    pak_staging = build_dir / "pak_staging"
-    dotnet_dir = root / "csharp" / "CargoExtractor"
-
-    # Clean build directory
-    if build_dir.exists():
-        shutil.rmtree(build_dir)
-    build_dir.mkdir(parents=True)
-
-    config_path = root / args.config
-    recipes_path = root / args.recipes
-    cargos_template = root / args.cargos_template
-    bp_template = root / args.blueprint_template
-
-    if not config_path.exists():
-        print(f"Error: Config not found: {config_path}")
-        sys.exit(1)
-    if not recipes_path.exists():
-        print(f"Error: Recipes not found: {recipes_path}")
-        sys.exit(1)
-
-    with open(config_path) as f:
-        cargo_config = json.load(f)
-    with open(recipes_path) as f:
-        recipe_config = json.load(f)
-
-    cargo_names = [e["blueprint_name"] for e in cargo_config["entries"]]
-    print(f"\n=== Car Parts Import Cargo Mod ===")
-    print(f"  Cargos: {', '.join(cargo_names)}")
-    print(f"  Sources: {[s['delivery_point'] for s in recipe_config.get('sources', [])]}")
-    print(f"  Sinks: {[s['delivery_point'] for s in recipe_config.get('sinks', [])]}")
-
-    # ----------------------------------------------------------
-    # Step 1: Add cargo rows to Cargos DataTable
-    # ----------------------------------------------------------
-    print(f"\n--- Step 1: Add cargo rows to Cargos DataTable ---")
-    cargos_output = build_dir / "cargos"
-    cargos_output.mkdir()
-    run(
-        f"dotnet run --configuration Release --verbosity quiet -- "
-        f"--add-cargos {config_path} {cargos_template} {cargos_output}",
-        cwd=dotnet_dir,
+    builder = CargoModBuilder(
+        config_path=args.config,
+        output_path=args.output,
+        recipes_path=args.recipes,
+        compat_mods=args.compat_mod,
+        cargos_template=args.cargos_template,
+        blueprint_template=args.blueprint_template,
     )
-
-    # ----------------------------------------------------------
-    # Step 2: Patch cargo blueprints from SmallBox template
-    # ----------------------------------------------------------
-    print(f"\n--- Step 2: Patch cargo blueprints ---")
-    blueprints_output = build_dir / "blueprints"
-    blueprints_output.mkdir()
-    run(
-        f"dotnet run --configuration Release --verbosity quiet -- "
-        f"--patch-blueprint {config_path} {bp_template} {blueprints_output}",
-        cwd=dotnet_dir,
-    )
-
-    # ----------------------------------------------------------
-    # Step 3: Add production config recipes to delivery points
-    # ----------------------------------------------------------
-    print(f"\n--- Step 3: Add delivery point recipes ---")
-    recipes_output = build_dir / "recipes"
-    recipes_output.mkdir()
-    run(
-        f"dotnet run --configuration Release --verbosity quiet -- "
-        f"--add-recipes {recipes_path} {recipes_output}",
-        cwd=dotnet_dir,
-    )
-
-    # ----------------------------------------------------------
-    # Step 4: Assemble PAK directory structure
-    # ----------------------------------------------------------
-    print(f"\n--- Step 4: Assemble PAK directory ---")
-    content = pak_staging / "MotorTown" / "Content"
-
-    # Cargos DataTable
-    dt_dir = content / "DataAsset"
-    dt_dir.mkdir(parents=True)
-    for ext in [".uasset", ".uexp"]:
-        src = cargos_output / f"Cargos{ext}"
-        if src.exists():
-            shutil.copy2(src, dt_dir / f"Cargos{ext}")
-            print(f"  Staged: DataAsset/Cargos{ext}")
-
-    # Cargo blueprints — placed directly in Delivery/ (no subfolder!)
-    # Engine maps package path /Game/.../Delivery/{name} to file Delivery/{name}.uasset
-    bp_base = content / "Objects" / "Mission" / "Delivery"
-    bp_base.mkdir(parents=True, exist_ok=True)
-    for name in cargo_names:
-        bp_src = blueprints_output / name
-        for ext in [".uasset", ".uexp"]:
-            src = bp_src / f"{name}{ext}"
-            if src.exists():
-                shutil.copy2(src, bp_base / f"{name}{ext}")
-                print(f"  Staged: Objects/Mission/Delivery/{name}{ext}")
-
-    # Delivery points
-    dp_dir = content / "Objects" / "Mission" / "Delivery" / "DeliveryPoint"
-    dp_dir.mkdir(parents=True)
-    all_dps = set()
-    for section in ["sources", "sinks"]:
-        for dp in recipe_config.get(section, []):
-            all_dps.add(dp["delivery_point"])
-    for dp_name in all_dps:
-        for ext in [".uasset", ".uexp"]:
-            src = recipes_output / f"{dp_name}{ext}"
-            if src.exists():
-                shutil.copy2(src, dp_dir / f"{dp_name}{ext}")
-                print(f"  Staged: Objects/Mission/Delivery/DeliveryPoint/{dp_name}{ext}")
-
-    # ----------------------------------------------------------
-    # Step 5: Build mod PAK
-    # ----------------------------------------------------------
-    print(f"\n--- Step 5: Build mod PAK ---")
-    output_pak = root / args.output
-    mod_pack = root / "target" / "release" / "mod_pack"
-
-    if not mod_pack.exists():
-        print("  Building mod_pack...")
-        run("cargo build --release --bin mod_pack", cwd=root)
-
-    run(f"{mod_pack} {pak_staging} {output_pak}")
-    print(f"\n=== Mod PAK created: {output_pak} ===")
-
-    # Verify
-    mod_explore = root / "target" / "release" / "mod_explore"
-    if mod_explore.exists():
-        print(f"\n--- PAK contents ---")
-        run(f"{mod_explore} {output_pak} --list", check=False)
+    builder.build()
 
 
 if __name__ == "__main__":

@@ -26,6 +26,8 @@ import subprocess
 import sys
 import tempfile
 
+from modbase import ModBuilder
+
 
 def find_template(template_dir: str = "out") -> str:
     """Find a suitable template decal texture."""
@@ -54,7 +56,7 @@ def find_template_strings(template_path: str):
     data = open(template_path, "rb").read()
     old_path = None
     old_name = None
-    for m in re.finditer(b'/Game/Materials/Decal/DecalTextures/[^\\x00]+', data):
+    for m in re.finditer(b'/Game/Materials/Decal/DecalTextures/[^\x00]+', data):
         old_path = m.group(0)
         break
     if old_path:
@@ -157,44 +159,162 @@ def patch_uasset(injected_path: str, template_path: str, new_path: str, new_name
     open(injected_path, "wb").write(data)
 
 
-def add_decal_entries(config_path: str, template_deals_path: str, output_dir: str,
-                      repo_root: str = None):
-    """Run the C# --add-decals tool to create modified Decals.uasset."""
-    if repo_root is None:
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+class DecalModBuilder(ModBuilder):
+    """Builds decal mod PAKs from image files."""
 
-    csproj_dir = os.path.join(repo_root, "csharp", "CargoExtractor")
-    mappings = os.path.join(repo_root, "Mappings.usmap")
+    def __init__(self, config_path, output_path, input_dir, category="Custom",
+                 cost=100, template=None, decals_template=None,
+                 ue_version="5.5"):
+        # Decals use a synthetic config — create it from the image list
+        self.input_dir = os.path.abspath(input_dir)
+        self.category = category
+        self.cost = cost
+        self.ue_version = ue_version
+        self.decal_entries = []
+        self.textures_dir = None
 
-    cmd = [
-        "dotnet", "run", "--configuration", "Release", "--verbosity", "quiet", "--",
-        "--add-decals", config_path, template_deals_path, output_dir,
-    ]
+        repo_root = str(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=csproj_dir)
-    if result.returncode != 0:
-        raise RuntimeError(f"add-decals failed: {result.stderr.strip()}")
+        # Find images
+        extensions = (".png", ".tga", ".jpg", ".jpeg", ".bmp", ".dds")
+        self.images = sorted([
+            f for f in os.listdir(self.input_dir)
+            if any(f.lower().endswith(ext) for ext in extensions)
+        ])
+        if not self.images:
+            print(f"Error: No images found in {self.input_dir}")
+            sys.exit(1)
 
+        # Auto-detect texture template
+        self.texture_template = template
+        if self.texture_template is None:
+            self.texture_template = find_template(os.path.join(repo_root, "out"))
+        if self.texture_template is None or not os.path.isfile(self.texture_template):
+            print("Error: No template decal texture found.")
+            print("Run the extractor first: nix run .#extract")
+            sys.exit(1)
 
-def build_pak(input_dir: str, output_pak: str, repo_root: str = None):
-    """Build a mod PAK using mod_pack."""
-    if repo_root is None:
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # Auto-detect Decals.uasset
+        self.decals_template = decals_template
+        if self.decals_template is None:
+            self.decals_template = os.path.join(repo_root, "out", "Decals.uasset")
+        if not os.path.isfile(self.decals_template):
+            self.decals_template = os.path.join(repo_root, "Decals.uasset")
+        if not os.path.isfile(self.decals_template):
+            print("Error: No Decals.uasset found.")
+            print("Run the extractor first: nix run .#extract")
+            sys.exit(1)
 
-    mod_pack = os.path.join(repo_root, "target", "release", "mod_pack")
-    if not os.path.isfile(mod_pack):
-        # Try building it
-        subprocess.run(
-            ["cargo", "build", "--release", "--bin", "mod_pack"],
-            cwd=repo_root, capture_output=True,
+        self.template_name = os.path.splitext(os.path.basename(self.texture_template))[0]
+
+        # Create a minimal config for the base class
+        tmp_config = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', delete=False, prefix='decal_cfg_')
+        json.dump({"images": [os.path.splitext(f)[0] for f in self.images]}, tmp_config)
+        tmp_config.close()
+
+        super().__init__("decal mod", tmp_config.name, output_path)
+        os.unlink(tmp_config.name)
+
+        self.log(f"=== mt-decal-pack ===")
+        self.log(f"  Template:  {os.path.basename(self.texture_template)}")
+        self.log(f"  Decals:    {os.path.basename(self.decals_template)}")
+        self.log(f"  Category:  {self.category}")
+        self.log(f"  Cost:      {self.cost}")
+        self.log(f"  Images:    {len(self.images)}")
+        self.log(f"  Output:    {self.output_path}")
+
+    def transform_assets(self):
+        """Inject images into template uassets and patch metadata."""
+        self.log_step(1, "Injecting images")
+        self.textures_dir = os.path.join(self.build_dir, "textures")
+        os.makedirs(self.textures_dir)
+
+        ok = 0
+        fail = 0
+
+        for img_file in self.images:
+            name = os.path.splitext(img_file)[0]
+            img_path = os.path.join(self.input_dir, img_file)
+            row_name = f"{self.category}_{name}"
+            asset_path = f"/Game/Materials/Decal/DecalTextures/{self.category}/{name}"
+
+            print(f"  {name} ... ", end="", flush=True)
+            try:
+                inject_image(self.texture_template, img_path, self.textures_dir,
+                             version=self.ue_version)
+
+                # Rename output
+                src_uasset = os.path.join(self.textures_dir, f"{self.template_name}.uasset")
+                src_uexp = os.path.join(self.textures_dir, f"{self.template_name}.uexp")
+                dst_uasset = os.path.join(self.textures_dir, f"{name}.uasset")
+                dst_uexp = os.path.join(self.textures_dir, f"{name}.uexp")
+                if os.path.exists(src_uasset):
+                    os.rename(src_uasset, dst_uasset)
+                if os.path.exists(src_uexp):
+                    os.rename(src_uexp, dst_uexp)
+
+                # Patch metadata
+                patch_uasset(dst_uasset, self.texture_template, asset_path, name)
+
+                print("OK")
+                self.decal_entries.append({
+                    "row_name": row_name,
+                    "folder": self.category,
+                    "file": name,
+                    "cost": self.cost,
+                    "flags": 0,
+                })
+                ok += 1
+            except Exception as e:
+                print(f"FAILED: {e}")
+                fail += 1
+
+        if ok == 0:
+            self.fail("No images were injected successfully.")
+
+        self.log(f"\n  {ok} injected, {fail} failed")
+
+    def register_in_tables(self):
+        """Generate Decals DataTable entries."""
+        self.log_step(2, "Generating Decals DataTable")
+        config_path = os.path.join(self.build_dir, "decal_entries.json")
+        with open(config_path, "w") as f:
+            json.dump({"entries": self.decal_entries}, f, indent=2)
+
+        self.decals_output_dir = os.path.join(self.build_dir, "decals")
+        os.makedirs(self.decals_output_dir)
+
+        self.run_dotnet(
+            ["--add-decals", config_path, self.decals_template, self.decals_output_dir],
+            "--add-decals",
         )
 
-    result = subprocess.run(
-        [mod_pack, input_dir, output_pak],
-        capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"mod_pack failed: {result.stderr.strip()}")
+        # UAssetAPI writes without .uasset extension — fix if needed
+        raw_path = os.path.join(self.decals_output_dir, "Decals")
+        uasset_path = os.path.join(self.decals_output_dir, "Decals.uasset")
+        if os.path.isfile(raw_path) and not os.path.isfile(uasset_path):
+            os.rename(raw_path, uasset_path)
+
+    def assemble_pak(self):
+        """Stage Decals DataTable and texture assets."""
+        self.log_step(3, "Assemble PAK directory")
+        import shutil
+
+        # Decals DataTable
+        decals_asset = os.path.join(self.decals_output_dir, "Decals.uasset")
+        self.stage_datatable(decals_asset, "Decals", "DataAsset")
+
+        # Texture assets
+        tex_dir = f"Materials/Decal/DecalTextures/{self.category}"
+        for img_file in self.images:
+            name = os.path.splitext(img_file)[0]
+            tex_asset = os.path.join(self.textures_dir, f"{name}.uasset")
+            if os.path.isfile(tex_asset):
+                self.stage_asset(tex_asset, tex_dir, name=name)
+
+    def print_summary(self):
+        self.log(f"  Decals: {len(self.decal_entries)}")
 
 
 def main():
@@ -228,150 +348,17 @@ Each image becomes a decal named after its filename (without extension).
                         help="UE version (default: 5.5)")
     args = parser.parse_args()
 
-    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    # Validate inputs
-    if not os.path.isdir(args.input):
-        print(f"Error: Input directory not found: {args.input}")
-        sys.exit(1)
-
-    # Auto-detect template
-    template = args.template
-    if template is None:
-        template = find_template(os.path.join(repo_root, "out"))
-    if template is None or not os.path.isfile(template):
-        print("Error: No template decal texture found.")
-        print("Run the extractor first: nix run .#extract")
-        sys.exit(1)
-
-    # Auto-detect Decals.uasset
-    decals = args.decals
-    if decals is None:
-        decals = os.path.join(repo_root, "out", "Decals.uasset")
-    if not os.path.isfile(decals):
-        decals = os.path.join(repo_root, "Decals.uasset")
-    if not os.path.isfile(decals):
-        print("Error: No Decals.uasset found.")
-        print("Run the extractor first: nix run .#extract")
-        sys.exit(1)
-
-    # Find images
-    extensions = (".png", ".tga", ".jpg", ".jpeg", ".bmp", ".dds")
-    images = sorted([
-        f for f in os.listdir(args.input)
-        if any(f.lower().endswith(ext) for ext in extensions)
-    ])
-    if not images:
-        print(f"Error: No images found in {args.input}")
-        sys.exit(1)
-
-    template_name = os.path.splitext(os.path.basename(template))[0]
-
-    print(f"=== mt-decal-pack ===")
-    print(f"  Template:  {os.path.basename(template)}")
-    print(f"  Decals:    {os.path.basename(decals)}")
-    print(f"  Category:  {args.category}")
-    print(f"  Cost:      {args.cost}")
-    print(f"  Images:    {len(images)}")
-    print(f"  Output:    {args.output}")
-    print()
-
-    with tempfile.TemporaryDirectory(prefix="mt_decal_") as work_dir:
-        textures_dir = os.path.join(work_dir, "textures")
-        os.makedirs(textures_dir)
-
-        # Step 1 & 2: Inject images + patch metadata
-        print("Step 1: Injecting images...")
-        decal_entries = []
-        ok = 0
-        fail = 0
-
-        for img_file in images:
-            name = os.path.splitext(img_file)[0]
-            img_path = os.path.join(args.input, img_file)
-            row_name = f"{args.category}_{name}"
-            asset_path = f"/Game/Materials/Decal/DecalTextures/{args.category}/{name}"
-
-            print(f"  {name} ... ", end="", flush=True)
-            try:
-                inject_image(template, img_path, textures_dir, version=args.version)
-
-                # Rename output
-                src_uasset = os.path.join(textures_dir, f"{template_name}.uasset")
-                src_uexp = os.path.join(textures_dir, f"{template_name}.uexp")
-                dst_uasset = os.path.join(textures_dir, f"{name}.uasset")
-                dst_uexp = os.path.join(textures_dir, f"{name}.uexp")
-                if os.path.exists(src_uasset):
-                    os.rename(src_uasset, dst_uasset)
-                if os.path.exists(src_uexp):
-                    os.rename(src_uexp, dst_uexp)
-
-                # Patch metadata
-                patch_uasset(dst_uasset, template, asset_path, name)
-
-                print("OK")
-                decal_entries.append({
-                    "row_name": row_name,
-                    "folder": args.category,
-                    "file": name,
-                    "cost": args.cost,
-                    "flags": 0,
-                })
-                ok += 1
-            except Exception as e:
-                print(f"FAILED: {e}")
-                fail += 1
-
-        if ok == 0:
-            print("\nError: No images were injected successfully.")
-            sys.exit(1)
-
-        print(f"\n  {ok} injected, {fail} failed")
-
-        # Step 3: Generate Decals DataTable
-        print("\nStep 2: Generating Decals DataTable...")
-        config_path = os.path.join(work_dir, "decal_entries.json")
-        with open(config_path, "w") as f:
-            json.dump({"entries": decal_entries}, f, indent=2)
-
-        decals_out = os.path.join(work_dir, "decals")
-        os.makedirs(decals_out)
-
-        add_decal_entries(config_path, decals, decals_out, repo_root=repo_root)
-
-        # UAssetAPI writes without .uasset extension — fix if needed
-        raw_path = os.path.join(decals_out, "Decals")
-        uasset_path = os.path.join(decals_out, "Decals.uasset")
-        if os.path.isfile(raw_path) and not os.path.isfile(uasset_path):
-            os.rename(raw_path, uasset_path)
-
-        # Step 4: Build mod PAK directory structure
-        print("\nStep 3: Building mod PAK...")
-        pak_dir = os.path.join(work_dir, "pak_root")
-        pak_decals = os.path.join(pak_dir, "MotorTown", "Content", "DataAsset")
-        pak_textures = os.path.join(pak_dir, "MotorTown", "Content", "Materials",
-                                     "Decal", "DecalTextures", args.category)
-        os.makedirs(pak_decals)
-        os.makedirs(pak_textures)
-
-        # Copy Decals DataTable (both files from same Write() call)
-        import shutil
-        shutil.copy2(os.path.join(decals_out, "Decals.uasset"), pak_decals)
-        shutil.copy2(os.path.join(decals_out, "Decals.uexp"), pak_decals)
-
-        # Copy texture assets
-        for img_file in images:
-            name = os.path.splitext(img_file)[0]
-            for ext in (".uasset", ".uexp"):
-                src = os.path.join(textures_dir, f"{name}{ext}")
-                if os.path.isfile(src):
-                    shutil.copy2(src, pak_textures)
-
-        # Build PAK
-        build_pak(pak_dir, args.output, repo_root=repo_root)
-
-        size_kb = os.path.getsize(args.output) / 1024
-        print(f"\n=== Done: {args.output} ({size_kb:.0f} KB, {ok} decals) ===")
+    builder = DecalModBuilder(
+        config_path="/dev/null",  # config is built from images
+        output_path=args.output,
+        input_dir=args.input,
+        category=args.category,
+        cost=args.cost,
+        template=args.template,
+        decals_template=args.decals,
+        ue_version=args.version,
+    )
+    builder.build()
 
 
 if __name__ == "__main__":

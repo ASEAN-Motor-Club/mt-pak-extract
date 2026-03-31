@@ -11,6 +11,36 @@
       "delivery_point": "Factory_Toy",
       "template_path": "out/Factory_Toy.uasset",
       "recipes": [{"cargo": "Money", "production_time": 300, "hidden": false}]
+    },
+    {
+      "delivery_point": "Resident",
+      "template_path": "out/Resident.uasset",
+      "recipes": [{"cargo": "Ganja", "production_time": 600, "hidden": false}]
+    }
+  ],
+  "transforms": [
+    {
+      "delivery_point": "Factory_Toy",
+      "template_path": "out/Factory_Toy.uasset",
+      "recipes": [
+        {
+          "input_cargo": "HempPallet",
+          "input_count": 5,
+          "output_cargo": "Ganja",
+          "output_count": 10,
+          "production_time": 180,
+          "hidden": false
+        }
+      ]
+    }
+  ],
+  "storage": [
+    {
+      "delivery_point": "Factory_Toy",
+      "template_path": "out/Factory_Toy.uasset",
+      "entries": [
+        {"cargo_key": "Ganja", "max_storage": 20}
+      ]
     }
   ]
 }

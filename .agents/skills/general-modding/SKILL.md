@@ -279,10 +279,126 @@ dotnet run --configuration Release --verbosity quiet -- <command> [args]
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/create_tirepack.py` | Tire mod PAK builder (supports `--compat-mod`) |
-| `scripts/create_cargopack.py` | Cargo mod PAK builder |
-| `scripts/create_decal_pack.py` | Decal mod PAK builder |
+| `scripts/modbase.py` | **Shared base module** — `ModBuilder` class with common build infrastructure |
+| `scripts/create_tirepack.py` | Tire mod PAK builder (subclasses `ModBuilder`) |
+| `scripts/create_cargopack.py` | Cargo mod PAK builder (subclasses `ModBuilder`) |
+| `scripts/create_decal_pack.py` | Decal mod PAK builder (subclasses `ModBuilder`) |
 | `scripts/aggregate_to_sqlite.py` | Parsed JSON → SQLite database |
+
+### ModBuilder Base Module
+
+All mod-type scripts inherit from `ModBuilder` in `scripts/modbase.py`. The base class provides:
+
+| Method | Purpose |
+|--------|---------|
+| `run_dotnet(args, label)` | Run C# CargoExtractor commands |
+| `build_pak(staging_dir)` | Build mod PAK via `mod_pack` binary |
+| `verify_pak()` | List PAK contents via `mod_explore` |
+| `extract_from_compat_mod(pak, asset_path, dest)` | Extract a single asset from another mod's PAK |
+| `resolve_template_with_compat(base, pak_path)` | Resolve DataTable template (base game or compat mod) |
+| `stage_asset(src, pak_dir, name)` | Copy `.uasset/.uexp` pair to PAK staging |
+| `stage_datatable(src, name, subdir)` | Stage a DataTable asset |
+
+**Build flow** (template method pattern):
+
+```
+build() → transform_assets() → register_in_tables() → assemble_pak() → build_pak() → verify_pak()
+```
+
+Subclasses implement the three hooks to define their mod-type-specific logic.
+
+### C# Shared Helpers
+
+The C# tool (`Program.cs`) provides shared helpers used across all DataTable commands:
+
+| Helper | Used By | Purpose |
+|--------|---------|---------|
+| `FindDataTable(asset)` | cargos, tires, decals | Find first DataTableExport in an asset |
+| `SetLocalizationGuid(prop)` | cargos, tires | Set `Name` to random GUID for localization |
+| `SetDisplayName(prop, json, asset)` | cargos, tires | Set `Name2.Texts` display name array |
+| `SetDescriptionFallback(prop, text)` | tires | Set `Desciption` text fallback |
+| `AddImportChain(asset, pkg, class, path, name)` | cargos, tires | Add Package + Asset import pair |
+| `SetEnumArray(arr, json, asset, enumType)` | cargos, tires | Set enum array from JSON values |
+
+## Creating a New Mod Type
+
+To add a new mod type (e.g., engine mods, wheel mods):
+
+### 1. Define JSON config schema
+
+Create a JSON format for the new mod type. Follow existing patterns:
+- Tire: `tire_entries.json` with `tire_physics` + `tire_part` sections
+- Cargo: `cargo_entries.json` with entries array + `recipe_entries.json`
+
+### 2. Add C# command(s) to `Program.cs`
+
+Reuse shared helpers to minimize new code:
+
+```csharp
+// Add command dispatch in Main()
+else if (addEnginePartsMode)
+{
+    // --add-engine-parts config.json template.uasset output_dir
+    var idx = Array.IndexOf(args, "--add-engine-parts");
+    // ...
+    AddEngineParts(configPath, templatePath, outputDir);
+}
+
+// Command handler — uses shared helpers
+static void AddEngineParts(string configPath, string templatePath, string outputDir)
+{
+    var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
+    var dtExport = FindDataTable(asset);  // shared
+    if (dtExport == null) return;
+
+    var templateRow = dtExport.Table.Data[^1];
+    var newRow = (StructPropertyData)templateRow.Clone();  // deep-clone
+
+    SetLocalizationGuid(/* Name prop */);        // shared
+    SetDisplayName(/* Name2 prop */, ...);        // shared
+    var (_, importIdx) = AddImportChain(...);     // shared
+
+    dtExport.Table.Data.Add(newRow);
+    asset.Write(outputPath);
+}
+```
+
+### 3. Create Python build script
+
+Subclass `ModBuilder`:
+
+```python
+# scripts/create_enginepack.py
+from modbase import ModBuilder, add_common_args
+
+class EngineModBuilder(ModBuilder):
+    def transform_assets(self):
+        # Create engine DataAsset files
+        self.run_dotnet(["--patch-engine", ...], "patch engine")
+
+    def register_in_tables(self):
+        # Add to Engines DataTable
+        template = self.resolve_template_with_compat(
+            base_template, "MotorTown/Content/DataAsset/VehicleParts/Engines.uasset")
+        self.run_dotnet(["--add-engine-parts", ...], "add engine parts")
+
+    def assemble_pak(self):
+        self.stage_asset(engine_asset, "Cars/Parts/Engine", name=engine_name)
+        self.stage_datatable(engines_dt, "Engines", "DataAsset/VehicleParts")
+
+    def print_summary(self):
+        self.log(f"  Engines: {', '.join(...)}")
+```
+
+### 4. Create skill documentation
+
+Add `.agents/skills/{type}-mod/SKILL.md` following the cargo/tire skill structure:
+- Quick Start with build command
+- Pipeline overview table
+- Configuration reference
+- Critical rules / gotchas
+- Verification commands
+- Key files table
 
 ### SQLite Database
 
