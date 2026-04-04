@@ -245,6 +245,15 @@ The `--add-tire-parts` command uses `Path.GetFileNameWithoutExtension(templatePa
 - Input `VehicleParts.uasset` → output `VehicleParts.uasset`
 - Input `VehicleParts0.uasset` → output `VehicleParts0.uasset`
 
+### 9. Pure Digit Row Names — Disappearing Tires Trap
+
+> [!CAUTION]
+> If a tire's `row_name` ends in an underscore followed ONLY by digits (e.g., `APF_78`), UE5's `FName` system will silently parse the digits as an instance number. 
+
+When the game serializes your save file, it uses the parsed identifier `("APF", Number=79)`. When the game restarts, it looks for that precise identifier in the DataTable. However, the UAssetAPI tool creates the literal string `"APF_78"` with `Number=0` in the DataTable. The save/load mismatch causes **the tire to disappear from the vehicle on restart** (reverting to default wheels).
+
+**Fix**: Always append a letter to your row names to disable numeric parsing (e.g., use `APF_78A` or `APF78` instead of `APF_78`).
+
 ## Verifying a Built PAK
 
 ```bash

@@ -9,7 +9,7 @@
         "offroad_friction": 1.6
       },
       "tire_part": {
-        "row_name": "APF_78",
+        "row_name": "APF_78A",
         "display_name": [
           "AMC Police 78"
         ],
@@ -171,7 +171,7 @@
         "spring_y": 15000
       },
       "tire_part": {
-        "row_name": "APF_79",
+        "row_name": "APF_79A",
         "display_name": [
           "AMC Police 79"
         ],
