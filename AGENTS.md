@@ -63,9 +63,37 @@ python3 scripts/create_decal_pack.py --input images/ --output MyPack_P.pak
 ### Pipeline (automated by script)
 
 1. **Inject** each image into a base game decal texture template (auto-resizes to 512×512 via texconv)
-2. **Patch** uasset internal metadata (asset path, name, hashes from template)
+2. **Modify** uasset metadata via C# UAssetAPI: set `FolderName` to new path, set `Export.ObjectName` to new name (uses `FName.FromString` — does NOT modify NameMap directly)
 3. **Generate** Decals DataTable entries via C# `--add-decals` mode (uses ASEAN-Motor-Club/UAssetAPI fork)
 4. **Package** into mod PAK with `mod_pack` binary (V11, mount `../../../`)
+
+### Texture Modification (CRITICAL)
+
+**NEVER use binary patching** to modify texture `.uasset` files. It corrupts non-string bytes and breaks textures (white squares in-game).
+
+**NEVER use `SetNameReference`** on NameMap entries — it corrupts hash integrity and breaks `.uexp` deserialization.
+
+The correct approach uses C# UAssetAPI:
+
+```csharp
+// Load the injected texture
+var asset = new UAsset(input, EngineVersion.VER_UE5_4, mappings);
+
+// Set FolderName — this is what the engine uses to resolve the texture
+asset.FolderName = FString.FromString(newPath);
+
+// Rename export ObjectName — adds NEW FName entry, doesn't corrupt existing
+foreach (var export in asset.Exports)
+{
+    if (export.ObjectName != null && export.ObjectName.Value.Value != newName)
+        export.ObjectName = FName.FromString(asset, newName);
+}
+
+// Write — preserves existing NameMap entries (no corruption)
+asset.Write(output);
+```
+
+This preserves hash integrity. Old NameMap entries remain but are harmless unused references.
 
 ### Decal Texture Format
 
@@ -97,6 +125,138 @@ dotnet run -- --add-decals decal_entries.json Decals.uasset output_dir/
     {"row_name": "Custom_01_MyDecal", "folder": "Custom_01", "file": "MyDecal", "cost": 100, "flags": 0}
   ]
 }
+```
+
+### Decal Compatibility Patches
+
+When two decal mods both override `Decals.uasset`, only one loads. A **compatibility patch** merges both DataTables into a single file so all decals from both mods appear in-game.
+
+#### How It Works
+
+Motor Town loads mod PAKs alphabetically. Each decal mod contains:
+- **Textures** at unique paths (`/Game/Materials/Decal/DecalTextures/{Category}/{Name}`)
+- **Decals.uasset** at the same path (`MotorTown/Content/DataAsset/Decals.uasset`)
+
+Textures don't conflict (different paths), but `Decals.uasset` does — the last-loaded PAK wins. A compatibility patch creates a single `Decals.uasset` referencing textures from both mods.
+
+#### Pipeline
+
+```bash
+# 1. Parse texture paths from both PAKs (extract folder/file pairs)
+python3 -c "
+import re
+pak = open('ModA_P.pak', 'rb').read()
+paths = set(m.group(0).decode() for m in re.finditer(rb'DecalTextures/([A-Za-z0-9_]+/[A-Za-z0-9_\- ()]+)', pak))
+for p in sorted(paths): print(p)
+"
+
+# 2. Generate decal_entries.json for both mods
+# Row name format: {Folder}_{File}
+# Example: Testun/brand10 → row_name: Testun_brand10, folder: Testun, file: brand10
+
+# 3. Merge entries into one JSON
+python3 -c "
+import json
+a = json.load(open('modA_entries.json'))['entries']
+b = json.load(open('modB_entries.json'))['entries']
+seen = set()
+merged = []
+for e in a + b:
+    if e['row_name'] not in seen:
+        seen.add(e['row_name'])
+        merged.append(e)
+json.dump({'entries': merged}, open('merged_entries.json', 'w'), indent=2)
+print(f'Merged: {len(merged)} entries')
+"
+
+# 4. Run C# tool to create merged Decals.uasset — TWO STEPS REQUIRED
+# IMPORTANT: Do NOT add all entries at once. UAssetAPI corrupts the file if you
+# add too many entries (>~500) in a single pass. Always merge in two steps.
+
+# Step 4a: Add first mod's entries to base game Decals.uasset
+cd csharp/CargoExtractor
+dotnet run --configuration Release --verbosity quiet -- \
+  --add-decals modA_entries.json out/Decals.uasset /tmp/merge_step1/
+
+# Step 4b: Add second mod's entries on top of step 4a output
+dotnet run --configuration Release --verbosity quiet -- \
+  --add-decals modB_entries.json /tmp/merge_step1/Decals.uasset /tmp/merge_step2/
+
+# Step 4c: Verify the merged file is readable (if this fails, the file is corrupt)
+dotnet run --configuration Release --verbosity quiet -- \
+  /tmp/merge_step2/Decals.uasset /tmp/verify/
+
+# 5. Build compatibility PAK (Decals.uasset + .uexp only)
+mkdir -p pak_root/MotorTown/Content/DataAsset
+cp /tmp/merge_step2/Decals.uasset pak_root/MotorTown/Content/DataAsset/
+cp /tmp/merge_step2/Decals.uexp pak_root/MotorTown/Content/DataAsset/
+cargo build --release --bin mod_pack
+target/release/mod_pack pak_root/ CompatPatch_P.pak
+```
+
+#### Requirements
+
+- **Base game Decals.uasset** — from `out/Decals.uasset` (extraction pipeline output)
+- **Both mods' PAK files** — to parse their texture paths via regex
+- **Mappings.usmap** — for C# UAssetAPI DataTable editing
+- **Pre-built `mod_pack` binary** — or build with `cargo build --release --bin mod_pack`
+
+#### PAK Structure
+
+A compatibility PAK contains only 2 files:
+```
+MotorTown/Content/DataAsset/Decals.uasset   # Merged DataTable
+MotorTown/Content/DataAsset/Decals.uexp     # Binary export data
+```
+
+File is typically <200 KB. The textures remain in their original mod PAKs.
+
+#### Loading Order
+
+The compatibility PAK must load **last** (alphabetically after both mods) to override `Decals.uasset`. Example naming:
+- `PatosDecals_P.pak` (original mod)
+- `PatosReEnvision_P.pak` (second mod)
+- `ZZZ_PatosCompat_P.pak` (compatibility — loads last)
+
+Or merge textures + DataTable into a single combined PAK if you want one file.
+
+#### NixOS Gotchas
+
+- **`libgomp.so.1`** required by texconv DLL for image injection:
+  ```bash
+  LIBGOMP="/nix/store/bmi5znnqk4kg2grkrhk6py0irc8phf6l-gcc-14.2.1.20250322-lib/lib"
+  LD_LIBRARY_PATH="$LIBGOMP" python3 ...
+  ```
+- **`dotnet` not in PATH** — install via nix: `nix profile install nixpkgs#dotnet-sdk`
+- **`mod_pack` dynamic linker** — NixOS can't run generic ELF. Use:
+  ```bash
+  LD="/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/ld-linux-x86-64.so.2"
+  $LD target/release/mod_pack input_dir/ output.pak
+  ```
+- **`patch_uasset` binary patching** — DO NOT USE. Corrupts texture files by overwriting bytes outside string sites. Use C# UAssetAPI FolderName approach instead.
+- **Python3 path** — nix store path changes between builds. Use `find /nix/store -path "*/python3-3.12*/bin/python3" | head -1` to find it.
+- **Texture `FolderName`** — must match DataTable's `PackageName` exactly. The engine resolves textures by FolderName, not by NameMap entries.
+- **`SetNameReference` corruption** — modifying NameMap entries directly corrupts hash integrity and breaks `.uexp` deserialization. Use `FName.FromString` instead (safely adds new entries).
+
+#### Example: Merging Pato's Decals + ReEnvision
+
+```bash
+# Parse original PAK entries (367 textures across 4 categories)
+python3 -c "
+import re
+from collections import defaultdict
+pak = open('PatosDecals_P.pak', 'rb').read()
+paths = set(m.group(0).decode() for m in re.finditer(rb'DecalTextures/([A-Za-z0-9_]+/[A-Za-z0-9_\- ()]+)', pak))
+entries = [{'row_name': f'{p.split(\"/\")[0]}_{p.split(\"/\")[1]}', 'folder': p.split('/')[0], 'file': p.split('/')[1], 'cost': 100, 'flags': 0} for p in sorted(paths)]
+json.dump({'entries': entries}, open('original_entries.json', 'w'), indent=2)
+"
+
+# Parse ReEnvision PAK entries (673 textures)
+# (same approach)
+
+# Merge + generate Decals.uasset + build PAK
+dotnet run -- --add-decals merged.json out/Decals.uasset merged_out/
+mod_pack pak_root/ CompatPatch_P.pak
 ```
 
 ### Mod PAK Explorer

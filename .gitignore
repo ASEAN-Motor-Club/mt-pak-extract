@@ -45,3 +45,8 @@ game_data.db
 
 # Generated parsed output
 *_parsed.json
+
+# User-uploaded decal images
+images/
+uploads/
+MEMORY.md
