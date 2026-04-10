@@ -102,9 +102,11 @@ print(v.get('$field', ''))
 # ── archive ───────────────────────────────────────────────────────────────
 cmd_archive() {
   local version="${1:?Usage: mt-version archive <version>}"
+  local force=false
+  [[ "${2:-}" == "-f" || "${2:-}" == "--force" ]] && force=true
   local dest="$VERSIONS_DIR/$version"
 
-  if [[ -d "$dest" ]]; then
+  if [[ -d "$dest" && "$force" == false ]]; then
     warn "Version $version already archived at $dest"
     read -rp "Overwrite? [y/N] " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { log "Aborted."; return 0; }
@@ -176,29 +178,31 @@ cmd_restore() {
 
   log "Restoring version $version to working tree..."
 
-  # Restore out/
+  # Symlink out/ (avoid copying hundreds of MB of assets)
   if [[ -d "$src/out" ]]; then
-    if [[ -d "$ROOT_DIR/out" ]] || [[ -L "$ROOT_DIR/out" ]]; then
-      rm -rf "$ROOT_DIR/out"
-    fi
-    rsync -a "$src/out/" "$ROOT_DIR/out/"
-    log "  Restored out/"
+    rm -rf "$ROOT_DIR/out" 2>/dev/null || rm -f "$ROOT_DIR/out"
+    ln -sf "$src/out" "$ROOT_DIR/out"
+    log "  Linked out/ → $src/out"
   fi
 
-  # Restore databases
+  # Symlink databases
   for f in motortown.db game_data.db motortown_data.sql; do
     if [[ -f "$src/$f" ]]; then
-      cp "$src/$f" "$ROOT_DIR/$f"
-      log "  Restored $f"
+      rm -f "$ROOT_DIR/$f"
+      ln -sf "$src/$f" "$ROOT_DIR/$f"
+      log "  Linked $f → $src/$f"
     fi
   done
 
-  # Restore parsed JSON
+  # Symlink parsed JSON files
   for f in "$src"/*_parsed.json; do
     [[ -f "$f" ]] || continue
-    cp "$f" "$ROOT_DIR/"
+    local basename
+    basename=$(basename "$f")
+    rm -f "$ROOT_DIR/$basename"
+    ln -sf "$f" "$ROOT_DIR/$basename"
   done
-  log "  Restored parsed JSON files"
+  log "  Linked parsed JSON files"
 
   log "Restored version $version"
 }
@@ -226,12 +230,13 @@ cmd_switch() {
   # Update manifest
   set_active_version "$version"
 
-  # Copy the correct PAK file
+  # Symlink the correct PAK file (avoid copying 2.6GB+ files)
   local pak_file
   pak_file=$(get_version_field "$version" "pak_file")
   if [[ -n "$pak_file" && -f "$ROOT_DIR/$pak_file" ]]; then
-    cp "$ROOT_DIR/$pak_file" "$ROOT_DIR/MotorTown-Windows.pak"
-    log "Copied $pak_file → MotorTown-Windows.pak"
+    rm -f "$ROOT_DIR/MotorTown-Windows.pak"
+    ln -sf "$pak_file" "$ROOT_DIR/MotorTown-Windows.pak"
+    log "Linked MotorTown-Windows.pak → $pak_file"
   fi
 
   log "Switched to version $version"
@@ -283,7 +288,7 @@ cmd_status() {
 
   echo ""
   echo -e "${CYAN}Git Tags:${NC}"
-  git -C "$ROOT_DIR" tag -l 'v*' 2>/dev/null | sed 's/^/  /' || echo "  (none)"
+  git -C "$ROOT_DIR" tag -l 2>/dev/null | sed 's/^/  /' || echo "  (none)"
 
   echo ""
   echo -e "${CYAN}Git Worktrees:${NC}"

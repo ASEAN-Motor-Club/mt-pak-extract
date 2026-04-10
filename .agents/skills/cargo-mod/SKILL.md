@@ -396,6 +396,26 @@ Props from Polygon asset packs (standalone world objects):
 
 Full catalog: `sm_prop_meshes.txt` (2,894 meshes across 9 asset packs).
 
+## Version Awareness
+
+The build pipeline uses templates from `out/` (e.g., `out/SmallBox.uasset`, `out/Cargos.uasset`), which come from the game PAK and change between game updates.
+
+Before building, verify the active game version:
+```bash
+scripts/mt-version.sh status
+```
+
+To build against a different version:
+```bash
+# Switch to old version (archives current first)
+scripts/mt-version.sh switch v0.7.17
+
+# Or use a worktree for parallel building
+cd ../mt-v0.7.17 && python3 scripts/create_cargopack.py ...
+```
+
+Include game version in mod filenames: `MoneyRun_v0.7.19_P.pak`
+
 ## Verifying a Built PAK
 
 ```bash

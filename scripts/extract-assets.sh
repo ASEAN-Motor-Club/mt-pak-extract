@@ -18,7 +18,7 @@ cargo run --release --quiet -- --config "$CONFIG"
 # Step 2: Parse extracted assets using C#
 echo
 echo "Step 2: Parsing extracted assets..."
-cd csharp/CargoExtractor
+cd csharp/UAssetTool
 dotnet run --configuration Release --verbosity quiet -- --batch
 
 echo

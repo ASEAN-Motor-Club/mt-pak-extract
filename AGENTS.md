@@ -29,9 +29,14 @@ nix develop --command bash -c 'python3 scripts/aggregate_to_sqlite.py'
 
 Output: `motortown.db` (SQLite), `out/*_parsed.json`.
 
+Or run all steps at once for a new game version:
+```bash
+nix develop --command bash -c 'scripts/new-version.sh v0.7.19 v0.7.19.pak'
+```
+
 ## Required Files
 
-- **`MotorTown-Windows.pak`** — game PAK file (2.9 GB, already in repo root)
+- **`MotorTown-Windows.pak`** — game PAK file (symlinked to versioned PAK, e.g. `v0.7.18.pak`)
 - **`.env`** — AES key (`KEY=0x...`), gitignored
 - **`Mappings.usmap`** — UE5 type mappings, gitignored. Source: `csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap`
 - **UAssetAPI** — C# dependency, included as a git submodule at `csharp/UAssetAPI` (fork: `ASEAN-Motor-Club/UAssetAPI`). Initialize with:
@@ -159,11 +164,124 @@ Python dependencies managed via **uv2nix** (not pip/venv):
 
 C# dependency: ASEAN-Motor-Club fork of UAssetAPI at `/tmp/UAssetAPI-fork` (fix/unversioned-header-serialization branch).
 
+## Game Versioning
+
+When a new Motor Town update drops, the game PAK changes and all mods need rebuilding. The system uses **git tags + worktrees + a data archive** to manage multiple game versions in parallel.
+
+### Quick Reference: New Game Version
+
+**Step 1 — Download PAK from Windows:**
+```bash
+scp freeman@100.85.236.98:'D:/SteamLibrary/steamapps/common/Motor Town/MotorTown/Content/Paks/MotorTown-Windows.pak' v0.7.19.pak
+```
+
+**Step 2 — Run the pipeline (one command):**
+```bash
+nix develop --command bash -c 'scripts/new-version.sh v0.7.19 v0.7.19.pak'
+```
+
+This single command archives the old version, extracts the new PAK, archives the new data, git tags, and creates a worktree for the old version.
+
+**Step 3 — Rebuild mods:**
+```bash
+nix develop --command bash -c '
+python3 scripts/create_tirepack.py --config tire_entries.json --output zzz_ASEAN_PoliceTyres_v0.2.0_P.pak
+python3 scripts/create_cargopack.py --config cargo_entries.json --recipes recipe_entries.json --output MoneyRun_v0.7.19_P.pak
+'
+```
+
+### Full Workflow Detail
+
+#### Obtaining the PAK
+
+The game PAK lives on the Windows machine at:
+```
+D:\SteamLibrary\steamapps\common\Motor Town\MotorTown\Content\Paks\MotorTown-Windows.pak
+```
+
+Download via SCP, naming it after the game version:
+```bash
+scp freeman@100.85.236.98:'D:/SteamLibrary/steamapps/common/Motor Town/MotorTown/Content/Paks/MotorTown-Windows.pak' v0.7.19.pak
+```
+
+Place the PAK in the repo root. The filename should be `<version>.pak` (e.g., `v0.7.19.pak`). The script symlinks it as `MotorTown-Windows.pak` — no 2.6GB copy.
+
+#### What `new-version.sh` Does
+
+| Step | Action | Details |
+|------|--------|---------|
+| 1 | Archive current | Saves `out/`, `motortown.db`, `*_parsed.json` → `versions/<current>/` |
+| 2 | Register new PAK | Updates `game_versions.json`, symlinks PAK as `MotorTown-Windows.pak` |
+| 3 | Extract assets | Rust extractor (AES decrypt + Oodle decompress) |
+| 4 | Parse .uasset files | C# UAssetTool batch parser |
+| 5 | Aggregate to SQLite | Python `aggregate_to_sqlite.py` |
+| 6 | Archive + tag | Saves new data, git commits + tags, creates worktree for old version |
+
+#### Building Mods Against Old Versions
+
+**Option A — Worktree (parallel, recommended):**
+```bash
+cd ../mt-v0.7.18
+python3 scripts/create_tirepack.py --config tire_entries.json --output zzz_ASEAN_PoliceTyres_P.pak
+```
+
+**Option B — Switch in main repo:**
+```bash
+scripts/mt-version.sh switch v0.7.18
+python3 scripts/create_tirepack.py --config tire_entries.json --output zzz_ASEAN_PoliceTyres_P.pak
+scripts/mt-version.sh switch v0.7.19  # switch back
+```
+
+### Version Management CLI: `scripts/mt-version.sh`
+
+```bash
+scripts/mt-version.sh status          # current version + archived versions
+scripts/mt-version.sh list            # all known versions with PAK details
+scripts/mt-version.sh archive v0.7.18 # archive current extracted data
+scripts/mt-version.sh tag v0.7.18     # git commit + tag
+scripts/mt-version.sh switch v0.7.17  # switch active version (symlinks data)
+scripts/mt-version.sh worktree v0.7.17 # create parallel worktree
+scripts/mt-version.sh diff v0.7.17 v0.7.18 # compare two versions
+```
+
+### Artifacts by Category
+
+| Type | Examples | Tracked? |
+|------|----------|----------|
+| **Game data** (from PAK) | `out/`, `motortown.db`, `*_parsed.json` | gitignored, archived in `versions/` |
+| **Mod definitions** | `recipe_entries.json`, `tire_entries.json`, `cargo_entries.json` | tracked |
+| **Mod scripts** | `scripts/create_*.py`, `scripts/modbase.py` | tracked |
+| **Mod outputs** | `*_P.pak` files | gitignored |
+| **Version metadata** | `game_versions.json` | tracked |
+
+### Directory Layout
+
+```
+versions/                    # Archived game data (gitignored)
+  v0.7.18/
+    out/                     # Extracted .uasset templates
+    motortown.db             # SQLite database
+    *_parsed.json            # Parsed game data
+    pak.sha256               # PAK file hash
+v0.7.18.pak                  # Game PAK (gitignored, symlinked as MotorTown-Windows.pak)
+game_versions.json           # Version manifest (tracked)
+scripts/mt-version.sh        # Version management CLI
+scripts/new-version.sh       # New version pipeline (one command)
+```
+
+### Tips
+
+- Include game version in mod filenames: `zzz_ASEAN_PoliceTyres_v0.1.9_P.pak`
+- Each mod's output PAK is independent — rebuilding one doesn't affect others
+- Worktrees share the same git history; any commit is visible from all worktrees
+- The `versions/` directory uses ~1-2GB per version (out/ + db + parsed JSON)
+- Use `mt-version diff` to see what changed between game versions (row counts, new/removed assets)
+
 ## Gotchas
 
 - **Blueprint `_C` suffix**: UE5 BlueprintGeneratedClass exports **must** retain the `_C` suffix (e.g. `Money_C`, `Default__Money_C`). The `--clone-asset` autodetection can pick up the full class name (`SmallBox_C`) instead of the base name (`SmallBox`), causing replacements that strip the suffix. **Always pass `old_name` explicitly** in clone configs to prevent this. Without `_C`, the engine gets a null pointer (`EXCEPTION_ACCESS_VIOLATION reading address 0x...0110`).
 - **Source-only delivery points**: Delivery points like `LiveFishSupplier` that only have `OutputCargos` (sources) **cannot** be used as sinks. Adding `InputCargos` to a source-only Warehouse blueprint crashes the game when the player interacts with it. Check `out/*_parsed.json` CDO properties before adding recipes.
-- **`cargo_type: None` crashes**: Setting `CargoType` enum to `"None"` via `set_enum` crashes UE5's ByteProperty serializer. Use a valid type like `SmallPackage` or `LargePackage`. To avoid Resident wildcard demand (which matches `SmallPackage`), use `LargePackage` — no delivery point has a wildcard DemandConfig for it.
+- **`cargo_type: None` for modded cargo**: Use `cargo_type: "None"` for all modded cargos to prevent unwanted wildcard demand matching. `SmallPackage` causes modded cargo to appear at Supermarkets and Warehouses (wildcard `DemandConfig`). `None` ensures cargo only appears at delivery points you explicitly configure. Despite earlier concerns, `"None"` serializes correctly via `set_enum`.
 - **Oodle/libstdc++**: The Rust extractor uses Oodle decompression via `repak`, which `dlopen`s `libstdc++.so.6`. The dev shell includes `gcc.cc.lib` for this, but `LD_LIBRARY_PATH` may need to be set if running outside `nix develop`:
   ```bash
   export LD_LIBRARY_PATH=$(nix develop --command bash -c 'echo $LIBRARY_PATH' | tr : '\n' | xargs -I{} echo {}/lib | tr '\n' :)

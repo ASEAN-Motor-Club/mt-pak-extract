@@ -1,11 +1,11 @@
 {
-  "active": "v0.7.18",
+  "active": "pre-v0.7.18",
   "versions": {
     "pre-v0.7.18": {
-      "pak_file": "MotorTown-Windows.pak",
+      "pak_file": "pre-v0.7.18.pak",
       "pak_size": "2.8G",
       "pak_date": "2025-01-10",
-      "git_tag": null,
+      "git_tag": "pre-v0.7.18",
       "notes": "Original PAK, version unknown (pre-v0.7.18)",
       "archived_at": "2026-04-10T12:12:14.652023",
       "has_data": true
@@ -14,8 +14,8 @@
       "pak_file": "v0.7.18.pak",
       "pak_size": "2.6G",
       "pak_date": "2025-04-10",
-      "git_tag": "v0.7.18",
-      "notes": "Latest game update"
+      "git_tag": null,
+      "notes": "New PAK — run new-version.sh to extract and activate"
     }
   }
 }

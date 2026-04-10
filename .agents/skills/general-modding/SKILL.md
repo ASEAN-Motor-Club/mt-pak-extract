@@ -241,9 +241,29 @@ cargo run --release --bin mod_explore --quiet -- OtherMod_P.pak --extract \
 # → extracts to mod_out/VehicleParts0.uasset
 
 # Parse and count rows
-cd csharp/CargoExtractor
+cd csharp/UAssetTool
 dotnet run --configuration Release --verbosity quiet -- /path/to/mod_out/VehicleParts0.uasset
 ```
+
+## Game Version Management
+
+When a new Motor Town update drops, the game PAK changes and extracted data (`out/`, `motortown.db`) must be refreshed. The versioning system uses git tags + worktrees + a data archive to manage multiple versions in parallel.
+
+```bash
+# Check current version
+scripts/mt-version.sh status
+
+# Archive current data after extraction
+scripts/mt-version.sh archive v0.7.18
+
+# Switch to a different version for building
+scripts/mt-version.sh switch v0.7.17
+
+# Create parallel worktree for old version
+scripts/mt-version.sh worktree v0.7.17
+```
+
+See `AGENTS.md` "Game Versioning" section for full workflow.
 
 ## Toolchain Reference
 
@@ -255,12 +275,12 @@ dotnet run --configuration Release --verbosity quiet -- /path/to/mod_out/Vehicle
 | `mod_explore` | `cargo run --release --quiet --bin mod_explore --` | List, search, and extract from mod PAKs |
 | `mod_pack` | `cargo run --release --quiet --bin mod_pack --` | Pack a directory into a mod PAK |
 
-### C# Tool (CargoExtractor)
+### C# Tool (UAssetTool)
 
-Located in `csharp/CargoExtractor/`. Run via:
+Located in `csharp/UAssetTool/`. Run via:
 
 ```bash
-cd csharp/CargoExtractor
+cd csharp/UAssetTool
 dotnet run --configuration Release --verbosity quiet -- <command> [args]
 ```
 
@@ -291,7 +311,7 @@ All mod-type scripts inherit from `ModBuilder` in `scripts/modbase.py`. The base
 
 | Method | Purpose |
 |--------|---------|
-| `run_dotnet(args, label)` | Run C# CargoExtractor commands |
+| `run_dotnet(args, label)` | Run C# UAssetTool commands |
 | `build_pak(staging_dir)` | Build mod PAK via `mod_pack` binary |
 | `verify_pak()` | List PAK contents via `mod_explore` |
 | `extract_from_compat_mod(pak, asset_path, dest)` | Extract a single asset from another mod's PAK |
@@ -507,7 +527,7 @@ asset.Imports.Add(assetImport);
 | `AGENTS.md` | Build commands, Nix dev shell, full pipeline docs |
 | `src/bin/mod_pack.rs` | PAK creator (V11, mount `../../../`) |
 | `src/bin/mod_explore.rs` | PAK reader/extractor for mod analysis |
-| `csharp/CargoExtractor/Program.cs` | Core UAsset manipulation tool |
+| `csharp/UAssetTool/Program.cs` | Core UAsset manipulation tool |
 | `motortown.db` | SQLite database of parsed game data |
 | `out/` | Extracted base game assets (templates) |
 | `scripts/` | Python build pipeline scripts |

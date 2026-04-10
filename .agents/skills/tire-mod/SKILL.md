@@ -254,6 +254,26 @@ When the game serializes your save file, it uses the parsed identifier `("APF", 
 
 **Fix**: Always append a letter to your row names to disable numeric parsing (e.g., use `APF_78A` or `APF78` instead of `APF_78`).
 
+## Version Awareness
+
+The build pipeline uses templates from `out/` (e.g., `out/BasicTire_45.uasset`, `out/VehicleParts0.uasset`), which come from the game PAK and change between game updates.
+
+Before building, verify the active game version:
+```bash
+scripts/mt-version.sh status
+```
+
+To build against a different version:
+```bash
+# Switch to old version (archives current first)
+scripts/mt-version.sh switch v0.7.17
+
+# Or use a worktree for parallel building
+cd ../mt-v0.7.17 && python3 scripts/create_tirepack.py ...
+```
+
+Include game version in mod filenames: `zzz_ASEAN_PoliceTyres_v0.1.9_P.pak`
+
 ## Verifying a Built PAK
 
 ```bash
@@ -261,7 +281,7 @@ When the game serializes your save file, it uses the parsed identifier `("APF", 
 cargo run --release --bin mod_explore --quiet -- MyTires_P.pak --list
 
 # 2. Dump tire asset internals — verify NameMap, export name, no stale references
-cd csharp/CargoExtractor
+cd csharp/UAssetTool
 dotnet run --configuration Release --verbosity quiet -- \
   --dump /path/to/APF_77_Tire.uasset
 
@@ -296,7 +316,7 @@ If the tire doesn't appear in-game:
 | File | Purpose |
 |------|---------|
 | `scripts/create_tirepack.py` | Orchestrates the full tire mod build pipeline |
-| `csharp/CargoExtractor/Program.cs` | C# tool: `--patch-tire`, `--add-tire-parts`, `--dump` |
+| `csharp/UAssetTool/Program.cs` | C# tool: `--patch-tire`, `--add-tire-parts`, `--dump` |
 | `tire_entries.json` | Tire physics + VehicleParts config |
 | `out/BasicTire_45.uasset` | Default tire physics template |
 | `out/VehicleParts.uasset` | Base game VehicleParts DataTable (713 rows) |
