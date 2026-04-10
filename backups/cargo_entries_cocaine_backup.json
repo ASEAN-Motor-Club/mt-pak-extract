@@ -1,0 +1,36 @@
+{
+  "entries": [
+    {
+      "row_name": "CocaLeavesPallet",
+      "display_name": ["Coca Leaves", "Pallet"],
+      "cargo_type": "None",
+      "cargo_space_types": ["Flatbed", "Box"],
+      "weight_min": 150,
+      "weight_max": 200,
+      "volume_size": 1,
+      "payment_per_km": 600,
+      "spawn_probability": 10,
+      "mass_kg": 170,
+      "blueprint_name": "CocaLeavesPallet",
+      "blueprint_template": "out/HempSackPallet.uasset",
+      "cargo_flags": 11,
+      "allow_stacking": false
+    },
+    {
+      "row_name": "Cocaine",
+      "display_name": ["Cocaine", "Pack"],
+      "cargo_type": "None",
+      "cargo_space_types": ["Flatbed", "Box"],
+      "weight_min": 3,
+      "weight_max": 5,
+      "volume_size": 1,
+      "payment_per_km": 1500,
+      "spawn_probability": 5,
+      "mesh_path": "/Game/Models/PolygonGangWarfare/Meshes/Props/SM_Prop_Packet_Stack_Large_01",
+      "mass_kg": 4,
+      "blueprint_name": "Cocaine",
+      "cargo_flags": 11,
+      "allow_stacking": true
+    }
+  ]
+}

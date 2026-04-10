@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .to_string_lossy()
             .replace('\\', "/");
         let data = fs::read(p)?;
-        let entry = entry_builder.build_entry(true, data)?;
+        let entry = entry_builder.build_entry(false, data)?;
         pak.write_entry(rel.clone(), entry)?;
         println!("  {} ({} bytes)", rel, fs::metadata(p)?.len());
     }

@@ -161,6 +161,9 @@ C# dependency: ASEAN-Motor-Club fork of UAssetAPI at `/tmp/UAssetAPI-fork` (fix/
 
 ## Gotchas
 
+- **Blueprint `_C` suffix**: UE5 BlueprintGeneratedClass exports **must** retain the `_C` suffix (e.g. `Money_C`, `Default__Money_C`). The `--clone-asset` autodetection can pick up the full class name (`SmallBox_C`) instead of the base name (`SmallBox`), causing replacements that strip the suffix. **Always pass `old_name` explicitly** in clone configs to prevent this. Without `_C`, the engine gets a null pointer (`EXCEPTION_ACCESS_VIOLATION reading address 0x...0110`).
+- **Source-only delivery points**: Delivery points like `LiveFishSupplier` that only have `OutputCargos` (sources) **cannot** be used as sinks. Adding `InputCargos` to a source-only Warehouse blueprint crashes the game when the player interacts with it. Check `out/*_parsed.json` CDO properties before adding recipes.
+- **`cargo_type: None` crashes**: Setting `CargoType` enum to `"None"` via `set_enum` crashes UE5's ByteProperty serializer. Use a valid type like `SmallPackage` or `LargePackage`. To avoid Resident wildcard demand (which matches `SmallPackage`), use `LargePackage` — no delivery point has a wildcard DemandConfig for it.
 - **Oodle/libstdc++**: The Rust extractor uses Oodle decompression via `repak`, which `dlopen`s `libstdc++.so.6`. The dev shell includes `gcc.cc.lib` for this, but `LD_LIBRARY_PATH` may need to be set if running outside `nix develop`:
   ```bash
   export LD_LIBRARY_PATH=$(nix develop --command bash -c 'echo $LIBRARY_PATH' | tr : '\n' | xargs -I{} echo {}/lib | tr '\n' :)

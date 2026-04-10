@@ -244,7 +244,7 @@ class ModBuilder:
         dest_dir = os.path.join(self.pak_staging, "MotorTown", "Content", pak_relative_dir)
         os.makedirs(dest_dir, exist_ok=True)
 
-        for ext in [".uasset", ".uexp"]:
+        for ext in [".uasset", ".uexp", ".ubulk"]:
             src = src_uasset.replace(".uasset", ext)
             if os.path.exists(src):
                 shutil.copy2(src, os.path.join(dest_dir, f"{name}{ext}"))

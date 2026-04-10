@@ -104,6 +104,16 @@ class Program
             {
                 var exp = dumpAsset.Exports[i];
                 Console.WriteLine($"  Export[{i}]: Name={exp.ObjectName}, Class={exp.GetExportClassType()}, Outer={exp.OuterIndex}");
+                
+                // Dump export data (properties)
+                if (exp is UAssetAPI.ExportTypes.NormalExport normalExp)
+                {
+                    Console.WriteLine($"    Properties ({normalExp.Data.Count}):");
+                    foreach (var prop in normalExp.Data)
+                    {
+                        DumpProperty(prop, "      ");
+                    }
+                }
             }
         }
         else
@@ -120,6 +130,75 @@ class Program
                 uassetPath = Path.Combine(RootDir, "Cargos.uasset");
             }
             ProcessSingleFile(uassetPath, RootDir);
+        }
+    }
+    
+    static void DumpProperty(UAssetAPI.PropertyTypes.Objects.PropertyData prop, string indent)
+    {
+        var name = prop.Name?.ToString() ?? "?";
+        var type = prop.PropertyType?.ToString() ?? "?";
+        
+        switch (prop)
+        {
+            case UAssetAPI.PropertyTypes.Structs.FontDataPropertyData fd:
+                Console.WriteLine($"{indent}{name} (FontData):");
+                if (fd.Value != null)
+                {
+                    Console.WriteLine($"{indent}  LocalFontFaceAsset: Index={fd.Value.LocalFontFaceAsset?.Index ?? 0}");
+                    if (fd.Value.LocalFontFaceAsset?.Index == 0 && fd.Value.FontFilename != null)
+                        Console.WriteLine($"{indent}  FontFilename: {fd.Value.FontFilename}");
+                    Console.WriteLine($"{indent}  Hinting: {fd.Value.Hinting}");
+                    Console.WriteLine($"{indent}  LoadingPolicy: {fd.Value.LoadingPolicy}");
+                    Console.WriteLine($"{indent}  SubFaceIndex: {fd.Value.SubFaceIndex}");
+                    Console.WriteLine($"{indent}  bIsCooked: {fd.Value.bIsCooked}");
+                }
+                break;
+            case UAssetAPI.PropertyTypes.Structs.StructPropertyData spd:
+                Console.WriteLine($"{indent}{name} (StructProperty):");
+                if (spd.Value != null)
+                {
+                    foreach (var sp in spd.Value)
+                        DumpProperty(sp, indent + "  ");
+                }
+                break;
+            case UAssetAPI.PropertyTypes.Objects.ArrayPropertyData apd:
+                Console.WriteLine($"{indent}{name} (Array[{apd.Value?.Length ?? 0}]):");
+                if (apd.Value != null)
+                {
+                    for (int j = 0; j < apd.Value.Length; j++)
+                        DumpProperty(apd.Value[j], indent + $"  [{j}] ");
+                }
+                break;
+            case UAssetAPI.PropertyTypes.Objects.StrPropertyData str:
+                Console.WriteLine($"{indent}{name} (Str): {str.Value?.Value ?? "(null)"}");
+                break;
+            case UAssetAPI.PropertyTypes.Objects.NamePropertyData np:
+                Console.WriteLine($"{indent}{name} (Name): {np.Value?.Value?.Value ?? "(null)"}");
+                break;
+            case UAssetAPI.PropertyTypes.Objects.IntPropertyData ip:
+                Console.WriteLine($"{indent}{name} (Int): {ip.Value}");
+                break;
+            case UAssetAPI.PropertyTypes.Objects.BytePropertyData bp:
+                Console.WriteLine($"{indent}{name} (Byte): {bp.Value} [{bp.EnumType?.Value?.Value ?? ""}]");
+                break;
+            case UAssetAPI.PropertyTypes.Objects.BoolPropertyData bpd:
+                Console.WriteLine($"{indent}{name} (Bool): {bpd.Value}");
+                break;
+            case UAssetAPI.PropertyTypes.Objects.FloatPropertyData fp:
+                Console.WriteLine($"{indent}{name} (Float): {fp.Value}");
+                break;
+            case UAssetAPI.PropertyTypes.Objects.ObjectPropertyData op:
+                Console.WriteLine($"{indent}{name} (Object): Index={op.Value}");
+                break;
+            case UAssetAPI.PropertyTypes.Objects.EnumPropertyData ep:
+                Console.WriteLine($"{indent}{name} (Enum): {ep.Value?.Value?.Value ?? "(null)"}");
+                break;
+            case UAssetAPI.PropertyTypes.Objects.MapPropertyData mp:
+                Console.WriteLine($"{indent}{name} (Map[{mp.Value?.Count ?? 0}])");
+                break;
+            default:
+                Console.WriteLine($"{indent}{name} ({type})");
+                break;
         }
     }
     
@@ -432,26 +511,70 @@ class Program
                     var matchClass = replacement.GetProperty("match_class").GetString()!;
                     var newPkgPath = replacement.GetProperty("new_package_path").GetString()!;
                     var newImpName = replacement.GetProperty("new_name").GetString()!;
+                    var matchName = replacement.TryGetProperty("match_name", out var mnProp) ? mnProp.GetString() : null;
+                    int? importIndex = replacement.TryGetProperty("import_index", out var iiProp) ? iiProp.GetInt32() : null;
+                    bool replaceAll = replacement.TryGetProperty("replace_all", out var raProp) && raProp.GetBoolean();
                     
-                    int meshIdx = -1, meshPkgIdx = -1;
+                    // Collect all matching import indices
+                    var matches = new List<(int meshIdx, int pkgIdx)>();
                     for (int i = 0; i < asset.Imports.Count; i++)
                     {
-                        if (asset.Imports[i].ClassName.Value.Value == matchClass)
+                        if (asset.Imports[i].ClassName.Value.Value != matchClass) continue;
+                        if (matchName != null && asset.Imports[i].ObjectName.Value.Value != matchName) continue;
+                        
+                        int pkgIdx = -1;
+                        if (asset.Imports[i].OuterIndex.Index < 0)
+                            pkgIdx = -asset.Imports[i].OuterIndex.Index - 1;
+                        matches.Add((i, pkgIdx));
+                    }
+                    
+                    if (importIndex.HasValue)
+                    {
+                        // Target specific import slot by import_index
+                        if (importIndex.Value >= 0 && importIndex.Value < matches.Count)
                         {
-                            meshIdx = i;
-                            if (asset.Imports[i].OuterIndex.Index < 0)
-                                meshPkgIdx = -asset.Imports[i].OuterIndex.Index - 1;
+                            var (meshIdx, pkgIdx) = matches[importIndex.Value];
+                            if (pkgIdx >= 0 && pkgIdx < asset.Imports.Count)
+                            {
+                                asset.Imports[pkgIdx].ObjectName = FName.FromString(asset, newPkgPath);
+                                Console.WriteLine($"  Replaced {matchClass}[{importIndex.Value}] package: {newPkgPath}");
+                            }
+                            asset.Imports[meshIdx].ObjectName = FName.FromString(asset, newImpName);
+                            Console.WriteLine($"  Replaced {matchClass}[{importIndex.Value}] import: {newImpName}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"  WARNING: import_index {importIndex.Value} out of range (found {matches.Count} matches)");
                         }
                     }
-                    if (meshIdx >= 0)
+                    else if (replaceAll)
                     {
-                        if (meshPkgIdx >= 0 && meshPkgIdx < asset.Imports.Count)
+                        // Replace ALL matching imports
+                        foreach (var (meshIdx, pkgIdx) in matches)
                         {
-                            asset.Imports[meshPkgIdx].ObjectName = FName.FromString(asset, newPkgPath);
-                            Console.WriteLine($"  Replaced {matchClass} package: {newPkgPath}");
+                            if (pkgIdx >= 0 && pkgIdx < asset.Imports.Count)
+                            {
+                                asset.Imports[pkgIdx].ObjectName = FName.FromString(asset, newPkgPath);
+                                Console.WriteLine($"  Replaced {matchClass} package: {newPkgPath}");
+                            }
+                            asset.Imports[meshIdx].ObjectName = FName.FromString(asset, newImpName);
+                            Console.WriteLine($"  Replaced {matchClass} import: {newImpName}");
                         }
-                        asset.Imports[meshIdx].ObjectName = FName.FromString(asset, newImpName);
-                        Console.WriteLine($"  Replaced {matchClass} import: {newImpName}");
+                    }
+                    else
+                    {
+                        // Default: replace the LAST matching import
+                        if (matches.Count > 0)
+                        {
+                            var (meshIdx, pkgIdx) = matches[^1];
+                            if (pkgIdx >= 0 && pkgIdx < asset.Imports.Count)
+                            {
+                                asset.Imports[pkgIdx].ObjectName = FName.FromString(asset, newPkgPath);
+                                Console.WriteLine($"  Replaced {matchClass} package: {newPkgPath}");
+                            }
+                            asset.Imports[meshIdx].ObjectName = FName.FromString(asset, newImpName);
+                            Console.WriteLine($"  Replaced {matchClass} import: {newImpName}");
+                        }
                     }
                 }
             }
@@ -522,11 +645,19 @@ class Program
             return;
         }
         
+        // Apply CDO-level property patches (not array entries)
+        if (root.TryGetProperty("cdo_patches", out var cdoPatches))
+        {
+            ApplyPatches(cdoExport.Data, cdoPatches, asset);
+            Console.WriteLine("  Applied CDO patches");
+        }
+        
         foreach (var arraySpec in root.GetProperty("arrays").EnumerateArray())
         {
             var propertyName = arraySpec.GetProperty("property_name").GetString()!;
             
             ArrayPropertyData? arrProp = null;
+            StructPropertyData? fallbackTemplate = null;
             foreach (var prop in cdoExport.Data)
             {
                 if (prop.Name.Value.Value == propertyName && prop is ArrayPropertyData ap)
@@ -535,13 +666,57 @@ class Program
             
             if (arrProp == null)
             {
-                Console.WriteLine($"  Error: No {propertyName} array found in CDO");
-                continue;
+                // Try to create from template_source
+                if (arraySpec.TryGetProperty("template_source", out var tsProp))
+                {
+                    var templatePath2 = tsProp.GetString()!;
+                    if (!File.Exists(templatePath2))
+                    {
+                        Console.WriteLine($"  Error: Template not found: {templatePath2}");
+                        continue;
+                    }
+                    var templateAsset = new UAsset(templatePath2, EngineVersion.VER_UE5_5, Mappings);
+                    NormalExport? templateCdo = null;
+                    foreach (var exp in templateAsset.Exports)
+                    {
+                        if (exp is NormalExport ne && exp.ObjectName.Value.Value.StartsWith("Default__"))
+                        { templateCdo = ne; break; }
+                    }
+                    if (templateCdo == null)
+                    {
+                        Console.WriteLine($"  Error: No CDO in template for {propertyName}");
+                        continue;
+                    }
+                    ArrayPropertyData? templateArr = null;
+                    foreach (var p in templateCdo.Data)
+                    {
+                        if (p.Name.Value.Value == propertyName && p is ArrayPropertyData ap)
+                        { templateArr = ap; break; }
+                    }
+                    if (templateArr == null || templateArr.Value.Length == 0)
+                    {
+                        Console.WriteLine($"  Error: No {propertyName} in template");
+                        continue;
+                    }
+                    fallbackTemplate = (StructPropertyData)templateArr.Value[0];
+                    // Create new array in target CDO
+                    arrProp = new ArrayPropertyData(new FName(cdoExport.Asset, propertyName));
+                    arrProp.Value = [];
+                    cdoExport.Data.Add(arrProp);
+                    Console.WriteLine($"  Created {propertyName} array from template");
+                }
+                else
+                {
+                    Console.WriteLine($"  Error: No {propertyName} array found in CDO");
+                    continue;
+                }
             }
             
             Console.WriteLine($"  Existing {propertyName}: {arrProp.Value.Length}");
             var configList = new List<PropertyData>(arrProp.Value);
-            var templateEntry = (StructPropertyData)arrProp.Value[0];
+            var templateEntry = arrProp.Value.Length > 0
+                ? (StructPropertyData)arrProp.Value[0]
+                : fallbackTemplate!;
             
             foreach (var entry in arraySpec.GetProperty("entries").EnumerateArray())
             {
@@ -808,6 +983,83 @@ class Program
                         container.Add(newProp);
                         Console.WriteLine($"    Added float: {path} = {val}");
                     }
+                }
+                break;
+            }
+            
+            case "set_or_create_name":
+            {
+                var (container, prop) = ResolvePropertyWithContainer(properties, path);
+                var val = patch.GetProperty("value").GetString()!;
+                if (prop is NamePropertyData np)
+                {
+                    np.Value = FName.FromString(asset, val);
+                }
+                else if (prop is StrPropertyData sp)
+                {
+                    sp.Value = FString.FromString(val);
+                }
+                else if (container != null)
+                {
+                    var templateName = container.OfType<NamePropertyData>().FirstOrDefault();
+                    if (templateName != null)
+                    {
+                        var newProp = (NamePropertyData)templateName.Clone();
+                        newProp.Name = FName.FromString(asset, path.Split('.').Last());
+                        newProp.Value = FName.FromString(asset, val);
+                        container.Add(newProp);
+                        Console.WriteLine($"    Created name: {path} = {val}");
+                    }
+                    else
+                    {
+                        var leafName = FName.FromString(asset, path.Split('.').Last());
+                        var newProp = new NamePropertyData(leafName);
+                        newProp.Value = FName.FromString(asset, val);
+                        container.Add(newProp);
+                        Console.WriteLine($"    Created name (no template): {path} = {val}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"    Warning: Cannot set '{path}' — no property and no container found");
+                }
+                break;
+            }
+            
+            case "set_or_create_int":
+            {
+                var (container, prop) = ResolvePropertyWithContainer(properties, path);
+                var val = patch.GetProperty("value").GetInt32();
+                if (prop is IntPropertyData ip)
+                {
+                    ip.Value = val;
+                }
+                else if (prop != null)
+                {
+                    SetNumericProperty(prop, val);
+                }
+                else if (container != null)
+                {
+                    var templateInt = container.OfType<IntPropertyData>().FirstOrDefault();
+                    if (templateInt != null)
+                    {
+                        var newProp = (IntPropertyData)templateInt.Clone();
+                        newProp.Name = FName.FromString(asset, path.Split('.').Last());
+                        newProp.Value = val;
+                        container.Add(newProp);
+                        Console.WriteLine($"    Created int: {path} = {val}");
+                    }
+                    else
+                    {
+                        var leafName = FName.FromString(asset, path.Split('.').Last());
+                        var newProp = new IntPropertyData(leafName) { Value = val };
+                        container.Add(newProp);
+                        Console.WriteLine($"    Created int (no template): {path} = {val}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"    Warning: Cannot set '{path}' — no property and no container found");
                 }
                 break;
             }

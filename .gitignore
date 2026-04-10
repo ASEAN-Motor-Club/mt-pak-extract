@@ -48,3 +48,10 @@ game_data.db
 mod_out/
 qxZap_*/
 *.zip
+
+# Versioned game data archive (large, derived from PAKs)
+/versions/
+
+# Built mod PAK outputs
+/mods/
+/cargo_build/

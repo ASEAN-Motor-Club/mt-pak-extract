@@ -263,6 +263,7 @@
     "MotorTown/Content/Cars/Models/Vulcan/Vulcan",
     "MotorTown/Content/Cars/Models/Zino/Zino",
     "MotorTown/Content/Cars/Models/Zydro/Zydro",
-    "MotorTown/Content/Cars/Models/Zydro/Zydro_Police"
+    "MotorTown/Content/Cars/Models/Zydro/Zydro_Police",
+    "MotorTown/Content/Models/PolygonPoliceStation/Meshes/Props/SM_Prop_Box_01"
   ]
 }

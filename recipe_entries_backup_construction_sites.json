@@ -1,0 +1,39 @@
+{
+  "note": "Backed up from recipe_entries.json on 2026-04-08. Construction site storage configs had 'No StorageConfigs array found in CDO' error.",
+  "sources": [
+    {
+      "delivery_point": "ConstructionSite",
+      "template_path": "out/ConstructionSite.uasset",
+      "recipes": [
+        {"cargo": "Money", "production_time": 120},
+        {"cargo": "MoneyPallet", "production_time": 120}
+      ]
+    },
+    {
+      "delivery_point": "ConstructionSite_HousingBuilding",
+      "template_path": "out/ConstructionSite_HousingBuilding.uasset",
+      "recipes": [
+        {"cargo": "Money", "production_time": 120},
+        {"cargo": "MoneyPallet", "production_time": 120}
+      ]
+    }
+  ],
+  "storage": [
+    {
+      "delivery_point": "ConstructionSite",
+      "template_path": "out/ConstructionSite.uasset",
+      "entries": [
+        {"cargo_key": "Money", "max_storage": 15},
+        {"cargo_key": "MoneyPallet", "max_storage": 15}
+      ]
+    },
+    {
+      "delivery_point": "ConstructionSite_HousingBuilding",
+      "template_path": "out/ConstructionSite_HousingBuilding.uasset",
+      "entries": [
+        {"cargo_key": "Money", "max_storage": 15},
+        {"cargo_key": "MoneyPallet", "max_storage": 15}
+      ]
+    }
+  ]
+}

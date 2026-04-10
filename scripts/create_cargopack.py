@@ -55,27 +55,37 @@ class CargoModBuilder(ModBuilder):
         self.log(f"  Cargos: {', '.join(self.cargo_names)}")
         self.log(f"  Sources: {[s['delivery_point'] for s in self.recipe_config.get('sources', [])]}")
         self.log(f"  Sinks: {[s['delivery_point'] for s in self.recipe_config.get('sinks', [])]}")
+        self.log(f"  Catalysts: {[s['delivery_point'] for s in self.recipe_config.get('catalysts', [])]}")
 
     # ── Config generation ──────────────────────────────────────────────
 
-    def _blueprint_clone_config(self):
-        """Generate --clone-asset config for all cargo blueprints."""
-        assets = []
+    def _blueprint_clone_configs(self):
+        """Generate per-template --clone-asset configs for all cargo blueprints.
+
+        Returns dict mapping template_path -> {"assets": [...]} config.
+        Entries with a "blueprint_template" field use that template;
+        all others use self.blueprint_template (SmallBox).
+        """
+        from collections import defaultdict
+        groups = defaultdict(list)
+
         for entry in self.config["entries"]:
             bp_name = entry["blueprint_name"]
-            mesh_path = entry["mesh_path"]
+            mesh_path = entry.get("mesh_path")
             mass_kg = entry["mass_kg"]
 
-            assets.append({
+            template = entry.get("blueprint_template",
+                                 self.blueprint_template)
+            template = os.path.join(self.repo_root, template) \
+                if not os.path.isabs(template) else template
+            template_name = os.path.splitext(os.path.basename(template))[0]
+
+            asset_spec = {
                 "new_name": bp_name,
+                "old_name": template_name,
                 "new_path": f"/Game/Objects/Mission/Delivery/{bp_name}",
                 "rename_exports": True,
                 "rename_imports": True,
-                "import_replacements": [{
-                    "match_class": "StaticMesh",
-                    "new_package_path": mesh_path,
-                    "new_name": mesh_path.split("/")[-1],
-                }],
                 "export_patches": [{
                     "match_class": "StaticMeshComponent",
                     "patches": [
@@ -83,9 +93,29 @@ class CargoModBuilder(ModBuilder):
                          "op": "set", "value": mass_kg},
                     ],
                 }],
-            })
+            }
 
-        return {"assets": assets}
+            # Only replace mesh if mesh_path is provided
+            if "import_replacements" in entry:
+                # Use explicit import_replacements from entry (supports import_index)
+                asset_spec["import_replacements"] = entry["import_replacements"]
+            elif mesh_path:
+                imp_repl = {
+                    "match_class": "StaticMesh",
+                    "new_package_path": mesh_path,
+                    "new_name": mesh_path.split("/")[-1],
+                }
+                if entry.get("replace_all_meshes"):
+                    imp_repl["replace_all"] = True
+                asset_spec["import_replacements"] = [imp_repl]
+
+            # Pass through extra export patches (e.g. position adjustments)
+            if "extra_export_patches" in entry:
+                asset_spec["export_patches"].extend(entry["extra_export_patches"])
+
+            groups[template].append(asset_spec)
+
+        return {tpl: {"assets": assets} for tpl, assets in groups.items()}
 
     def _cargo_rows_config(self):
         """Generate --add-rows config for Cargos DataTable."""
@@ -110,7 +140,7 @@ class CargoModBuilder(ModBuilder):
                 {"path": "PaymentPer1Km", "op": "set",
                  "value": entry["payment_per_km"]},
                 {"path": "PaymentPer1KmMultiplierByMaxWeight",
-                 "op": "set", "value": 2.0},
+                 "op": "set", "value": entry.get("payment_multiplier", 2.0)},
                 {"path": "PaymentSqrtRatio", "op": "set", "value": 1.0},
                 {"path": "ActorClass", "op": "set_import_ref",
                  "class_package": "/Script/Engine",
@@ -121,7 +151,7 @@ class CargoModBuilder(ModBuilder):
                 {"path": "bAllowStacking", "op": "set",
                  "value": entry.get("allow_stacking", False)},
                 {"path": "bUseDamage", "op": "set", "value": False},
-                {"path": "Fragile", "op": "set", "value": 0},
+                {"path": "Fragile", "op": "set", "value": entry.get("fragile", 0)},
                 {"path": "CargoFlags", "op": "set",
                  "value": entry.get("cargo_flags", 11)},
                 {"path": "DumpCargoSurfaceMesh", "op": "null_ref"},
@@ -147,7 +177,8 @@ class CargoModBuilder(ModBuilder):
 
         return {"rows": rows}
 
-    def _recipe_cdo_config(self, dp_name, recipes, storage_entries):
+    def _recipe_cdo_config(self, dp_name, recipes, storage_entries,
+                          demand_entries=None, cdo_patches=None):
         """Generate --patch-cdo-arrays config for a delivery point."""
         arrays = []
 
@@ -159,6 +190,34 @@ class CargoModBuilder(ModBuilder):
 
             arrays.append({
                 "property_name": "ProductionConfigs",
+                "entries": entries,
+            })
+
+        if demand_entries:
+            entries = []
+            for entry in demand_entries:
+                cargo_key = entry.get("cargo_key", None)
+                patches = [
+                    {"path": "CargoType", "op": "set_enum",
+                     "value": entry.get("cargo_type", "None")},
+                ]
+                if cargo_key is not None:
+                    patches.append({"path": "CargoKey", "op": "set_name",
+                                    "value": cargo_key})
+                else:
+                    patches.append({"path": "CargoKey", "op": "null_ref"})
+                patches.extend([
+                    {"path": "PaymentMultiplier", "op": "set",
+                     "value": entry.get("payment_multiplier", 1)},
+                    {"path": "MaxStorage", "op": "set",
+                     "value": entry.get("max_storage", 0)},
+                ])
+                entries.append({"patches": patches})
+
+            arrays.append({
+                "property_name": "DemandConfigs",
+                "template_source": os.path.join(
+                    self.repo_root, "out", "Resident.uasset"),
                 "entries": entries,
             })
 
@@ -180,13 +239,19 @@ class CargoModBuilder(ModBuilder):
 
             arrays.append({
                 "property_name": "StorageConfigs",
+                "template_source": os.path.join(
+                    self.repo_root, "out", "Factory_Toy.uasset"),
+                "replace": True,
                 "entries": entries,
             })
 
-        return {
+        result = {
             "output_filename": dp_name,
             "arrays": arrays,
         }
+        if cdo_patches:
+            result["cdo_patches"] = cdo_patches
+        return result
 
     def _recipe_patches(self, mode, recipe):
         """Generate patches for a single production config entry."""
@@ -195,16 +260,25 @@ class CargoModBuilder(ModBuilder):
             output_map = {recipe["output_cargo"]: recipe.get("output_count", 1)}
             production_time = recipe["production_time"]
             hidden = recipe.get("hidden", False)
+            speed_mult = recipe.get("speed_multiplier", 1)
         elif mode == "source":
             input_map = {}
             output_map = {recipe["cargo"]: 1}
             production_time = recipe["production_time"]
             hidden = recipe.get("hidden", False)
+            speed_mult = recipe.get("speed_multiplier", 1)
+        elif mode == "catalyst":
+            input_map = {recipe["cargo"]: recipe.get("count", 1)}
+            output_map = {}
+            production_time = recipe["production_time"]
+            hidden = recipe.get("hidden", False)
+            speed_mult = recipe.get("speed_multiplier", 2)
         else:  # sink
             input_map = {recipe["cargo"]: 1}
             output_map = {}
             production_time = recipe["production_time"]
             hidden = recipe.get("hidden", True)
+            speed_mult = recipe.get("speed_multiplier", 1)
 
         return [
             {"path": "InputCargos", "op": "set_name_int_map",
@@ -218,7 +292,8 @@ class CargoModBuilder(ModBuilder):
             {"path": "bStoreInputCargo", "op": "set", "value": False},
             {"path": "ProductionTimeSeconds", "op": "set",
              "value": production_time},
-            {"path": "ProductionSpeedMultiplier", "op": "set", "value": 1},
+            {"path": "ProductionSpeedMultiplier", "op": "set",
+             "value": speed_mult},
             {"path": "LocalFoodSupply", "op": "set", "value": 0},
             {"path": "bHidden", "op": "set", "value": hidden},
             {"path": "TimeSinceLastProduction", "op": "set", "value": 0},
@@ -228,15 +303,16 @@ class CargoModBuilder(ModBuilder):
     # ── Build hooks ────────────────────────────────────────────────────
 
     def transform_assets(self):
-        """Patch SmallBox template into new cargo blueprints."""
+        """Patch templates into new cargo blueprints."""
         self.log_step(1, "Patch cargo blueprints")
         self.blueprints_output_dir = os.path.join(self.build_dir, "blueprints")
         os.makedirs(self.blueprints_output_dir)
 
-        config = self._blueprint_clone_config()
-        self.run_generic("--clone-asset", config,
-                         self.blueprint_template, self.blueprints_output_dir,
-                         "clone-blueprints")
+        configs = self._blueprint_clone_configs()
+        for template_path, config in configs.items():
+            self.run_generic("--clone-asset", config,
+                             template_path, self.blueprints_output_dir,
+                             "clone-blueprints")
 
     def register_in_tables(self):
         """Add cargo rows to Cargos DataTable and delivery point recipes."""
@@ -261,32 +337,49 @@ class CargoModBuilder(ModBuilder):
         os.makedirs(self.recipes_output_dir)
 
         # Group all work by delivery_point
-        work_by_dp = {}  # {dp_name: {"template": path, "recipes": [...], "storage": [...]}}
+        work_by_dp = {}  # {dp_name: {"template": path, "recipes": [...], "storage": [...], "demand": [...], "cdo": [...]}}
 
         def resolve_tp(entry):
             tp = entry["template_path"]
             return tp if os.path.isabs(tp) else os.path.join(self.repo_root, tp)
 
+        def get_work(dp_name, template_entry):
+            return work_by_dp.setdefault(dp_name, {
+                "template": resolve_tp(template_entry), "recipes": [],
+                "storage": [], "demand": [], "cdo": None})
+
         for section, mode in [("sources", "source"), ("sinks", "sink"),
-                               ("transforms", "transform")]:
+                               ("transforms", "transform"),
+                               ("catalysts", "catalyst")]:
             for dp in self.recipe_config.get(section, []):
                 dp_name = dp["delivery_point"]
-                work = work_by_dp.setdefault(dp_name, {
-                    "template": resolve_tp(dp), "recipes": [], "storage": []})
+                work = get_work(dp_name, dp)
                 for recipe in dp["recipes"]:
                     work["recipes"].append((mode, recipe))
 
         for dp in self.recipe_config.get("storage", []):
             dp_name = dp["delivery_point"]
-            work = work_by_dp.setdefault(dp_name, {
-                "template": resolve_tp(dp), "recipes": [], "storage": []})
+            work = get_work(dp_name, dp)
             for entry in dp["entries"]:
                 work["storage"].append(entry)
+
+        for dp in self.recipe_config.get("demand_configs", []):
+            dp_name = dp["delivery_point"]
+            work = get_work(dp_name, dp)
+            for entry in dp["entries"]:
+                work["demand"].append(entry)
+
+        for dp in self.recipe_config.get("cdo_patches", []):
+            dp_name = dp["delivery_point"]
+            work = get_work(dp_name, dp)
+            work["cdo"] = dp.get("patches", [])
 
         # Process each delivery point
         for dp_name, work in work_by_dp.items():
             config = self._recipe_cdo_config(
-                dp_name, work["recipes"], work["storage"])
+                dp_name, work["recipes"], work["storage"],
+                demand_entries=work["demand"] if work["demand"] else None,
+                cdo_patches=work["cdo"] if work["cdo"] else None)
             self.run_generic("--patch-cdo-arrays", config,
                              work["template"], self.recipes_output_dir,
                              f"recipes-{dp_name}")
