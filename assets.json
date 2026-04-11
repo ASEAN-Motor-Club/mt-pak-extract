@@ -1,6 +1,8 @@
 {
   "assets": [
     "MotorTown/Content/DataAsset/Cargos",
+    "MotorTown/Content/DataAsset/Cargos_01",
+    "MotorTown/Content/DataAsset/Cargos_Deprecated",
     "MotorTown/Content/DataAsset/Vehicles/Vehicles",
     "MotorTown/Content/DataAsset/Vehicles/Vehicles_1",
     "MotorTown/Content/DataAsset/Vehicles/Vehicles_Ambulance",

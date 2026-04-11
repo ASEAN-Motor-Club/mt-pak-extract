@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using UAssetAPI;
@@ -42,6 +43,20 @@ class Program
         Console.WriteLine("Loading mappings...");
         Mappings = new Usmap(usmapPath);
         Console.WriteLine($"Loaded {Mappings.Schemas.Count} schemas");
+        
+        if (Mappings.Schemas.TryGetValue("MTDeliveryPoint", out var dpSchema))
+        {
+            Console.WriteLine($"  MTDeliveryPoint: PropCount={dpSchema.PropCount}");
+            for (int i = 0; i < dpSchema.PropCount; i++)
+            {
+                if (dpSchema.Properties.TryGetValue(i, out var prop))
+                    Console.WriteLine($"    [{i}] {prop.Name}: {prop.PropertyData}");
+                else
+                    Console.WriteLine($"    [{i}] (missing)");
+            }
+        }
+        
+        PatchMappingsForVersion();
         
         if (batchMapsMode)
         {
@@ -103,7 +118,7 @@ class Program
             for (int i = 0; i < dumpAsset.Exports.Count; i++)
             {
                 var exp = dumpAsset.Exports[i];
-                Console.WriteLine($"  Export[{i}]: Name={exp.ObjectName}, Class={exp.GetExportClassType()}, Outer={exp.OuterIndex}");
+                Console.WriteLine($"  Export[{i}]: Name={exp.ObjectName}, Class={exp.GetExportClassType()}, Outer={exp.OuterIndex}, C#Type={exp.GetType().Name}");
                 
                 // Dump export data (properties)
                 if (exp is UAssetAPI.ExportTypes.NormalExport normalExp)
@@ -635,8 +650,38 @@ class Program
         NormalExport? cdoExport = null;
         foreach (var export in asset.Exports)
         {
-            if (export is NormalExport ne && export.ObjectName.Value.Value.StartsWith("Default__"))
-            { cdoExport = ne; break; }
+            if (export.ObjectName.Value.Value.StartsWith("Default__"))
+            {
+                if (export is NormalExport ne)
+                {
+                    cdoExport = ne;
+                    break;
+                }
+                else if (export is RawExport rawExp)
+                {
+                    try
+                    {
+                        var converted = rawExp.ConvertToChildExport<NormalExport>();
+                        var reader = new AssetBinaryReader(new MemoryStream(rawExp.Data ?? []))
+                        {
+                            Asset = asset
+                        };
+                        converted.Data = new List<PropertyData>();
+                        var nextStarting = rawExp.Data?.Length ?? 0;
+                        converted.Read(reader, nextStarting);
+                        // Replace in asset's exports list
+                        var idx = asset.Exports.IndexOf(rawExp);
+                        asset.Exports[idx] = converted;
+                        cdoExport = converted;
+                        Console.WriteLine($"  Reparsed RawExport CDO as NormalExport ({converted.Data?.Count ?? 0} properties)");
+                        break;
+                    }
+                    catch (Exception convEx)
+                    {
+                        Console.WriteLine($"  Warning: CDO RawExport reparse failed: {convEx.Message}");
+                    }
+                }
+            }
         }
         
         if (cdoExport == null)
@@ -713,7 +758,12 @@ class Program
             }
             
             Console.WriteLine($"  Existing {propertyName}: {arrProp.Value.Length}");
-            var configList = new List<PropertyData>(arrProp.Value);
+            bool replaceArray = arraySpec.TryGetProperty("replace", out var replaceProp) && replaceProp.GetBoolean();
+            var configList = replaceArray
+                ? new List<PropertyData>()
+                : new List<PropertyData>(arrProp.Value);
+            if (replaceArray)
+                Console.WriteLine($"  Replace mode: clearing existing {propertyName} entries");
             var templateEntry = arrProp.Value.Length > 0
                 ? (StructPropertyData)arrProp.Value[0]
                 : fallbackTemplate!;
@@ -1156,6 +1206,54 @@ class Program
         }
         Console.WriteLine("Error: No DataTable found in template");
         return null;
+    }
+
+    static void PatchMappingsForVersion()
+    {
+        if (Mappings == null) return;
+
+        string[][] schemaPatches = [
+            ["MTVehicleColor", "9"],
+        ];
+
+
+
+        foreach (var patch in schemaPatches)
+        {
+            var schemaName = patch[0];
+            var minPropCount = ushort.Parse(patch[1]);
+
+            if (!Mappings.Schemas.TryGetValue(schemaName, out var schema)) continue;
+            if (schema.PropCount >= minPropCount) continue;
+
+            var newProps = new ConcurrentDictionary<int, UsmapProperty>(schema.Properties);
+            for (int i = schema.PropCount; i < minPropCount; i++)
+            {
+                newProps[i] = new UsmapProperty(
+                    $"Unknown_{i}",
+                    (ushort)i,
+                    0,
+                    1,
+                    new UsmapPropertyData(EPropertyType.ByteProperty)
+                );
+            }
+
+            var newSchema = new UsmapSchema(
+                schema.Name,
+                schema.SuperType,
+                minPropCount,
+                newProps,
+                Mappings.AreFNamesCaseInsensitive,
+                schema.SuperTypeModulePath
+            );
+
+            foreach (var key in Mappings.Schemas.Keys.Where(k => k == schemaName || k.EndsWith("." + schemaName)).ToList())
+            {
+                Mappings.Schemas[key] = newSchema;
+            }
+
+            Console.WriteLine($"  Patched schema {schemaName}: PropCount {schema.PropCount} -> {minPropCount}");
+        }
     }
     
     static void SetLocalizationGuid(PropertyData prop)
