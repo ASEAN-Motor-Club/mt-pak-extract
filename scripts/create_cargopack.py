@@ -178,7 +178,8 @@ class CargoModBuilder(ModBuilder):
         return {"rows": rows}
 
     def _recipe_cdo_config(self, dp_name, recipes, storage_entries,
-                          demand_entries=None, cdo_patches=None):
+                          demand_entries=None, cdo_patches=None,
+                          replace_production_configs=False):
         """Generate --patch-cdo-arrays config for a delivery point."""
         arrays = []
 
@@ -191,6 +192,7 @@ class CargoModBuilder(ModBuilder):
             arrays.append({
                 "property_name": "ProductionConfigs",
                 "entries": entries,
+                "replace": replace_production_configs,
             })
 
         if demand_entries:
@@ -346,7 +348,8 @@ class CargoModBuilder(ModBuilder):
         def get_work(dp_name, template_entry):
             return work_by_dp.setdefault(dp_name, {
                 "template": resolve_tp(template_entry), "recipes": [],
-                "storage": [], "demand": [], "cdo": None})
+                "storage": [], "demand": [], "cdo": None,
+                "replace_production_configs": template_entry.get("replace_production_configs", False)})
 
         for section, mode in [("sources", "source"), ("sinks", "sink"),
                                ("transforms", "transform"),
@@ -374,14 +377,39 @@ class CargoModBuilder(ModBuilder):
             work = get_work(dp_name, dp)
             work["cdo"] = dp.get("patches", [])
 
+        # Clone+rename templates that differ from target delivery point name
+        cloned_templates = {}
+        for dp_name, work in work_by_dp.items():
+            template_basename = os.path.splitext(os.path.basename(work["template"]))[0]
+            if template_basename != dp_name:
+                clone_dir = os.path.join(self.build_dir, "dp_clones", dp_name)
+                os.makedirs(clone_dir, exist_ok=True)
+                clone_config = {
+                    "assets": [{
+                        "new_name": dp_name,
+                        "old_name": template_basename,
+                        "new_path": f"/Game/Objects/Mission/Delivery/DeliveryPoint/{dp_name}",
+                        "rename_exports": True,
+                        "rename_imports": True,
+                        "patch_namemap_0": True,
+                    }],
+                }
+                self.run_generic("--clone-asset", clone_config,
+                                 work["template"], clone_dir,
+                                 f"clone-dp-{dp_name}")
+                cloned_templates[dp_name] = os.path.join(clone_dir, dp_name, f"{dp_name}.uasset")
+                self.log(f"  Cloned {template_basename} -> {dp_name}")
+
         # Process each delivery point
         for dp_name, work in work_by_dp.items():
+            template = cloned_templates.get(dp_name, work["template"])
             config = self._recipe_cdo_config(
                 dp_name, work["recipes"], work["storage"],
                 demand_entries=work["demand"] if work["demand"] else None,
-                cdo_patches=work["cdo"] if work["cdo"] else None)
+                cdo_patches=work["cdo"] if work["cdo"] else None,
+                replace_production_configs=work.get("replace_production_configs", False))
             self.run_generic("--patch-cdo-arrays", config,
-                             work["template"], self.recipes_output_dir,
+                             template, self.recipes_output_dir,
                              f"recipes-{dp_name}")
 
     def assemble_pak(self):

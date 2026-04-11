@@ -1,52 +1,42 @@
 {
-  "sources": [],
-  "sinks": [],
-  "transforms": [
+  "sources": [
     {
-      "delivery_point": "Storage_Fuel",
-      "template_path": "out/Storage_Fuel.uasset",
-      "recipes": [
-        {
-          "input_cargo": "CornPallet",
-          "input_count": 1,
-          "output_cargo": "Moonshine",
-          "output_count": 5,
-          "production_time": 300,
-          "hidden": false
-        }
-      ]
-    },
-    {
-      "delivery_point": "Factory_Toy",
+      "delivery_point": "Harbor_Export",
       "template_path": "out/Factory_Toy.uasset",
+      "replace_production_configs": true,
       "recipes": [
         {
-          "input_cargo": "Moonshine",
-          "input_count": 1,
-          "output_cargo": "Money",
-          "output_count": 3,
+          "cargo": "Money",
           "production_time": 60,
           "hidden": false
         },
         {
-          "input_cargo": "Moonshine",
-          "input_count": 3,
-          "output_cargo": "MoneyPallet",
-          "output_count": 1,
+          "cargo": "MoneyPallet",
           "production_time": 120,
           "hidden": false
         }
       ]
     }
   ],
-  "catalysts": [],
-  "storage": [
+  "sinks": [
     {
-      "delivery_point": "Storage_Fuel",
-      "template_path": "out/Storage_Fuel.uasset",
-      "entries": [
-        {"cargo_key": "Moonshine", "max_storage": 10}
+      "delivery_point": "Factory_Toy",
+      "template_path": "out/Factory_Toy.uasset",
+      "recipes": [
+        {
+          "cargo": "Money",
+          "production_time": 60,
+          "hidden": true
+        },
+        {
+          "cargo": "MoneyPallet",
+          "production_time": 120,
+          "hidden": true
+        }
       ]
     }
-  ]
+  ],
+  "transforms": [],
+  "catalysts": [],
+  "storage": []
 }

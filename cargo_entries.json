@@ -18,23 +18,6 @@
       "allow_stacking": true
     },
     {
-      "row_name": "Moonshine",
-      "display_name": ["Moonshine", "Keg"],
-      "cargo_type": "None",
-      "cargo_space_types": ["Flatbed", "Box"],
-      "weight_min": 8,
-      "weight_max": 15,
-      "volume_size": 1,
-      "payment_per_km": 900,
-      "spawn_probability": 5,
-      "mesh_path": "/Game/Models/PolygonApocalypse/Meshes/Props/SM_Prop_Keg_01",
-      "mass_kg": 12,
-      "blueprint_name": "Moonshine",
-      "cargo_flags": 11,
-      "fragile": 1,
-      "allow_stacking": true
-    },
-    {
       "row_name": "MoneyPallet",
       "display_name": ["Money", "Pallet"],
       "cargo_type": "None",
