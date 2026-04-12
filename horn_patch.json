@@ -1,0 +1,14 @@
+{
+  "output_filename": "Jemusi",
+  "arrays": [],
+  "cdo_patches": [
+    {
+      "path": "HornSound",
+      "op": "set_or_create_import_ref",
+      "class_package": "/Script/Engine",
+      "class_name": "SoundWave",
+      "package_path": "/Game/Sounds/Vehicle/Horn/TruckAirHorn_01",
+      "asset_name": "TruckAirHorn_01"
+    }
+  ]
+}

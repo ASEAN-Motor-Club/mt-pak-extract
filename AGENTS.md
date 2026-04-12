@@ -90,7 +90,7 @@ Each decal needs a row in `Decals.uasset` with:
 
 ### C# UAssetTool (generic UAsset SDK)
 
-The C# tool provides 3 generic operations driven by JSON configs:
+The C# tool provides 4 generic operations driven by JSON configs:
 
 ```bash
 cd csharp/UAssetTool
@@ -101,7 +101,7 @@ dotnet run -- --add-rows config.json template.uasset output_dir/
 # Clone and rename any asset with property patches
 dotnet run -- --clone-asset config.json template.uasset output_dir/
 
-# Patch arrays in blueprint CDO exports
+# Patch CDO properties and arrays in blueprint exports
 dotnet run -- --patch-cdo-arrays config.json template.uasset output_dir/
 
 # Diagnostic: dump asset structure
@@ -153,6 +153,7 @@ Packages: `imagemagick` (convert/mogrify/identify), `librsvg` (rsvg-convert + SV
 - `src/bin/mod_pack.rs` — PAK creator binary
 - `src/bin/mod_explore.rs` — PAK reader/explorer binary
 - `decal_assets.json` — Config for batch extraction of 423 base game decal textures
+- `horn_patch.json` — Config for patching vehicle CDO HornSound property
 
 ### Dependency Management
 
@@ -282,6 +283,8 @@ scripts/new-version.sh       # New version pipeline (one command)
 - **Blueprint `_C` suffix**: UE5 BlueprintGeneratedClass exports **must** retain the `_C` suffix (e.g. `Money_C`, `Default__Money_C`). The `--clone-asset` autodetection can pick up the full class name (`SmallBox_C`) instead of the base name (`SmallBox`), causing replacements that strip the suffix. **Always pass `old_name` explicitly** in clone configs to prevent this. Without `_C`, the engine gets a null pointer (`EXCEPTION_ACCESS_VIOLATION reading address 0x...0110`).
 - **Source-only delivery points**: Delivery points like `LiveFishSupplier` that only have `OutputCargos` (sources) **cannot** be used as sinks. Adding `InputCargos` to a source-only Warehouse blueprint crashes the game when the player interacts with it. Check `out/*_parsed.json` CDO properties before adding recipes.
 - **`cargo_type: None` for modded cargo**: Use `cargo_type: "None"` for all modded cargos to prevent unwanted wildcard demand matching. `SmallPackage` causes modded cargo to appear at Supermarkets and Warehouses (wildcard `DemandConfig`). `None` ensures cargo only appears at delivery points you explicitly configure. Despite earlier concerns, `"None"` serializes correctly via `set_enum`.
+- **Blueprint CDO schema resolution**: When patching blueprint CDOs (e.g. vehicle blueprints like `Jemusi.uasset`), UAssetAPI needs the **parent blueprint** (e.g. `MTVehicleBaseBP.uasset`) in the same directory to resolve the unversioned property schema. Without it, CDO reparse fails with `"Failed to find a valid property for schema index N in the class X_C"`. Copy the parent `.uasset` + `.uexp` alongside the target before running `--patch-cdo-arrays`.
+- **Inherited CDO properties**: Vehicle CDOs only serialize properties that **differ from the parent default**. If a property like `HornSound` is inherited (same as parent), it won't exist in the CDO data. Use `set_or_create_import_ref` (not `set_import_ref`) to create the property if missing.
 - **Oodle/libstdc++**: The Rust extractor uses Oodle decompression via `repak`, which `dlopen`s `libstdc++.so.6`. The dev shell includes `gcc.cc.lib` for this, but `LD_LIBRARY_PATH` may need to be set if running outside `nix develop`:
   ```bash
   export LD_LIBRARY_PATH=$(nix develop --command bash -c 'echo $LIBRARY_PATH' | tr : '\n' | xargs -I{} echo {}/lib | tr '\n' :)
@@ -297,7 +300,7 @@ No lint or typecheck commands defined for this project. Rust is checked by `carg
 
 ```
 src/main.rs                    # Rust PAK extractor (AES decrypt + Oodle decompress)
-csharp/UAssetTool/            # C# generic UAsset SDK (3 operations: --add-rows, --clone-asset, --patch-cdo-arrays)
+csharp/UAssetTool/            # C# generic UAsset SDK (4 operations: --add-rows, --clone-asset, --patch-cdo-arrays, --dump)
 csharp/LevelExtractor/         # C# map/level actor extractor
 scripts/aggregate_to_sqlite.py # Python: parsed JSON → normalized SQLite
 assets.json                    # List of 264 asset paths to extract

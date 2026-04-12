@@ -144,6 +144,99 @@ Lets a part appear on vehicles it normally wouldn't fit (bypasses VehicleType re
 
 ## Mod Compatibility
 
+### Blueprint CDO Patching
+
+Beyond DataTable mods, you can modify individual vehicle/actor blueprints by patching their **Class Default Object (CDO)** — the `Default__X_C` export in the `.uasset`.
+
+#### UE5 CDO Initialization Order
+
+When UE5 loads a blueprint class, CDO properties are initialized in this order:
+1. **C++ constructor** — sets native defaults (e.g. `AMTVehicle` sets `HornFadeInSeconds = 0.1`)
+2. **SuperClass CDO** — parent blueprint defaults are inherited (e.g. `MTVehicleBaseBP` sets `HornSound = Horn`)
+3. **Asset data** — serialized CDO overrides from the `.uasset` file **take precedence**
+
+This means a mod PAK that overrides a blueprint's `.uasset` with new CDO properties will win over the parent defaults — exactly how the game's own truck blueprints override `HornSound` to `TruckAirHorn_01`.
+
+#### How CDO Patching Works
+
+```bash
+# Patch a vehicle blueprint CDO property
+cd csharp/UAssetTool
+dotnet run -- --patch-cdo-arrays config.json template.uasset output_dir/
+```
+
+The `--patch-cdo-arrays` command:
+1. Loads the blueprint asset
+2. Finds the `Default__X_C` CDO export (may need to reparse from `RawExport`)
+3. Applies `cdo_patches` — property-level modifications using the patch engine
+4. Applies `arrays` — array-level additions/replacements
+5. Writes the modified asset
+
+#### Schema Resolution for Blueprint CDOs
+
+Blueprint CDOs use **unversioned property serialization**. UAssetAPI needs the full class schema chain to parse them. For blueprint-generated classes (anything ending in `_C`):
+
+- The class's own properties come from its `ClassExport.LoadedProperties`
+- The **parent blueprint's properties** must also be resolvable
+- UAssetAPI discovers parent blueprints by looking for `.uasset` files in the same directory
+
+> [!IMPORTANT]
+> Copy the parent blueprint (e.g. `MTVehicleBaseBP.uasset` + `.uexp`) alongside the target before patching. Without it, CDO reparse fails with `"Failed to find a valid property for schema index N"`.
+
+#### Inherited vs Serialized Properties
+
+CDOs only serialize properties that **differ from the parent default**. If a property value matches the parent, it's not stored — it's inherited at runtime.
+
+This has a critical implication for patching: if you want to change an inherited property (e.g. `HornSound` on a vehicle that uses the default horn), the property **doesn't exist** in the CDO data. Use `set_or_create_import_ref` instead of `set_import_ref` to handle this:
+
+```json
+{
+  "cdo_patches": [
+    {
+      "path": "HornSound",
+      "op": "set_or_create_import_ref",
+      "class_package": "/Script/Engine",
+      "class_name": "SoundWave",
+      "package_path": "/Game/Sounds/Vehicle/Horn/TruckAirHorn_01",
+      "asset_name": "TruckAirHorn_01"
+    }
+  ]
+}
+```
+
+#### Example: Vehicle Horn Mod
+
+Change Jemusi's horn from default car horn to truck air horn:
+
+```bash
+nix develop --command bash -c '
+  # 1. Ensure parent blueprint is accessible for schema resolution
+  cp MTVehicleBaseBP.uasset out/MTVehicleBaseBP.uasset
+  cp MTVehicleBaseBP.uexp out/MTVehicleBaseBP.uexp
+
+  # 2. Patch CDO
+  cd csharp/UAssetTool && dotnet run --configuration Release --verbosity quiet -- \
+    --patch-cdo-arrays horn_patch.json ../../out/Jemusi.uasset /tmp/horn_out
+  cd ../..
+
+  # 3. Build PAK
+  mkdir -p /tmp/horn_staging/MotorTown/Content/Cars/Models/Jemusi
+  cp /tmp/horn_out/Jemusi.{uasset,uexp} /tmp/horn_staging/MotorTown/Content/Cars/Models/Jemusi/
+  cargo run --release --quiet --bin mod_pack -- /tmp/horn_staging ASEAN_JemusiTruckHorn_P.pak
+
+  # 4. Cleanup
+  rm -f out/MTVehicleBaseBP.{uasset,uexp}
+'
+```
+
+#### Vehicle Sound Assets
+
+| Sound | Asset Path | Used By |
+|-------|-----------|--------|
+| Car horn | `/Game/Sounds/Vehicle/Horn/Horn` | Most cars (default via MTVehicleBaseBP) |
+| Truck air horn | `/Game/Sounds/Vehicle/Horn/TruckAirHorn_01` | All trucks |
+| Bike horn | `/Game/Sounds/Vehicle/Horn/Bike_01` | All motorcycles |
+
 ### The Problem
 
 When two mods modify the same DataTable (e.g., `VehicleParts0.uasset`), the alphabetically-last PAK wins and the other's changes are completely lost.
@@ -337,8 +430,28 @@ The C# tool (`Program.cs`) provides shared helpers used across all DataTable com
 | `SetLocalizationGuid(prop)` | cargos, tires | Set `Name` to random GUID for localization |
 | `SetDisplayName(prop, json, asset)` | cargos, tires | Set `Name2.Texts` display name array |
 | `SetDescriptionFallback(prop, text)` | tires | Set `Desciption` text fallback |
-| `AddImportChain(asset, pkg, class, path, name)` | cargos, tires | Add Package + Asset import pair |
+| `AddImportChain(asset, pkg, class, path, name)` | cargos, tires, CDO patches | Add Package + Asset import pair |
 | `SetEnumArray(arr, json, asset, enumType)` | cargos, tires | Set enum array from JSON values |
+
+### CDO Patch Engine Operations
+
+The `--patch-cdo-arrays` command uses a JSON-driven patch engine. Key operations:
+
+| Operation | Purpose | Creates if missing? |
+|-----------|---------|--------------------|
+| `set` | Set numeric, bool, or string property | No |
+| `set_enum` | Set enum property | No |
+| `set_import_ref` | Set ObjectProperty to import reference | No |
+| `set_or_create_import_ref` | Set or create ObjectProperty with import reference | **Yes** |
+| `set_or_add_float` | Set or create float property | **Yes** |
+| `set_or_create_name` | Set or create name/string property | **Yes** |
+| `set_or_create_int` | Set or create integer property | **Yes** |
+| `null_ref` | Set ObjectProperty/SoftObjectProperty to null | No |
+| `set_soft_object` | Set SoftObjectProperty path | No |
+| `clear_array` | Empty an array property | No |
+| `clear_map` | Empty a map property | No |
+
+The `set_or_create_*` variants are essential for patching **inherited** CDO properties that aren't serialized in the child blueprint.
 
 ## Creating a New Mod Type
 
@@ -519,6 +632,13 @@ asset.Imports.Add(assetImport);
        print(f'Stale ref at offset {m.start()}: {m.group()}')
    "
    ```
+
+### CDO patches don't take effect
+1. Check parent blueprint (e.g. `MTVehicleBaseBP.uasset`) was in same directory during patching
+2. Use `--dump` to verify the import was added (look for the asset name in imports)
+3. Use `--dump` to verify CDO size changed (compare with original)
+4. For inherited properties, ensure you used `set_or_create_import_ref` (not `set_import_ref`)
+5. Check CDO loads as `RawExport` — if reparse failed, the property was NOT added
 
 ## Key Files
 

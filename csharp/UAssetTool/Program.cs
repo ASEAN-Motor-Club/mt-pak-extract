@@ -905,16 +905,40 @@ class Program
             }
             
             case "set_import_ref":
+            case "set_or_create_import_ref":
             {
-                var prop = ResolveProperty(properties, path);
+                var (container, prop) = ResolvePropertyWithContainer(properties, path);
+                var (_, importIdx) = AddImportChain(asset,
+                    patch.GetProperty("class_package").GetString()!,
+                    patch.GetProperty("class_name").GetString()!,
+                    patch.GetProperty("package_path").GetString()!,
+                    patch.GetProperty("asset_name").GetString()!);
+                var pkgIdx = FPackageIndex.FromImport(importIdx - 1);
+                
                 if (prop is ObjectPropertyData objProp)
                 {
-                    var (_, importIdx) = AddImportChain(asset,
-                        patch.GetProperty("class_package").GetString()!,
-                        patch.GetProperty("class_name").GetString()!,
-                        patch.GetProperty("package_path").GetString()!,
-                        patch.GetProperty("asset_name").GetString()!);
-                    objProp.Value = FPackageIndex.FromImport(importIdx - 1);
+                    objProp.Value = pkgIdx;
+                }
+                else if (op == "set_or_create_import_ref" && container != null)
+                {
+                    var leafName = path.Split('.').Last();
+                    var newProp = new ObjectPropertyData(FName.FromString(asset, leafName))
+                    {
+                        Value = pkgIdx
+                    };
+                    container.Add(newProp);
+                    Console.WriteLine($"    Created import ref: {path} -> {patch.GetProperty("asset_name").GetString()}");
+                }
+                else if (op == "set_or_create_import_ref")
+                {
+                    // Top-level property on CDO — add directly to properties list
+                    var leafName = path.Split('.').Last();
+                    var newProp = new ObjectPropertyData(FName.FromString(asset, leafName))
+                    {
+                        Value = pkgIdx
+                    };
+                    properties.Add(newProp);
+                    Console.WriteLine($"    Created top-level import ref: {path} -> {patch.GetProperty("asset_name").GetString()}");
                 }
                 break;
             }
