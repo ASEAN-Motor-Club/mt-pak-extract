@@ -44,18 +44,6 @@ class Program
         Mappings = new Usmap(usmapPath);
         Console.WriteLine($"Loaded {Mappings.Schemas.Count} schemas");
         
-        if (Mappings.Schemas.TryGetValue("MTDeliveryPoint", out var dpSchema))
-        {
-            Console.WriteLine($"  MTDeliveryPoint: PropCount={dpSchema.PropCount}");
-            for (int i = 0; i < dpSchema.PropCount; i++)
-            {
-                if (dpSchema.Properties.TryGetValue(i, out var prop))
-                    Console.WriteLine($"    [{i}] {prop.Name}: {prop.PropertyData}");
-                else
-                    Console.WriteLine($"    [{i}] (missing)");
-            }
-        }
-        
         PatchMappingsForVersion();
         
         if (batchMapsMode)
@@ -98,7 +86,7 @@ class Program
             
             var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
             Console.WriteLine($"\n=== Dump: {Path.GetFileName(dumpPath)} ===");
-            Console.WriteLine($"  FolderName: {dumpAsset.FolderName}");
+            Console.WriteLine($"  HasUnversioned={dumpAsset.HasUnversionedProperties}, FolderName: {dumpAsset.FolderName}");
             Console.WriteLine($"  PackageGuid: {dumpAsset.PackageGuid}");
             
             Console.WriteLine($"\n  --- NameMap ({dumpAsset.GetNameMapIndexList().Count} entries) ---");
@@ -118,10 +106,51 @@ class Program
             for (int i = 0; i < dumpAsset.Exports.Count; i++)
             {
                 var exp = dumpAsset.Exports[i];
-                Console.WriteLine($"  Export[{i}]: Name={exp.ObjectName}, Class={exp.GetExportClassType()}, Outer={exp.OuterIndex}, C#Type={exp.GetType().Name}");
+                Console.WriteLine($"  Export[{i}]: Name={exp.ObjectName}, Class={exp.GetExportClassType()}, Outer={exp.OuterIndex}, C#Type={exp.GetType().Name}, SerialOffset=0x{exp.SerialOffset:X}, SerialSize={exp.SerialSize}");
                 
-                // Dump export data (properties)
-                if (exp is UAssetAPI.ExportTypes.NormalExport normalExp)
+                if (exp is StructExport sexp)
+                {
+                    var superName = sexp.SuperStruct.IsImport() ? sexp.SuperStruct.ToImport(dumpAsset).ObjectName.ToString() : (sexp.SuperStruct.IsExport() ? sexp.SuperStruct.ToExport(dumpAsset).ObjectName.ToString() : $"idx={sexp.SuperStruct.Index}");
+                    Console.WriteLine($"    StructExport: SuperStruct={superName}, LoadedProperties={sexp.LoadedProperties?.Length ?? 0}, Children={sexp.Children?.Length ?? 0}");
+                    if (sexp.LoadedProperties != null)
+                    {
+                        for (int pi = 0; pi < sexp.LoadedProperties.Length; pi++)
+                        {
+                            var fp = sexp.LoadedProperties[pi];
+                            Console.WriteLine($"      FProperty[{pi}]: Name={fp.Name}, SerializedType={fp.SerializedType}, ArrayDim={fp.ArrayDim}, ElementSize={fp.ElementSize}, Flags={fp.PropertyFlags}");
+                        }
+                    }
+                    if (exp is ClassExport cexp)
+                    {
+                        Console.WriteLine($"    ClassExport: ClassFlags={cexp.ClassFlags}, ClassGeneratedBy={cexp.ClassGeneratedBy.Index}, ClassDefaultObject={cexp.ClassDefaultObject.Index}, FuncMap.Count={cexp.FuncMap?.Count ?? 0}");
+                    }
+                }
+                
+                // Dump raw export data for CDO
+                if (exp.ObjectName?.Value?.Value?.StartsWith("Default__") == true)
+                {
+                    if (exp is UAssetAPI.ExportTypes.RawExport rawExp)
+                    {
+                        Console.WriteLine($"    RawExport CDO data ({rawExp.Data?.Length ?? 0} bytes):");
+                        if (rawExp.Data != null && rawExp.Data.Length > 0)
+                        {
+                            for (int di = 0; di < Math.Min(rawExp.Data.Length, 256); di += 16)
+                            {
+                                var hexLine = string.Join(" ", rawExp.Data.Skip(di).Take(16).Select(b => $"{b:X2}"));
+                                Console.WriteLine($"      0x{di:X4}: {hexLine}");
+                            }
+                        }
+                    }
+                    else if (exp is UAssetAPI.ExportTypes.NormalExport neCdo)
+                    {
+                        Console.WriteLine($"    NormalExport CDO: {neCdo.Data?.Count ?? 0} properties");
+                        foreach (var p in neCdo.Data ?? new List<PropertyData>())
+                            Console.WriteLine($"      {p.Name?.Value?.Value} ({p.PropertyType}) IsZero={p.IsZero}");
+                    }
+                }
+                
+                // Dump export data (properties) - skip CDO since we already printed it
+                if (exp is UAssetAPI.ExportTypes.NormalExport normalExp && !exp.ObjectName?.Value?.Value?.StartsWith("Default__") == true)
                 {
                     Console.WriteLine($"    Properties ({normalExp.Data.Count}):");
                     foreach (var prop in normalExp.Data)
