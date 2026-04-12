@@ -386,6 +386,14 @@ cmd_worktree() {
     log "  Linked MotorTown-Windows.pak → $pak_file"
   fi
 
+  # Symlink Mappings.usmap from main repo (not version-specific)
+  if [[ -f "$ROOT_DIR/Mappings.usmap" ]]; then
+    ln -sf "$ROOT_DIR/Mappings.usmap" "$worktree_dir/Mappings.usmap"
+    log "  Linked Mappings.usmap → $ROOT_DIR/Mappings.usmap"
+  else
+    warn "  Mappings.usmap not found in main repo — worktree will need it manually"
+  fi
+
   log "Worktree ready. Build mods with:"
   log "  cd $worktree_dir && python3 scripts/create_tirepack.py ..."
 }
