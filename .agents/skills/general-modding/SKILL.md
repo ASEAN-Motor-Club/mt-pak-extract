@@ -142,6 +142,62 @@ Values: `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle`.
 
 Lets a part appear on vehicles it normally wouldn't fit (bypasses VehicleType restrictions).
 
+## Vehicle License System
+
+Vehicles can equip Bus/Taxi licenses via the `Parts` map. This is entirely data-table driven — no blueprint changes needed.
+
+### How It Works
+
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `bIsBusable` | Enables bus license slot in garage | `true` |
+| `bIsTaxiable` | Enables taxi license slot in garage | `true` |
+| `VehicleTypeFlags` | Vehicle type bitmask (0=normal, 16=bus) | `0` |
+| `GameplayTags` | Must include `Vehicle.Bus` for bus functionality | `["Vehicle.Bus"]` |
+| `Parts` map | Must include `EMTVehiclePartSlot::BusLicense` → `BusLicense0` | See below |
+
+### Available License Parts
+
+| Part RowName | PartType | Cost |
+|-------------|----------|------|
+| `BusLicense0` | BusLicense | 20,000 |
+| `TaxiLicense0` | TaxiLicense | 10,000 |
+| `TaxiLicense1` | TaxiLicense | 12,000 |
+| `TaxiLicense_Bike` | TaxiLicense | 10,000 |
+
+### Example: Adding Bus/Taxi License to a Vehicle
+
+Use `--patch-rows` to modify an existing vehicle row:
+
+```json
+{
+  "output_filename": "Vehicles_Ambulance",
+  "patches": [
+    {
+      "row_name": "Brutus_Ambulance",
+      "patches": [
+        { "path": "bIsBusable", "op": "set", "value": true },
+        { "path": "bIsTaxiable", "op": "set", "value": true },
+        { "path": "GameplayTags", "op": "add_gameplay_tags", "tags": ["Vehicle.Bus"] },
+        { "path": "Parts", "op": "add_map_entry", "key": "EMTVehiclePartSlot::BusLicense", "value": "BusLicense0" }
+      ]
+    }
+  ]
+}
+```
+
+> [!WARNING]
+> Keep `VehicleTypeFlags: 0` unless the vehicle is a dedicated bus variant. Setting `VehicleTypeFlags: 16` on a non-bus vehicle may cause unintended NPC spawning or delivery filtering. The base Bongo van has `bIsBusable: true` with `VehicleTypeFlags: 0` — the boolean + part slot is sufficient.
+
+### Vehicle DataTable Locations
+
+| DataTable | Vehicles | Path |
+|-----------|----------|------|
+| `Vehicles` | All vehicle types | `DataAsset/Vehicles/Vehicles` |
+| `Vehicles_Ambulance` | Ambi, Tavan_Ambulance, Brutus_Ambulance | `DataAsset/Vehicles/Vehicles_Ambulance` |
+| `Vehicles_Bus` | Bongo, Bongo_Bus, Roadmaster | `DataAsset/Vehicles/Vehicles_Bus` |
+| `Vehicles_Truck` | Brutus, Brutus_Wrecker, Brutus_Tanker, etc. | `DataAsset/Vehicles/Vehicles_Truck` |
+
 ## Mod Compatibility
 
 ### Blueprint CDO Patching
@@ -435,7 +491,7 @@ The C# tool (`Program.cs`) provides shared helpers used across all DataTable com
 
 ### CDO Patch Engine Operations
 
-The `--patch-cdo-arrays` command uses a JSON-driven patch engine. Key operations:
+The `--patch-cdo-arrays` and `--patch-rows` commands use a JSON-driven patch engine. Key operations:
 
 | Operation | Purpose | Creates if missing? |
 |-----------|---------|--------------------|
@@ -450,8 +506,39 @@ The `--patch-cdo-arrays` command uses a JSON-driven patch engine. Key operations
 | `set_soft_object` | Set SoftObjectProperty path | No |
 | `clear_array` | Empty an array property | No |
 | `clear_map` | Empty a map property | No |
+| `add_gameplay_tags` | Add tags to existing GameplayTagContainer | No |
+| `add_map_entry` | Add entry to existing map (clones key/value from existing entries) | No |
 
 The `set_or_create_*` variants are essential for patching **inherited** CDO properties that aren't serialized in the child blueprint.
+
+### --patch-rows: In-Place DataTable Row Patching
+
+Modifies existing DataTable rows by RowName without adding new rows. Uses the same patch engine as `--patch-cdo-arrays`.
+
+```bash
+cd csharp/UAssetTool
+dotnet run -- --patch-rows config.json template.uasset output_dir/
+```
+
+Config format:
+```json
+{
+  "output_filename": "Vehicles_Ambulance",
+  "patches": [
+    {
+      "row_name": "Brutus_Ambulance",
+      "patches": [
+        { "path": "bIsBusable", "op": "set", "value": true },
+        { "path": "GameplayTags", "op": "add_gameplay_tags", "tags": ["Vehicle.Bus"] },
+        { "path": "Parts", "op": "add_map_entry", "key": "EMTVehiclePartSlot::BusLicense", "value": "BusLicense0" }
+      ]
+    }
+  ]
+}
+```
+
+> [!IMPORTANT]
+> Unlike `--add-rows` which clones a row and adds a **new** row, `--patch-rows` finds an existing row by name and applies patches in-place. This is essential when you need to modify a vehicle's properties without duplicating it.
 
 ## Creating a New Mod Type
 
@@ -577,6 +664,32 @@ var newRow = (StructPropertyData)templateRow.Clone();
 ```
 
 Constructing properties manually corrupts unversioned header serialization.
+
+### Map Property Types — NamePropertyData vs StrPropertyData
+
+When adding entries to DataTable maps (e.g. `Parts` in vehicle rows), **the parsed JSON shows values as plain strings, but UAssetAPI internally stores them as different C# types depending on the map.**
+
+The `Parts` map uses:
+- **Keys:** `EnumPropertyData` (e.g. `EMTVehiclePartSlot::BusLicense`)
+- **Values:** `NamePropertyData` (NOT `StrPropertyData`)
+
+Constructing `StrPropertyData` values from scratch for a `NamePropertyData` map **corrupts unversioned header serialization** and causes runtime serialization errors.
+
+```csharp
+// ✅ Correct — clone existing entry and modify
+var firstVal = mapProp.Value.Values.OfType<NamePropertyData>().FirstOrDefault();
+var valProp = (NamePropertyData)firstVal.Clone();
+valProp.Value = FName.FromString(asset, "BusLicense0");
+
+// ❌ Wrong — StrPropertyData doesn't match NamePropertyData map
+var valProp = new StrPropertyData(...) { Value = FString.FromString("BusLicense0") };
+```
+
+**Always debug-log the actual C# types before cloning:**
+```csharp
+foreach (var kvp in mapProp.Value)
+    Console.WriteLine($"Key: {kvp.Key.GetType().Name}, Val: {kvp.Value.GetType().Name}");
+```
 
 ### NameMap Handling (Tire vs Cargo)
 

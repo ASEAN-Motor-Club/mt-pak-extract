@@ -29,9 +29,10 @@ class Program
         bool addRowsMode = args.Contains("--add-rows");
         bool cloneAssetMode = args.Contains("--clone-asset");
         bool patchCdoMode = args.Contains("--patch-cdo-arrays");
+        bool patchRowsMode = args.Contains("--patch-rows");
         bool dumpMode = args.Contains("--dump");
         
-        Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--dump ...] [path/to/asset.uasset]");
+        Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--dump ...] [path/to/asset.uasset]");
         Console.WriteLine();
         
         if (!File.Exists(usmapPath))
@@ -77,6 +78,14 @@ class Program
             var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
             var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
             PatchCdoArrays(configPath, templatePath, outputDir);
+        }
+        else if (patchRowsMode)
+        {
+            var idx = Array.IndexOf(args, "--patch-rows");
+            var configPath = args.ElementAtOrDefault(idx + 1) ?? "config.json";
+            var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
+            var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
+            PatchRows(configPath, templatePath, outputDir);
         }
         else if (dumpMode)
         {
@@ -652,6 +661,75 @@ class Program
     }
     
     // ========================================================================
+    // --patch-rows: Patch existing DataTable rows by RowName
+    // ========================================================================
+    static void PatchRows(string configPath, string templatePath, string outputDir)
+    {
+        if (!File.Exists(configPath)) { Console.WriteLine($"Error: Config not found: {configPath}"); return; }
+        if (!File.Exists(templatePath)) { Console.WriteLine($"Error: Template not found: {templatePath}"); return; }
+        
+        var configJson = File.ReadAllText(configPath);
+        using var doc = JsonDocument.Parse(configJson);
+        var root = doc.RootElement;
+        
+        if (!root.TryGetProperty("patches", out var rowPatches))
+        {
+            Console.WriteLine("Error: Config must have 'patches' array with {row_name, patches} entries");
+            return;
+        }
+        
+        Console.WriteLine($"Loading template: {Path.GetFileName(templatePath)}");
+        var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
+        
+        var dtExport = FindDataTable(asset);
+        if (dtExport == null) return;
+        
+        Console.WriteLine($"Existing rows: {dtExport.Table.Data.Count}");
+        
+        var outputFileName = root.TryGetProperty("output_filename", out var ofProp)
+            ? ofProp.GetString()!
+            : Path.GetFileNameWithoutExtension(templatePath);
+        
+        int patched = 0;
+        foreach (var rowPatch in rowPatches.EnumerateArray())
+        {
+            var rowName = rowPatch.GetProperty("row_name").GetString()!;
+            
+            StructPropertyData? targetRow = null;
+            foreach (var row in dtExport.Table.Data)
+            {
+                if (row is StructPropertyData spd && spd.Name.Value.Value == rowName)
+                {
+                    targetRow = spd;
+                    break;
+                }
+            }
+            
+            if (targetRow == null)
+            {
+                Console.WriteLine($"  Warning: Row '{rowName}' not found, skipping");
+                continue;
+            }
+            
+            if (rowPatch.TryGetProperty("patches", out var patches))
+            {
+                ApplyPatches(targetRow.Value, patches, asset);
+                Console.WriteLine($"  Patched row: {rowName}");
+                patched++;
+            }
+        }
+        
+        Console.WriteLine($"Patched {patched} rows.");
+        Console.WriteLine($"Total rows: {dtExport.Table.Data.Count}");
+        asset.ResolveAncestries();
+        
+        Directory.CreateDirectory(outputDir);
+        var outputPath = Path.Combine(outputDir, $"{outputFileName}.uasset");
+        asset.Write(outputPath);
+        Console.WriteLine($"Written: {outputFileName}.uasset + {outputFileName}.uexp to {outputDir}");
+    }
+    
+    // ========================================================================
     // --patch-cdo-arrays: Generic CDO array patching
     // ========================================================================
     static void PatchCdoArrays(string configPath, string templatePath, string outputDir)
@@ -996,6 +1074,33 @@ class Program
                 break;
             }
             
+            case "add_gameplay_tags":
+            {
+                var prop = ResolveProperty(properties, path);
+                if (prop is StructPropertyData tagsStruct)
+                {
+                    foreach (var sp in tagsStruct.Value)
+                    {
+                        if (sp is GameplayTagContainerPropertyData tc)
+                        {
+                            var existing = tc.Value?.ToList() ?? new List<FName>();
+                            foreach (var tag in patch.GetProperty("tags").EnumerateArray())
+                            {
+                                var tagName = tag.GetString()!;
+                                var fname = FName.FromString(asset, tagName);
+                                if (!existing.Any(e => e.Value?.Value == tagName))
+                                {
+                                    existing.Add(fname);
+                                    Console.WriteLine($"    Added tag: {tagName}");
+                                }
+                            }
+                            tc.Value = existing.ToArray();
+                        }
+                    }
+                }
+                break;
+            }
+            
             case "clear_tag_query":
             {
                 var prop = ResolveProperty(properties, path);
@@ -1063,6 +1168,71 @@ class Program
                             mapProp.Value.Add(keyProp, valProp);
                         }
                     }
+                }
+                break;
+            }
+            
+            case "add_map_entry":
+            {
+                var prop = ResolveProperty(properties, path);
+                if (prop is MapPropertyData mapProp)
+                {
+                    var newKey = patch.GetProperty("key").GetString()!;
+                    var newValue = patch.GetProperty("value").GetString()!;
+                    
+                    var newMap = new TMap<PropertyData, PropertyData>();
+                    
+                    foreach (var kvp in mapProp.Value)
+                    {
+                        var clonedKey = (PropertyData)kvp.Key.Clone();
+                        var clonedVal = (PropertyData)kvp.Value.Clone();
+                        newMap.Add(clonedKey, clonedVal);
+                    }
+                    
+                    var firstEnumKey = mapProp.Value.Keys.OfType<EnumPropertyData>().FirstOrDefault();
+                    PropertyData keyPropToAdd;
+                    if (firstEnumKey != null)
+                    {
+                        keyPropToAdd = (EnumPropertyData)firstEnumKey.Clone();
+                        ((EnumPropertyData)keyPropToAdd).Value = FName.FromString(asset, newKey);
+                    }
+                    else
+                    {
+                        var firstNameKey = mapProp.Value.Keys.OfType<NamePropertyData>().FirstOrDefault();
+                        if (firstNameKey != null)
+                        {
+                            keyPropToAdd = (NamePropertyData)firstNameKey.Clone();
+                            ((NamePropertyData)keyPropToAdd).Value = FName.FromString(asset, newKey);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"    Warning: add_map_entry couldn't determine key type for '{path}'");
+                            break;
+                        }
+                    }
+                    
+                    var firstNameVal = mapProp.Value.Values.OfType<NamePropertyData>().FirstOrDefault();
+                    var firstStrVal = mapProp.Value.Values.OfType<StrPropertyData>().FirstOrDefault();
+                    PropertyData valPropToAdd;
+                    if (firstNameVal != null)
+                    {
+                        valPropToAdd = (NamePropertyData)firstNameVal.Clone();
+                        ((NamePropertyData)valPropToAdd).Value = FName.FromString(asset, newValue);
+                    }
+                    else if (firstStrVal != null)
+                    {
+                        valPropToAdd = (StrPropertyData)firstStrVal.Clone();
+                        ((StrPropertyData)valPropToAdd).Value = FString.FromString(newValue);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"    Warning: add_map_entry couldn't determine value type for '{path}'");
+                        break;
+                    }
+                    
+                    newMap.Add(keyPropToAdd, valPropToAdd);
+                    mapProp.Value = newMap;
+                    Console.WriteLine($"    Added map entry: {newKey} = {newValue}");
                 }
                 break;
             }
