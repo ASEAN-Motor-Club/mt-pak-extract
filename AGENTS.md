@@ -90,13 +90,16 @@ Each decal needs a row in `Decals.uasset` with:
 
 ### C# UAssetTool (generic UAsset SDK)
 
-The C# tool provides 4 generic operations driven by JSON configs:
+The C# tool provides 5 generic operations driven by JSON configs:
 
 ```bash
 cd csharp/UAssetTool
 
 # Add rows to any DataTable (clone or construct mode)
 dotnet run -- --add-rows config.json template.uasset output_dir/
+
+# Patch existing DataTable rows in-place by RowName
+dotnet run -- --patch-rows config.json template.uasset output_dir/
 
 # Clone and rename any asset with property patches
 dotnet run -- --clone-asset config.json template.uasset output_dir/
@@ -285,6 +288,8 @@ scripts/new-version.sh       # New version pipeline (one command)
 - **`cargo_type: None` for modded cargo**: Use `cargo_type: "None"` for all modded cargos to prevent unwanted wildcard demand matching. `SmallPackage` causes modded cargo to appear at Supermarkets and Warehouses (wildcard `DemandConfig`). `None` ensures cargo only appears at delivery points you explicitly configure. Despite earlier concerns, `"None"` serializes correctly via `set_enum`.
 - **Blueprint CDO schema resolution**: When patching blueprint CDOs (e.g. vehicle blueprints like `Jemusi.uasset`), UAssetAPI needs the **parent blueprint** (e.g. `MTVehicleBaseBP.uasset`) in the same directory to resolve the unversioned property schema. Without it, CDO reparse fails with `"Failed to find a valid property for schema index N in the class X_C"`. Copy the parent `.uasset` + `.uexp` alongside the target before running `--patch-cdo-arrays`.
 - **Inherited CDO properties**: Vehicle CDOs only serialize properties that **differ from the parent default**. If a property like `HornSound` is inherited (same as parent), it won't exist in the CDO data. Use `set_or_create_import_ref` (not `set_import_ref`) to create the property if missing.
+- **DataTable map property types**: When adding entries to DataTable maps (e.g. `Parts` in vehicle rows), the map values are **NamePropertyData** (FName references), NOT StrPropertyData (FString). The parsed JSON shows them as plain strings, but UAssetAPI internally stores them as FName. Constructing StrPropertyData values from scratch corrupts unversioned header serialization. Always clone from existing map entries and modify the clone's `.Value` field. Debug-log actual C# types with `kvp.Key.GetType().Name` / `kvp.Value.GetType().Name` before cloning.
+- **VehicleTypeFlags vs bIsBusable**: Setting `VehicleTypeFlags: 16` (bus flag) on a non-bus vehicle may cause unintended NPC spawning or delivery filtering behavior even without a license equipped. The base Bongo van has `bIsBusable: true` with `VehicleTypeFlags: 0`. Safer to keep flags at 0 and only set the boolean + add the part slot.
 - **Oodle/libstdc++**: The Rust extractor uses Oodle decompression via `repak`, which `dlopen`s `libstdc++.so.6`. The dev shell includes `gcc.cc.lib` for this, but `LD_LIBRARY_PATH` may need to be set if running outside `nix develop`:
   ```bash
   export LD_LIBRARY_PATH=$(nix develop --command bash -c 'echo $LIBRARY_PATH' | tr : '\n' | xargs -I{} echo {}/lib | tr '\n' :)
@@ -300,7 +305,7 @@ No lint or typecheck commands defined for this project. Rust is checked by `carg
 
 ```
 src/main.rs                    # Rust PAK extractor (AES decrypt + Oodle decompress)
-csharp/UAssetTool/            # C# generic UAsset SDK (4 operations: --add-rows, --clone-asset, --patch-cdo-arrays, --dump)
+csharp/UAssetTool/            # C# generic UAsset SDK (5 operations: --add-rows, --patch-rows, --clone-asset, --patch-cdo-arrays, --dump)
 csharp/LevelExtractor/         # C# map/level actor extractor
 scripts/aggregate_to_sqlite.py # Python: parsed JSON → normalized SQLite
 assets.json                    # List of 264 asset paths to extract
