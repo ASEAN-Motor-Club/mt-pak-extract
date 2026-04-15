@@ -5,6 +5,7 @@ Aggregate MotorTown JSON data into SQLite database.
 
 import json
 import sqlite3
+import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -38,7 +39,7 @@ def create_schema(conn: sqlite3.Connection):
     """)
     cursor.execute("""
         INSERT OR REPLACE INTO schema_version (version, game_version) 
-        VALUES (5, '0.7.17')
+        VALUES (6, '0.7.17')
     """)
     
     # Vehicles table
@@ -195,6 +196,22 @@ def create_schema(conn: sqlite3.Connection):
             fix_cargo BOOLEAN,
             unlimited_height BOOLEAN,
             FOREIGN KEY (part_id) REFERENCES vehicle_parts(id)
+        )
+    """)
+    
+    # Vehicle cargo space from blueprints (MTVehicleCargoSpaceComponent)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vehicle_cargo_space (
+            vehicle_id TEXT PRIMARY KEY,
+            cargo_space_type TEXT,
+            length_cm REAL,
+            width_cm REAL,
+            height_cm REAL,
+            dump_volume_kl REAL,
+            fix_cargo BOOLEAN,
+            unlimited_height BOOLEAN,
+            blueprint_path TEXT,
+            FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
         )
     """)
     
@@ -895,6 +912,113 @@ def process_cargo_bed_specs(conn: sqlite3.Connection, json_files: List[Path]):
     print(f"Inserted {cursor.execute('SELECT COUNT(*) FROM cargo_bed_specs').fetchone()[0]} cargo bed specs")
 
 
+def process_vehicle_cargo_space(conn: sqlite3.Connection, json_files: List[Path]):
+    """Process vehicle blueprints to extract cargo space dimensions from MTVehicleCargoSpaceComponent.
+    
+    Most vehicles define cargo dimensions in their blueprint class rather than in
+    the CargoBed DataTable. The MTVehicleCargoSpaceComponent is a UBoxComponent
+    subclass where actual dimensions = BoxExtent * RelativeScale3D * 2.
+    """
+    cursor = conn.cursor()
+    
+    # Build mapping from vehicle ID to blueprint filename (same pattern as process_vehicle_weights)
+    print("Building vehicle-to-blueprint mapping for cargo space...")
+    vehicle_blueprint_map = {}  # vehicle_id -> blueprint_filename
+    
+    for row in cursor.execute("SELECT id, blueprint_path FROM vehicles WHERE blueprint_path IS NOT NULL"):
+        vehicle_id, blueprint_path = row
+        if blueprint_path:
+            parts = blueprint_path.split("/")
+            if len(parts) >= 2:
+                blueprint_name = parts[-1].replace("_C", "")
+                vehicle_blueprint_map[vehicle_id] = blueprint_name
+    
+    print(f"Mapped {len(vehicle_blueprint_map)} vehicles to blueprint names")
+    
+    # Build reverse mapping
+    blueprint_to_vehicles = {}  # blueprint_filename -> [vehicle_ids]
+    for vehicle_id, blueprint_name in vehicle_blueprint_map.items():
+        if blueprint_name not in blueprint_to_vehicles:
+            blueprint_to_vehicles[blueprint_name] = []
+        blueprint_to_vehicles[blueprint_name].append(vehicle_id)
+    
+    insert_count = 0
+    
+    for json_file in json_files:
+        if not json_file.name.endswith("_parsed.json"):
+            continue
+        
+        with open(json_file) as f:
+            data = json.load(f)
+        
+        if data.get("Data", {}).get("Type") != "Blueprint":
+            continue
+        
+        blueprint_name = json_file.stem.replace("_parsed", "")
+        
+        matching_vehicles = blueprint_to_vehicles.get(blueprint_name, [])
+        if not matching_vehicles:
+            continue
+        
+        # Find MTVehicleCargoSpaceComponent exports
+        for export in data["Data"].get("Exports", []):
+            export_class = export.get("Class", "")
+            if "CargoSpaceComponent" not in export_class:
+                continue
+            
+            props = export.get("Properties", {})
+            
+            # Extract cargo space type
+            cargo_space_type = props.get("CargoSpaceType")
+            if cargo_space_type:
+                cargo_space_type = strip_enum(cargo_space_type)
+            
+            # Extract BoxExtent (half-size, defaults to 50)
+            box_ext = props.get("BoxExtent", {}).get("BoxExtent", {})
+            ext_x = box_ext.get("X", 50)
+            ext_y = box_ext.get("Y", 50)
+            ext_z = box_ext.get("Z", 50)
+            
+            # Extract RelativeScale3D (defaults to 1)
+            scale = props.get("RelativeScale3D", {}).get("RelativeScale3D", {})
+            sc_x = scale.get("X", 1)
+            sc_y = scale.get("Y", 1)
+            sc_z = scale.get("Z", 1)
+            
+            # Actual dimensions in cm = 2 * extent * scale
+            length_cm = 2 * ext_x * sc_x
+            width_cm = 2 * ext_y * sc_y
+            height_cm = 2 * ext_z * sc_z
+            
+            # Extract other properties
+            dump_volume_kl = props.get("DumpVolume", 0) or 0
+            fix_cargo = props.get("bFixCargo", False)
+            unlimited_height = props.get("bUnlimitedHeight", False)
+            
+            for vehicle_id in matching_vehicles:
+                cursor.execute("""
+                    INSERT OR REPLACE INTO vehicle_cargo_space
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    vehicle_id,
+                    cargo_space_type,
+                    round(length_cm, 1),
+                    round(width_cm, 1),
+                    round(height_cm, 1),
+                    dump_volume_kl,
+                    fix_cargo,
+                    unlimited_height,
+                    blueprint_name
+                ))
+                insert_count += 1
+            
+            # Only take the first CargoSpaceComponent per blueprint
+            break
+    
+    conn.commit()
+    print(f"Inserted {insert_count} vehicle cargo space entries")
+
+
 def process_vehicle_weights(conn: sqlite3.Connection, json_files: List[Path]):
     """Process vehicle blueprints to extract chassis mass."""
     cursor = conn.cursor()
@@ -1105,10 +1229,10 @@ def create_views(conn: sqlite3.Connection):
         LEFT JOIN vehicle_parts vp ON vdp.part_id = vp.id
     """)
     
-    # View: vehicles with cargo space dimensions
+    # View: vehicles with cargo space dimensions (union of CargoBed parts + blueprint components)
     cursor.execute("""
         CREATE VIEW IF NOT EXISTS vehicles_with_cargo_space AS
-        SELECT 
+        SELECT DISTINCT
             v.id,
             v.name,
             v.vehicle_type,
@@ -1120,11 +1244,33 @@ def create_views(conn: sqlite3.Connection):
             cbs.dump_volume_kl,
             ROUND((cbs.length_cm * cbs.width_cm * cbs.height_cm) / 1000000, 1) as volume_m3,
             cbs.fix_cargo,
-            cbs.unlimited_height
+            cbs.unlimited_height,
+            'CargoBed' as source
         FROM vehicles v
         JOIN vehicle_default_parts vdp ON v.id = vdp.vehicle_id 
             AND vdp.slot LIKE 'CargoBed%'
         JOIN cargo_bed_specs cbs ON vdp.part_id = cbs.part_id
+        UNION ALL
+        SELECT 
+            v.id,
+            v.name,
+            v.vehicle_type,
+            v.truck_class,
+            vcs.cargo_space_type,
+            ROUND(vcs.length_cm / 100, 1) as length_m,
+            ROUND(vcs.width_cm / 100, 1) as width_m,
+            ROUND(vcs.height_cm / 100, 1) as height_m,
+            vcs.dump_volume_kl,
+            ROUND((vcs.length_cm * vcs.width_cm * vcs.height_cm) / 1000000, 1) as volume_m3,
+            vcs.fix_cargo,
+            vcs.unlimited_height,
+            'Blueprint' as source
+        FROM vehicles v
+        JOIN vehicle_cargo_space vcs ON v.id = vcs.vehicle_id
+        WHERE v.id NOT IN (
+            SELECT vdp2.vehicle_id FROM vehicle_default_parts vdp2
+            WHERE vdp2.slot LIKE 'CargoBed%'
+        )
     """)
     
     # View: vehicles with full weight (chassis + default parts)
@@ -1159,8 +1305,8 @@ def create_views(conn: sqlite3.Connection):
 
 def main():
     """Main aggregation pipeline."""
-    out_dir = Path("out")
-    db_path = Path("motortown.db")
+    out_dir = Path(os.environ.get("MT_OUT_DIR", "out"))
+    db_path = Path(os.environ.get("MT_DB_PATH", "motortown.db"))
     
     if not out_dir.exists():
         print(f"Error: {out_dir} directory not found")
@@ -1195,6 +1341,7 @@ def main():
     print("\n=== Phase 2: Cargo Weights & Bed Specs ===")
     process_cargo_weights(conn, json_files)
     process_cargo_bed_specs(conn, json_files)
+    process_vehicle_cargo_space(conn, json_files)
     process_vehicle_weights(conn, json_files)
     process_delivery_points(conn, json_files)
     
@@ -1215,6 +1362,7 @@ def main():
         ("Part Tuning Values", "SELECT COUNT(*) FROM part_tuning"),
         ("Cargos (Total)", "SELECT COUNT(*) FROM cargos"),
         ("Cargo Weights", "SELECT COUNT(*) FROM cargo_weights"),
+        ("Vehicle Cargo Spaces", "SELECT COUNT(*) FROM vehicle_cargo_space"),
         ("Default Parts", "SELECT COUNT(*) FROM vehicle_default_parts"),
         ("Vehicle Tags", "SELECT COUNT(*) FROM vehicle_tags"),
         ("Delivery Points", "SELECT COUNT(*) FROM delivery_points"),

@@ -1,0 +1,766 @@
+---
+name: general-modding
+description: General MotorTown modding — PAK architecture, DataTable mechanics, mod compatibility, and the mt-pak-extract toolchain
+---
+
+# General MotorTown Modding
+
+This skill covers the foundational architecture of MotorTown modding — how PAKs work, how DataTables override, how to build compatibility with other mods, and the available toolchain. For specific mod types, see the `cargo-mod` and `tire-mod` skills.
+
+## PAK Architecture
+
+### How UE5 PAK Loading Works
+
+MotorTown runs on Unreal Engine 5.5. Mods are shipped as `_P.pak` files (the `_P` suffix is critical — UE loads these as "patch" PAKs that override base game assets).
+
+```
+MotorTown/
+├── Content/
+│   └── Paks/
+│       ├── MotorTown-Windows.pak          ← base game (2.9 GB)
+│       └── Mods/
+│           ├── qxZap_MoreTuning_P.pak     ← community mod
+│           └── ASEAN_PoliceTyres_P.pak    ← our mod
+```
+
+**Load order is alphabetical.** If two PAKs contain the same file (e.g., `VehicleParts0.uasset`), the **alphabetically-last PAK wins**. This is how compatibility conflicts happen.
+
+### Override Rules
+
+| Scenario | Result |
+|----------|--------|
+| Only base game has the file | Base game version loads |
+| One mod has the file | Mod version loads (overrides base) |
+| Multiple mods have the same file | **Last alphabetically wins**, others are ignored |
+| Mod has a NEW file (not in base) | File is added to the virtual filesystem |
+
+> [!CAUTION]
+> There is **no merging**. If your mod includes `VehicleParts0.uasset` with 54 rows, and another mod includes it with 320 rows, one wins completely and the other is discarded.
+
+### PAK Structure
+
+Every PAK file mirrors the base game directory layout:
+
+```
+MotorTown/Content/
+├── Cars/Parts/Tire/              ← tire physics assets
+├── DataAsset/VehicleParts/       ← VehicleParts, VehicleParts0, Engines, etc.
+├── Objects/Mission/Delivery/     ← cargo blueprints
+├── Materials/Decal/              ← decal textures
+└── ...                           ← any other game path
+```
+
+The mount point is `../../../` (three levels up from the PAK file location), which resolves to the game's root `Content/` directory.
+
+## DataTable System
+
+DataTables are the backbone of MotorTown's data-driven design. Most mod types work by adding rows to or overriding these tables.
+
+### Key DataTables
+
+| DataTable | Location | Rows (base) | Purpose |
+|-----------|----------|-------------|---------|
+| `VehicleParts` | `DataAsset/VehicleParts/` | 713 | Full vehicle parts catalog (engines, transmissions, tires, aero, etc.) |
+| `VehicleParts0` | `DataAsset/VehicleParts/` | 50 | **Override/addon table** — supersedes `VehicleParts` for shared categories |
+| `Engines` | `DataAsset/VehicleParts/` | varies | Engine DataAsset refs |
+| `Transmissions` | `DataAsset/VehicleParts/` | varies | Transmission DataAsset refs |
+| `AeroParts` | `DataAsset/VehicleParts/` | varies | Aero body kits |
+| `LSD` | `DataAsset/VehicleParts/` | varies | Limited-slip differential configs |
+| `Cargos` | `DataAsset/` | ~100 | Cargo type definitions |
+| `Vehicles` | `DataAsset/` | ~80 | Vehicle definitions, types, flags |
+| `Decals` | `Materials/Decal/` | ~423 | Decal texture catalog |
+
+### VehicleParts Override Hierarchy
+
+> [!IMPORTANT]
+> The game loads **both** `VehicleParts.uasset` and `VehicleParts0.uasset`. For any part type (e.g., "Tire") that exists in both tables, `VehicleParts0` entries **take precedence**.
+
+This means:
+- The base `VehicleParts` has 713 rows covering ALL part types
+- `VehicleParts0` has 50 rows that **override** specific categories
+- If you add a tire only to `VehicleParts` but `VehicleParts0` has its own tire list, yours won't appear
+
+**Strategy:** For tire mods, only modify `VehicleParts0` (50 rows). This avoids touching the massive 713-row `VehicleParts` table, which other mods also modify.
+
+### DataTable Row Structure
+
+Every VehicleParts row contains ALL part fields (tire, engine, aero, suspension, etc.), with `PartType` determining which fields are active:
+
+```
+PartType: Tire
+├── Tire.TirePhysicsDataAsset → import reference to tire physics
+├── VehicleTypes: [Small, Medium]
+├── VehicleKeys: [Elisa_Police, Muhan_Police]   ← vehicle restriction
+├── LevelRequirementToBuy: {CL_Police: 10}      ← career level gate
+├── Cost: 2000
+├── MassKg: 10
+├── Name2.Texts: ["AMC Police 78"]               ← display name
+└── ... (hundreds of other fields, inactive for tires)
+```
+
+## Vehicle Restriction System
+
+### VehicleKeys — Restrict to Specific Cars
+
+`VehicleKeys` is an array of vehicle key strings. If non-empty, **only** those vehicles can equip the part.
+
+```json
+"vehicle_keys": ["Elisa_Police", "Muhan_Police", "Zydro_Police", "Nuke_Police", "Police_01", "PoliceInterceptor_01"]
+```
+
+| Vehicle | Key | Type |
+|---------|-----|------|
+| Elisa Police | `Elisa_Police` | Small |
+| Muhan Police | `Muhan_Police` | Small |
+| Zydro Police | `Zydro_Police` | Small |
+| Nuke Police | `Nuke_Police` | Small |
+| Police 01 | `Police_01` | Small |
+| Police Interceptor | `PoliceInterceptor_01` | Small |
+| Gunthoo Police | `Gunthoo_Police` | Bike |
+
+### LevelRequirementToBuy — Career Level Gate
+
+Map of `{CareerLine: MinLevel}`. Player must reach the specified level to purchase.
+
+```json
+"level_requirement": {"CL_Police": 10}
+```
+
+Career lines: `CL_Driver`, `CL_Truck`, `CL_Police`, `CL_Racer`, `CL_Bus`, `CL_Taxi`.
+
+### VehicleTypes — Vehicle Class Filter
+
+Array of vehicle size classes. Part only appears for vehicles of matching type.
+
+```json
+"vehicle_types": ["Small"]
+```
+
+Values: `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle`.
+
+### OverrideAllowedVehicleKeys — Whitelist Override
+
+Lets a part appear on vehicles it normally wouldn't fit (bypasses VehicleType restrictions).
+
+## Vehicle License System
+
+Vehicles can equip Bus/Taxi licenses via the `Parts` map. This is entirely data-table driven — no blueprint changes needed.
+
+### How It Works
+
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `bIsBusable` | Enables bus license slot in garage | `true` |
+| `bIsTaxiable` | Enables taxi license slot in garage | `true` |
+| `VehicleTypeFlags` | Vehicle type bitmask (0=normal, 16=bus) | `0` |
+| `GameplayTags` | Must include `Vehicle.Bus` for bus functionality | `["Vehicle.Bus"]` |
+| `Parts` map | Must include `EMTVehiclePartSlot::BusLicense` → `BusLicense0` | See below |
+
+### Available License Parts
+
+| Part RowName | PartType | Cost |
+|-------------|----------|------|
+| `BusLicense0` | BusLicense | 20,000 |
+| `TaxiLicense0` | TaxiLicense | 10,000 |
+| `TaxiLicense1` | TaxiLicense | 12,000 |
+| `TaxiLicense_Bike` | TaxiLicense | 10,000 |
+
+### Example: Adding Bus/Taxi License to a Vehicle
+
+Use `--patch-rows` to modify an existing vehicle row:
+
+```json
+{
+  "output_filename": "Vehicles_Ambulance",
+  "patches": [
+    {
+      "row_name": "Brutus_Ambulance",
+      "patches": [
+        { "path": "bIsBusable", "op": "set", "value": true },
+        { "path": "bIsTaxiable", "op": "set", "value": true },
+        { "path": "GameplayTags", "op": "add_gameplay_tags", "tags": ["Vehicle.Bus"] },
+        { "path": "Parts", "op": "add_map_entry", "key": "EMTVehiclePartSlot::BusLicense", "value": "BusLicense0" }
+      ]
+    }
+  ]
+}
+```
+
+> [!WARNING]
+> Keep `VehicleTypeFlags: 0` unless the vehicle is a dedicated bus variant. Setting `VehicleTypeFlags: 16` on a non-bus vehicle may cause unintended NPC spawning or delivery filtering. The base Bongo van has `bIsBusable: true` with `VehicleTypeFlags: 0` — the boolean + part slot is sufficient.
+
+### Vehicle DataTable Locations
+
+| DataTable | Vehicles | Path |
+|-----------|----------|------|
+| `Vehicles` | All vehicle types | `DataAsset/Vehicles/Vehicles` |
+| `Vehicles_Ambulance` | Ambi, Tavan_Ambulance, Brutus_Ambulance | `DataAsset/Vehicles/Vehicles_Ambulance` |
+| `Vehicles_Bus` | Bongo, Bongo_Bus, Roadmaster | `DataAsset/Vehicles/Vehicles_Bus` |
+| `Vehicles_Truck` | Brutus, Brutus_Wrecker, Brutus_Tanker, etc. | `DataAsset/Vehicles/Vehicles_Truck` |
+
+## Mod Compatibility
+
+### Blueprint CDO Patching
+
+Beyond DataTable mods, you can modify individual vehicle/actor blueprints by patching their **Class Default Object (CDO)** — the `Default__X_C` export in the `.uasset`.
+
+#### UE5 CDO Initialization Order
+
+When UE5 loads a blueprint class, CDO properties are initialized in this order:
+1. **C++ constructor** — sets native defaults (e.g. `AMTVehicle` sets `HornFadeInSeconds = 0.1`)
+2. **SuperClass CDO** — parent blueprint defaults are inherited (e.g. `MTVehicleBaseBP` sets `HornSound = Horn`)
+3. **Asset data** — serialized CDO overrides from the `.uasset` file **take precedence**
+
+This means a mod PAK that overrides a blueprint's `.uasset` with new CDO properties will win over the parent defaults — exactly how the game's own truck blueprints override `HornSound` to `TruckAirHorn_01`.
+
+#### How CDO Patching Works
+
+```bash
+# Patch a vehicle blueprint CDO property
+cd csharp/UAssetTool
+dotnet run -- --patch-cdo-arrays config.json template.uasset output_dir/
+```
+
+The `--patch-cdo-arrays` command:
+1. Loads the blueprint asset
+2. Finds the `Default__X_C` CDO export (may need to reparse from `RawExport`)
+3. Applies `cdo_patches` — property-level modifications using the patch engine
+4. Applies `arrays` — array-level additions/replacements
+5. Writes the modified asset
+
+#### Schema Resolution for Blueprint CDOs
+
+Blueprint CDOs use **unversioned property serialization**. UAssetAPI needs the full class schema chain to parse them. For blueprint-generated classes (anything ending in `_C`):
+
+- The class's own properties come from its `ClassExport.LoadedProperties`
+- The **parent blueprint's properties** must also be resolvable
+- UAssetAPI discovers parent blueprints by looking for `.uasset` files in the same directory
+
+> [!IMPORTANT]
+> Copy the parent blueprint (e.g. `MTVehicleBaseBP.uasset` + `.uexp`) alongside the target before patching. Without it, CDO reparse fails with `"Failed to find a valid property for schema index N"`.
+
+#### Inherited vs Serialized Properties
+
+CDOs only serialize properties that **differ from the parent default**. If a property value matches the parent, it's not stored — it's inherited at runtime.
+
+This has a critical implication for patching: if you want to change an inherited property (e.g. `HornSound` on a vehicle that uses the default horn), the property **doesn't exist** in the CDO data. Use `set_or_create_import_ref` instead of `set_import_ref` to handle this:
+
+```json
+{
+  "cdo_patches": [
+    {
+      "path": "HornSound",
+      "op": "set_or_create_import_ref",
+      "class_package": "/Script/Engine",
+      "class_name": "SoundWave",
+      "package_path": "/Game/Sounds/Vehicle/Horn/TruckAirHorn_01",
+      "asset_name": "TruckAirHorn_01"
+    }
+  ]
+}
+```
+
+#### Example: Vehicle Horn Mod
+
+Change Jemusi's horn from default car horn to truck air horn:
+
+```bash
+nix develop --command bash -c '
+  # 1. Ensure parent blueprint is accessible for schema resolution
+  cp MTVehicleBaseBP.uasset out/MTVehicleBaseBP.uasset
+  cp MTVehicleBaseBP.uexp out/MTVehicleBaseBP.uexp
+
+  # 2. Patch CDO
+  cd csharp/UAssetTool && dotnet run --configuration Release --verbosity quiet -- \
+    --patch-cdo-arrays horn_patch.json ../../out/Jemusi.uasset /tmp/horn_out
+  cd ../..
+
+  # 3. Build PAK
+  mkdir -p /tmp/horn_staging/MotorTown/Content/Cars/Models/Jemusi
+  cp /tmp/horn_out/Jemusi.{uasset,uexp} /tmp/horn_staging/MotorTown/Content/Cars/Models/Jemusi/
+  cargo run --release --quiet --bin mod_pack -- /tmp/horn_staging ASEAN_JemusiTruckHorn_P.pak
+
+  # 4. Cleanup
+  rm -f out/MTVehicleBaseBP.{uasset,uexp}
+'
+```
+
+#### Vehicle Sound Assets
+
+| Sound | Asset Path | Used By |
+|-------|-----------|--------|
+| Car horn | `/Game/Sounds/Vehicle/Horn/Horn` | Most cars (default via MTVehicleBaseBP) |
+| Truck air horn | `/Game/Sounds/Vehicle/Horn/TruckAirHorn_01` | All trucks |
+| Bike horn | `/Game/Sounds/Vehicle/Horn/Bike_01` | All motorcycles |
+
+### The Problem
+
+When two mods modify the same DataTable (e.g., `VehicleParts0.uasset`), the alphabetically-last PAK wins and the other's changes are completely lost.
+
+**Example conflict:**
+```
+qxZap_MoreTuning_P.pak  → VehicleParts0 with 320 rows (engines, tires, LSD, etc.)
+ASEAN_PoliceTyres_P.pak  → VehicleParts0 with 54 rows (base 50 + 4 tires)
+```
+Result: Our 54-row version loads (alphabetically last), MoreTuning's 320 rows are lost.
+
+### The Solution: `--compat-mod`
+
+The build tools support a `--compat-mod` flag that **extracts a DataTable from another mod's PAK** and uses it as the base template. Your additions are layered on top.
+
+```bash
+# Build standalone (base game only)
+python3 scripts/create_tirepack.py \
+  --config tire_entries.json \
+  --output ASEAN_PoliceTyres_P.pak
+
+# Build compatible with MoreTuning
+python3 scripts/create_tirepack.py \
+  --config tire_entries.json \
+  --output ASEAN_PoliceTyres_MoreTuningCompat_P.pak \
+  --compat-mod path/to/qxZap_MoreTuning_P.pak
+```
+
+**How it works internally:**
+1. `mod_explore` extracts `VehicleParts0.uasset` from the compat mod PAK
+2. This extracted DataTable (with all its rows) becomes the template
+3. Your new rows are added on top → final DataTable has ALL rows
+4. Output PAK contains the merged DataTable
+
+### Multiple Compat Mods
+
+You can chain multiple `--compat-mod` flags. They're processed in order — the **last one that contains VehicleParts0** wins as the base template:
+
+```bash
+python3 scripts/create_tirepack.py \
+  --config tire_entries.json \
+  --output output.pak \
+  --compat-mod MoreTuning_P.pak \
+  --compat-mod NoLimits_P.pak
+```
+
+If `NoLimits_P.pak` doesn't contain `VehicleParts0`, it's skipped (with a warning) and `MoreTuning_P.pak`'s version is used.
+
+### Minimizing Conflict Surface Area
+
+> [!TIP]
+> **Only include the DataTables you actually modify.** Every DataTable in your PAK is a potential conflict point.
+
+| Mod Goal | Only touch | Don't touch |
+|----------|-----------|-------------|
+| Add tires | `VehicleParts0` | `VehicleParts`, `Engines`, `Transmissions`, `AeroParts` |
+| Add cargo | `Cargos`, delivery point assets | `VehicleParts*` |
+| Add decals | `Decals`, texture assets | `VehicleParts*`, `Cargos` |
+
+MoreTuning v2.2 modifies: `VehicleParts0`, `AeroParts`, `Engines`, `LSD`, `License*`, `Transmissions`.
+NoLimits v2.2 modifies: `AeroParts`, `Headlights`, `Wheels` (no VehicleParts0 conflict).
+
+### PAK Naming Convention
+
+The recommended naming pattern includes mod source, version, and compatibility variant:
+
+```
+{Studio}_{ModName}_v{Version}[_CompatMod]_P.pak
+```
+
+Examples:
+```
+ASEAN_PoliceTyres_v0.1.5_P.pak                          ← standalone
+ASEAN_PoliceTyres_v0.1.5_MoreTuningCompat_P.pak          ← MoreTuning compat
+ASEAN_PoliceTyres_v0.1.5_MoreTuningNoLimitsCompat_P.pak  ← MoreTuning + NoLimits
+```
+
+> [!WARNING]
+> Users should install **only one variant** of a mod. Installing both standalone and compat versions causes a double-override conflict.
+
+### Analyzing Another Mod's Contents
+
+Before building a compat version, analyze what DataTables the other mod modifies:
+
+```bash
+# List all files in a mod PAK
+cargo run --release --bin mod_explore --quiet -- OtherMod_P.pak --list
+
+# Search for specific DataAsset types
+cargo run --release --bin mod_explore --quiet -- OtherMod_P.pak --list | grep DataAsset
+
+# Extract a specific file for inspection
+cargo run --release --bin mod_explore --quiet -- OtherMod_P.pak --extract \
+  MotorTown/Content/DataAsset/VehicleParts/VehicleParts0.uasset
+# → extracts to mod_out/VehicleParts0.uasset
+
+# Parse and count rows
+cd csharp/UAssetTool
+dotnet run --configuration Release --verbosity quiet -- /path/to/mod_out/VehicleParts0.uasset
+```
+
+## Game Version Management
+
+When a new Motor Town update drops, the game PAK changes and extracted data (`out/`, `motortown.db`) must be refreshed. The versioning system uses git tags + worktrees + a data archive to manage multiple versions in parallel.
+
+```bash
+# Check current version
+scripts/mt-version.sh status
+
+# Archive current data after extraction
+scripts/mt-version.sh archive v0.7.18
+
+# Switch to a different version for building
+scripts/mt-version.sh switch v0.7.17
+
+# Create parallel worktree for old version
+scripts/mt-version.sh worktree v0.7.17
+```
+
+See `AGENTS.md` "Game Versioning" section for full workflow.
+
+## Toolchain Reference
+
+### Rust Tools
+
+| Binary | Command | Purpose |
+|--------|---------|---------|
+| `mt-pak-extract` | `cargo run --release --quiet --` | Base game PAK extraction (AES decrypt + Oodle decompress) |
+| `mod_explore` | `cargo run --release --quiet --bin mod_explore --` | List, search, and extract from mod PAKs |
+| `mod_pack` | `cargo run --release --quiet --bin mod_pack --` | Pack a directory into a mod PAK |
+
+### C# Tool (UAssetTool)
+
+Located in `csharp/UAssetTool/`. Run via:
+
+```bash
+cd csharp/UAssetTool
+dotnet run --configuration Release --verbosity quiet -- <command> [args]
+```
+
+| Command | Purpose |
+|---------|---------|
+| `--batch` | Parse all extracted `.uasset` files |
+| `--dump <file>` | Debug dump of a `.uasset` file |
+| `--patch-tire <config> <template> <outdir>` | Create tire physics asset |
+| `--add-tire-parts <config> <template> <outdir>` | Add tire row to VehicleParts DataTable |
+| `--add-cargos <config> <template> <outdir>` | Add cargo rows to Cargos DataTable |
+| `--patch-blueprint <config> <template> <outdir>` | Create cargo blueprint from template |
+| `--add-recipes <config> <template> <outdir>` | Add delivery recipes |
+| `--add-decals <config> <template> <outdir>` | Add decal entries |
+
+### Python Build Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/modbase.py` | **Shared base module** — `ModBuilder` class with common build infrastructure |
+| `scripts/create_tirepack.py` | Tire mod PAK builder (subclasses `ModBuilder`) |
+| `scripts/create_cargopack.py` | Cargo mod PAK builder (subclasses `ModBuilder`) |
+| `scripts/create_decal_pack.py` | Decal mod PAK builder (subclasses `ModBuilder`) |
+| `scripts/aggregate_to_sqlite.py` | Parsed JSON → SQLite database |
+
+### ModBuilder Base Module
+
+All mod-type scripts inherit from `ModBuilder` in `scripts/modbase.py`. The base class provides:
+
+| Method | Purpose |
+|--------|---------|
+| `run_dotnet(args, label)` | Run C# UAssetTool commands |
+| `build_pak(staging_dir)` | Build mod PAK via `mod_pack` binary |
+| `verify_pak()` | List PAK contents via `mod_explore` |
+| `extract_from_compat_mod(pak, asset_path, dest)` | Extract a single asset from another mod's PAK |
+| `resolve_template_with_compat(base, pak_path)` | Resolve DataTable template (base game or compat mod) |
+| `stage_asset(src, pak_dir, name)` | Copy `.uasset/.uexp` pair to PAK staging |
+| `stage_datatable(src, name, subdir)` | Stage a DataTable asset |
+
+**Build flow** (template method pattern):
+
+```
+build() → transform_assets() → register_in_tables() → assemble_pak() → build_pak() → verify_pak()
+```
+
+Subclasses implement the three hooks to define their mod-type-specific logic.
+
+### C# Shared Helpers
+
+The C# tool (`Program.cs`) provides shared helpers used across all DataTable commands:
+
+| Helper | Used By | Purpose |
+|--------|---------|---------|
+| `FindDataTable(asset)` | cargos, tires, decals | Find first DataTableExport in an asset |
+| `SetLocalizationGuid(prop)` | cargos, tires | Set `Name` to random GUID for localization |
+| `SetDisplayName(prop, json, asset)` | cargos, tires | Set `Name2.Texts` display name array |
+| `SetDescriptionFallback(prop, text)` | tires | Set `Desciption` text fallback |
+| `AddImportChain(asset, pkg, class, path, name)` | cargos, tires, CDO patches | Add Package + Asset import pair |
+| `SetEnumArray(arr, json, asset, enumType)` | cargos, tires | Set enum array from JSON values |
+
+### CDO Patch Engine Operations
+
+The `--patch-cdo-arrays` and `--patch-rows` commands use a JSON-driven patch engine. Key operations:
+
+| Operation | Purpose | Creates if missing? |
+|-----------|---------|--------------------|
+| `set` | Set numeric, bool, or string property | No |
+| `set_enum` | Set enum property | No |
+| `set_import_ref` | Set ObjectProperty to import reference | No |
+| `set_or_create_import_ref` | Set or create ObjectProperty with import reference | **Yes** |
+| `set_or_add_float` | Set or create float property | **Yes** |
+| `set_or_create_name` | Set or create name/string property | **Yes** |
+| `set_or_create_int` | Set or create integer property | **Yes** |
+| `null_ref` | Set ObjectProperty/SoftObjectProperty to null | No |
+| `set_soft_object` | Set SoftObjectProperty path | No |
+| `clear_array` | Empty an array property | No |
+| `clear_map` | Empty a map property | No |
+| `add_gameplay_tags` | Add tags to existing GameplayTagContainer | No |
+| `add_map_entry` | Add entry to existing map (clones key/value from existing entries) | No |
+
+The `set_or_create_*` variants are essential for patching **inherited** CDO properties that aren't serialized in the child blueprint.
+
+### --patch-rows: In-Place DataTable Row Patching
+
+Modifies existing DataTable rows by RowName without adding new rows. Uses the same patch engine as `--patch-cdo-arrays`.
+
+```bash
+cd csharp/UAssetTool
+dotnet run -- --patch-rows config.json template.uasset output_dir/
+```
+
+Config format:
+```json
+{
+  "output_filename": "Vehicles_Ambulance",
+  "patches": [
+    {
+      "row_name": "Brutus_Ambulance",
+      "patches": [
+        { "path": "bIsBusable", "op": "set", "value": true },
+        { "path": "GameplayTags", "op": "add_gameplay_tags", "tags": ["Vehicle.Bus"] },
+        { "path": "Parts", "op": "add_map_entry", "key": "EMTVehiclePartSlot::BusLicense", "value": "BusLicense0" }
+      ]
+    }
+  ]
+}
+```
+
+> [!IMPORTANT]
+> Unlike `--add-rows` which clones a row and adds a **new** row, `--patch-rows` finds an existing row by name and applies patches in-place. This is essential when you need to modify a vehicle's properties without duplicating it.
+
+## Creating a New Mod Type
+
+To add a new mod type (e.g., engine mods, wheel mods):
+
+### 1. Define JSON config schema
+
+Create a JSON format for the new mod type. Follow existing patterns:
+- Tire: `tire_entries.json` with `tire_physics` + `tire_part` sections
+- Cargo: `cargo_entries.json` with entries array + `recipe_entries.json`
+
+### 2. Add C# command(s) to `Program.cs`
+
+Reuse shared helpers to minimize new code:
+
+```csharp
+// Add command dispatch in Main()
+else if (addEnginePartsMode)
+{
+    // --add-engine-parts config.json template.uasset output_dir
+    var idx = Array.IndexOf(args, "--add-engine-parts");
+    // ...
+    AddEngineParts(configPath, templatePath, outputDir);
+}
+
+// Command handler — uses shared helpers
+static void AddEngineParts(string configPath, string templatePath, string outputDir)
+{
+    var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
+    var dtExport = FindDataTable(asset);  // shared
+    if (dtExport == null) return;
+
+    var templateRow = dtExport.Table.Data[^1];
+    var newRow = (StructPropertyData)templateRow.Clone();  // deep-clone
+
+    SetLocalizationGuid(/* Name prop */);        // shared
+    SetDisplayName(/* Name2 prop */, ...);        // shared
+    var (_, importIdx) = AddImportChain(...);     // shared
+
+    dtExport.Table.Data.Add(newRow);
+    asset.Write(outputPath);
+}
+```
+
+### 3. Create Python build script
+
+Subclass `ModBuilder`:
+
+```python
+# scripts/create_enginepack.py
+from modbase import ModBuilder, add_common_args
+
+class EngineModBuilder(ModBuilder):
+    def transform_assets(self):
+        # Create engine DataAsset files
+        self.run_dotnet(["--patch-engine", ...], "patch engine")
+
+    def register_in_tables(self):
+        # Add to Engines DataTable
+        template = self.resolve_template_with_compat(
+            base_template, "MotorTown/Content/DataAsset/VehicleParts/Engines.uasset")
+        self.run_dotnet(["--add-engine-parts", ...], "add engine parts")
+
+    def assemble_pak(self):
+        self.stage_asset(engine_asset, "Cars/Parts/Engine", name=engine_name)
+        self.stage_datatable(engines_dt, "Engines", "DataAsset/VehicleParts")
+
+    def print_summary(self):
+        self.log(f"  Engines: {', '.join(...)}")
+```
+
+### 4. Create skill documentation
+
+Add `.agents/skills/{type}-mod/SKILL.md` following the cargo/tire skill structure:
+- Quick Start with build command
+- Pipeline overview table
+- Configuration reference
+- Critical rules / gotchas
+- Verification commands
+- Key files table
+
+### SQLite Database
+
+`motortown.db` is generated by `aggregate_to_sqlite.py` and contains normalized game data:
+
+```sql
+-- Find all police vehicles
+SELECT id, name, vehicle_type FROM vehicles
+WHERE id IN (SELECT vehicle_id FROM vehicle_tags WHERE tag LIKE '%Police%');
+
+-- Find all tire parts
+SELECT name, cost, mass_kg FROM vehicle_parts WHERE part_type = 'Tire';
+
+-- Find delivery points
+SELECT * FROM delivery_points;
+```
+
+Key tables: `vehicles`, `vehicle_parts`, `vehicle_default_parts`, `vehicle_tags`, `cargos`, `cargo_weights`, `delivery_points`.
+
+## UAssetAPI Gotchas
+
+These apply to ALL mod types when working with `UAssetAPI` in the C# tool.
+
+### FName Number Suffix Trap
+
+UE's FName system parses trailing `_NN` as an instance Number. `BasicTire_45` is stored as FName(`"BasicTire"`, Number=46).
+
+```csharp
+// ✅ Correct — explicit Number=0
+export.ObjectName = new FName(asset, "APF_78", 0);
+
+// ❌ Wrong — may parse _78 as Number=79
+export.ObjectName = FName.FromString(asset, "APF_78");
+```
+
+### Deep-Clone All Structs
+
+Never construct DataTable rows from scratch. Always clone from an existing template row:
+
+```csharp
+var newRow = (StructPropertyData)templateRow.Clone();
+// Then modify properties in-place
+```
+
+Constructing properties manually corrupts unversioned header serialization.
+
+### Map Property Types — NamePropertyData vs StrPropertyData
+
+When adding entries to DataTable maps (e.g. `Parts` in vehicle rows), **the parsed JSON shows values as plain strings, but UAssetAPI internally stores them as different C# types depending on the map.**
+
+The `Parts` map uses:
+- **Keys:** `EnumPropertyData` (e.g. `EMTVehiclePartSlot::BusLicense`)
+- **Values:** `NamePropertyData` (NOT `StrPropertyData`)
+
+Constructing `StrPropertyData` values from scratch for a `NamePropertyData` map **corrupts unversioned header serialization** and causes runtime serialization errors.
+
+```csharp
+// ✅ Correct — clone existing entry and modify
+var firstVal = mapProp.Value.Values.OfType<NamePropertyData>().FirstOrDefault();
+var valProp = (NamePropertyData)firstVal.Clone();
+valProp.Value = FName.FromString(asset, "BusLicense0");
+
+// ❌ Wrong — StrPropertyData doesn't match NamePropertyData map
+var valProp = new StrPropertyData(...) { Value = FString.FromString("BusLicense0") };
+```
+
+**Always debug-log the actual C# types before cloning:**
+```csharp
+foreach (var kvp in mapProp.Value)
+    Console.WriteLine($"Key: {kvp.Key.GetType().Name}, Val: {kvp.Value.GetType().Name}");
+```
+
+### NameMap Handling (Tire vs Cargo)
+
+- **Tire assets:** NameMap[0] is the self-package reference and MUST be updated (see tire-mod skill)
+- **Cargo blueprints:** NameMap stale entries are harmless — blueprints reference their class via imports
+
+### Import References
+
+When adding new assets to a DataTable, you must add corresponding Import entries:
+
+```csharp
+// 1. Package import
+var pkgImport = new Import("/Script/CoreUObject", "Package",
+    FPackageIndex.FromRawIndex(0), "/Game/Cars/Parts/Tire/APF_78_Tire", false, asset);
+asset.Imports.Add(pkgImport);
+
+// 2. Asset import (outer = package)
+var assetImport = new Import("/Script/MotorTown", "MTTirePhysicsDataAsset",
+    FPackageIndex.FromImport(pkgImportIdx - 1), "APF_78_Tire", false, asset);
+asset.Imports.Add(assetImport);
+```
+
+## Diagnostic Workflow
+
+### Mod doesn't load at all
+1. Check PAK filename ends with `_P.pak`
+2. Check mount point with `mod_explore --list` (should be `../../../`)
+3. Verify PAK version is V11
+
+### DataTable changes not visible
+1. Check if another mod overrides the same DataTable (alphabetical conflict)
+2. Use `mod_explore --list | grep DataAsset` to identify conflicts
+3. Rebuild with `--compat-mod` pointing to the conflicting mod
+
+### Part doesn't appear in-game
+1. Check `VehicleTypes` matches the vehicle class
+2. Check `VehicleKeys` includes the specific vehicle
+3. Check `LevelRequirementToBuy` — player may not have required level
+4. Check `bIsHidden` is `false`
+5. For tires: verify `VehicleParts0` contains the row (override table takes precedence)
+
+### Asset loads but has wrong values
+1. Check flat PAK path (no subfolders for physics/blueprint assets)
+2. Check NameMap[0] matches new asset path (tire assets only)
+3. Check export name doesn't have stale `_NN` suffix
+4. Binary scan for stale template references:
+   ```bash
+   python3 -c "
+   with open('asset.uasset', 'rb') as f:
+       data = f.read()
+   import re
+   for m in re.finditer(rb'BasicTire|SmallBox|OldTemplate', data):
+       print(f'Stale ref at offset {m.start()}: {m.group()}')
+   "
+   ```
+
+### CDO patches don't take effect
+1. Check parent blueprint (e.g. `MTVehicleBaseBP.uasset`) was in same directory during patching
+2. Use `--dump` to verify the import was added (look for the asset name in imports)
+3. Use `--dump` to verify CDO size changed (compare with original)
+4. For inherited properties, ensure you used `set_or_create_import_ref` (not `set_import_ref`)
+5. Check CDO loads as `RawExport` — if reparse failed, the property was NOT added
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `AGENTS.md` | Build commands, Nix dev shell, full pipeline docs |
+| `src/bin/mod_pack.rs` | PAK creator (V11, mount `../../../`) |
+| `src/bin/mod_explore.rs` | PAK reader/extractor for mod analysis |
+| `csharp/UAssetTool/Program.cs` | Core UAsset manipulation tool |
+| `motortown.db` | SQLite database of parsed game data |
+| `out/` | Extracted base game assets (templates) |
+| `scripts/` | Python build pipeline scripts |

@@ -1,0 +1,41 @@
+{
+  "entries": [
+    {
+      "row_name": "Money",
+      "display_name": ["Money", "Stack"],
+      "cargo_type": "None",
+      "cargo_space_types": ["Flatbed", "Box"],
+      "weight_min": 5,
+      "weight_max": 10,
+      "volume_size": 1,
+      "payment_per_km": 300,
+      "payment_multiplier": 10.0,
+      "spawn_probability": 10,
+      "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_Money_Stack_01",
+      "mass_kg": 8,
+      "blueprint_name": "Money",
+      "cargo_flags": 11,
+      "allow_stacking": true
+    },
+    {
+      "row_name": "MoneyPallet",
+      "display_name": ["Money", "Pallet"],
+      "cargo_type": "None",
+      "cargo_space_types": ["Flatbed", "Box"],
+      "weight_min": 15,
+      "weight_max": 30,
+      "volume_size": 1,
+      "payment_per_km": 1000,
+      "payment_multiplier": 2.0,
+      "spawn_probability": 5,
+      "mesh_path": "/Game/Models/PolygonPoliceStation/Meshes/Props/SM_Prop_Box_01",
+      "mass_kg": 25,
+      "blueprint_name": "MoneyPallet",
+      "extra_export_patches": [
+        {"patches": [{"path": "bCanPickup", "op": "set", "value": false}]}
+      ],
+      "cargo_flags": 11,
+      "allow_stacking": true
+    }
+  ]
+}

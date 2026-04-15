@@ -1,0 +1,42 @@
+{
+  "sources": [
+    {
+      "delivery_point": "Harbor_Export",
+      "template_path": "out/Factory_Toy.uasset",
+      "replace_production_configs": true,
+      "recipes": [
+        {
+          "cargo": "Money",
+          "production_time": 60,
+          "hidden": false
+        },
+        {
+          "cargo": "MoneyPallet",
+          "production_time": 120,
+          "hidden": false
+        }
+      ]
+    }
+  ],
+  "sinks": [
+    {
+      "delivery_point": "Factory_Toy",
+      "template_path": "out/Factory_Toy.uasset",
+      "recipes": [
+        {
+          "cargo": "Money",
+          "production_time": 60,
+          "hidden": true
+        },
+        {
+          "cargo": "MoneyPallet",
+          "production_time": 120,
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "transforms": [],
+  "catalysts": [],
+  "storage": []
+}

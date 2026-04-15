@@ -2,8 +2,8 @@ use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::Path;
 
-use aes::Aes256;
 use aes::cipher::KeyInit;
+use aes::Aes256;
 use repak::PakBuilder;
 use serde::{Deserialize, Serialize};
 
@@ -27,38 +27,36 @@ struct ExtractedAsset {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    
+
     let list_mode = args.contains(&"--list".to_string());
     let config_idx = args.iter().position(|a| a == "--config");
-    
+
     println!("=== MotorTown PAK Asset Extractor ===");
     println!("Usage: {} [--list] [--config <file>] [asset_path]", args[0]);
     println!("  --list: Show all DataAsset files in PAK");
     println!("  --config <file>: Batch extract assets listed in JSON config");
     println!("  asset_path: Extract single asset (default: Cargos)");
     println!();
-    
+
     // Load AES key from .env file
     dotenvy::dotenv().ok();
     let key_hex = std::env::var("KEY")?;
-    
+
     let key_hex = key_hex.strip_prefix("0x").unwrap_or(&key_hex);
     let key_bytes: [u8; 32] = hex::decode(key_hex)?
         .try_into()
         .map_err(|_| "Key must be 32 bytes")?;
-    
+
     let aes_key = Aes256::new_from_slice(&key_bytes)?;
-    
+
     // Open the PAK file
     let pak_path = "MotorTown-Windows.pak";
     let mut file = BufReader::new(File::open(pak_path)?);
-    
+
     println!("Opening PAK file: {}", pak_path);
-    
-    let pak = PakBuilder::new()
-        .key(aes_key)
-        .reader(&mut file)?;
-    
+
+    let pak = PakBuilder::new().key(aes_key).reader(&mut file)?;
+
     // Handle --list mode
     if list_mode {
         println!("=== Available DataAsset files ===");
@@ -72,25 +70,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Total: {} DataAsset files", count);
         return Ok(());
     }
-    
+
     // Handle --search mode
     let search_idx = args.iter().position(|a| a == "--search");
-    if let Some(idx) = search_idx {
-        let pattern = args.get(idx + 1)
-            .ok_or("--search requires a pattern")?;
-        
-        println!("=== Searching for assets containing '{}' ===", pattern);
+    let search_all_idx = args.iter().position(|a| a == "--search-all");
+    if let Some(idx) = search_idx.or(search_all_idx) {
+        let pattern = args
+            .get(idx + 1)
+            .ok_or("--search/--search-all requires a pattern")?;
+        let search_all = search_all_idx.is_some();
+
+        println!(
+            "=== Searching for {} containing '{}' ===",
+            if search_all { "all files" } else { "assets" },
+            pattern
+        );
         let mut count = 0;
         for path in pak.files() {
-            if path.ends_with(".uasset") && path.to_lowercase().contains(&pattern.to_lowercase()) {
-                println!("  {}", path.trim_end_matches(".uasset"));
+            let matches_ext = search_all || path.ends_with(".uasset");
+            if matches_ext && path.to_lowercase().contains(&pattern.to_lowercase()) {
+                println!(
+                    "  {}",
+                    if search_all {
+                        path.clone()
+                    } else {
+                        path.trim_end_matches(".uasset").to_string()
+                    }
+                );
                 count += 1;
             }
         }
-        println!("Total: {} matching assets", count);
+        println!("Total: {} matching files", count);
         return Ok(());
     }
-    
+
     // Handle --extract-maps mode: scan .umap files for DeliveryPoint actors
     if args.contains(&"--extract-maps".to_string()) {
         let filter_idx = args.iter().position(|a| a == "--filter");
@@ -98,48 +111,52 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .and_then(|idx| args.get(idx + 1))
             .map(|s| s.to_lowercase())
             .unwrap_or_else(|| "deliverypoint".to_lowercase());
-        
+
         let out_dir = Path::new("out").join("maps");
         fs::create_dir_all(&out_dir)?;
-        
+
         println!("=== Extracting .umap files containing '{}' ===", filter);
-        
+
         // Collect .umap paths first
-        let umap_paths: Vec<String> = pak.files()
+        let umap_paths: Vec<String> = pak
+            .files()
             .into_iter()
             .filter(|p| p.ends_with(".umap"))
             .map(|p| p.to_string())
             .collect();
-        
+
         println!("Scanning {} .umap files...", umap_paths.len());
-        
-        let mut manifest = Manifest { extracted: Vec::new() };
+
+        let mut manifest = Manifest {
+            extracted: Vec::new(),
+        };
         let mut scanned = 0;
-        
+
         for umap_path in &umap_paths {
             scanned += 1;
             if scanned % 500 == 0 {
                 eprint!("\r  Scanned {}/{}", scanned, umap_paths.len());
             }
-            
+
             match pak.get(umap_path, &mut file) {
                 Ok(data) => {
                     // Quick check: does the raw bytes contain our filter string?
                     let data_lower: Vec<u8> = data.iter().map(|b| b.to_ascii_lowercase()).collect();
                     let filter_bytes = filter.as_bytes();
-                    
-                    let contains = data_lower.windows(filter_bytes.len())
+
+                    let contains = data_lower
+                        .windows(filter_bytes.len())
                         .any(|window| window == filter_bytes);
-                    
+
                     if contains {
                         let name = Path::new(umap_path)
                             .file_stem()
                             .and_then(|s| s.to_str())
                             .unwrap_or("unknown");
-                        
+
                         let out_path = out_dir.join(format!("{}.umap", name));
                         fs::write(&out_path, &data)?;
-                        
+
                         // Also extract companion .uexp if it exists
                         let uexp_path_str = umap_path.replace(".umap", ".uexp");
                         let uexp_out = match pak.get(&uexp_path_str, &mut file) {
@@ -150,9 +167,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                             Err(_) => None,
                         };
-                        
+
                         println!("\n  Found: {} ({} bytes)", name, data.len());
-                        
+
                         manifest.extracted.push(ExtractedAsset {
                             name: name.to_string(),
                             pak_path: umap_path.trim_end_matches(".umap").to_string(),
@@ -164,58 +181,67 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(_) => {}
             }
         }
-        
+
         eprintln!("\r  Scanned {}/{}", umap_paths.len(), umap_paths.len());
-        
+
         // Write manifest for map files
         let manifest_path = out_dir.join("manifest.json");
         let manifest_json = serde_json::to_string_pretty(&manifest)?;
         fs::write(&manifest_path, &manifest_json)?;
-        
-        println!("\n=== Found {} .umap files containing '{}' ===", manifest.extracted.len(), filter);
+
+        println!(
+            "\n=== Found {} .umap files containing '{}' ===",
+            manifest.extracted.len(),
+            filter
+        );
         println!("Output: {}/", out_dir.display());
         println!("Manifest: {}", manifest_path.display());
-        
+
         return Ok(());
     }
-    
+
     // Handle --config mode (batch extraction)
     if let Some(idx) = config_idx {
-        let config_path = args.get(idx + 1)
-            .ok_or("--config requires a file path")?;
-        
+        let config_path = args.get(idx + 1).ok_or("--config requires a file path")?;
+
         println!("Loading config: {}", config_path);
         let config_content = fs::read_to_string(config_path)?;
         let config: Config = serde_json::from_str(&config_content)?;
-        
+
         // Create output directory
         let out_dir = Path::new("out");
         fs::create_dir_all(out_dir)?;
-        
-        println!("Extracting {} assets to {}/", config.assets.len(), out_dir.display());
-        
-        let mut manifest = Manifest { extracted: Vec::new() };
-        
+
+        println!(
+            "Extracting {} assets to {}/",
+            config.assets.len(),
+            out_dir.display()
+        );
+
+        let mut manifest = Manifest {
+            extracted: Vec::new(),
+        };
+
         for asset_path in &config.assets {
             let asset_path = asset_path
                 .trim_end_matches(".uasset")
                 .trim_end_matches(".uexp");
-            
+
             let name = Path::new(asset_path)
                 .file_name()
                 .and_then(|s| s.to_str())
                 .unwrap_or("asset");
-            
+
             let uasset_pak_path = format!("{}.uasset", asset_path);
             let uexp_pak_path = format!("{}.uexp", asset_path);
-            
+
             print!("  {} ... ", name);
-            
+
             match pak.get(&uasset_pak_path, &mut file) {
                 Ok(uasset_data) => {
                     let uasset_out = out_dir.join(format!("{}.uasset", name));
                     fs::write(&uasset_out, &uasset_data)?;
-                    
+
                     let uexp_out = match pak.get(&uexp_pak_path, &mut file) {
                         Ok(uexp_data) => {
                             let path = out_dir.join(format!("{}.uexp", name));
@@ -224,9 +250,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         Err(_) => None,
                     };
-                    
+
+                    // Also extract .ufont (bulk font data) if it exists
+                    let ufont_pak_path = format!("{}.ufont", asset_path);
+                    let _ufont_out = match pak.get(&ufont_pak_path, &mut file) {
+                        Ok(ufont_data) => {
+                            let path = out_dir.join(format!("{}.ufont", name));
+                            fs::write(&path, &ufont_data)?;
+                            Some(format!("{}.ufont", name))
+                        }
+                        Err(_) => None,
+                    };
+
                     println!("OK ({} bytes)", uasset_data.len());
-                    
+
                     manifest.extracted.push(ExtractedAsset {
                         name: name.to_string(),
                         pak_path: asset_path.to_string(),
@@ -239,36 +276,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        
+
         // Write manifest
         let manifest_path = out_dir.join("manifest.json");
         let manifest_json = serde_json::to_string_pretty(&manifest)?;
         fs::write(&manifest_path, &manifest_json)?;
-        
+
         println!("\n=== Extracted {} assets ===", manifest.extracted.len());
         println!("Manifest: {}", manifest_path.display());
         println!("\nRun C# parser: cd csharp/CargoExtractor && dotnet run -- --batch");
-        
+
         return Ok(());
     }
-    
+
     // Single asset mode (existing behavior)
-    let asset_path = args.iter()
+    let asset_path = args
+        .iter()
         .skip(1)
         .find(|a| !a.starts_with("--"))
         .cloned()
         .unwrap_or_else(|| "MotorTown/Content/DataAsset/Cargos".to_string());
-    
+
     let asset_path = asset_path
         .trim_end_matches(".uasset")
         .trim_end_matches(".uexp")
         .to_string();
-    
+
     let uasset_path = format!("{}.uasset", asset_path);
     let uexp_path = format!("{}.uexp", asset_path);
-    
+
     println!("Extracting: {}", uasset_path);
-    
+
     let uasset_data = pak.get(&uasset_path, &mut file)?;
     let uexp_data = match pak.get(&uexp_path, &mut file) {
         Ok(data) => {
@@ -280,24 +318,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             None
         }
     };
-    
+
     println!("  uasset: {} bytes", uasset_data.len());
-    
+
     let output_name = Path::new(&asset_path)
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("asset");
-    
+
     fs::write(format!("{}.uasset", output_name), &uasset_data)?;
     println!("Saved: {}.uasset", output_name);
-    
+
     if let Some(uexp) = uexp_data {
         fs::write(format!("{}.uexp", output_name), &uexp)?;
         println!("Saved: {}.uexp", output_name);
     }
-    
+
     println!("\nDone! Use the C# parser to extract properties:");
-    println!("  cd csharp/CargoExtractor && dotnet run -- {}.uasset", output_name);
-    
+    println!(
+        "  cd csharp/CargoExtractor && dotnet run -- {}.uasset",
+        output_name
+    );
+
     Ok(())
 }
