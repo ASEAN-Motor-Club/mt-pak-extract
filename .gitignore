@@ -45,13 +45,8 @@ game_data.db
 
 # Generated parsed output
 *_parsed.json
-mod_out/
-qxZap_*/
-*.zip
 
-# Versioned game data archive (large, derived from PAKs)
-/versions/
-
-# Built mod PAK outputs
-/mods/
-/cargo_build/
+# User-uploaded decal images
+images/
+uploads/
+MEMORY.md
