@@ -62,7 +62,7 @@ python3 scripts/create_decal_pack.py --input images/ --output MyPack_P.pak
 
 ### Image Requirements
 
-- **Resolution**: Source PNGs should be **2048×2048**. Smaller images are auto-resized with transparent padding (preserves aspect ratio). Square images give best results.
+- **Resolution**: **MUST be 2048×2048**. Smaller images are upscaled with transparent padding during preprocessing. Do NOT resize to 512×512 — texconv handles the DXT5 compression resize automatically.
 - **Format**: PNG with transparency (RGBA). JPG/BMP also accepted but PNG preferred.
 - **Colorspace**: sRGB. The pipeline converts through linear RGB before DXT5 compression to prevent gamma darkening.
 - **Filenames**: Must not contain spaces, parentheses, or dashes. Use underscores instead (e.g., `Group_108_1.png` not `Group 108 (1).png`).
@@ -70,7 +70,7 @@ python3 scripts/create_decal_pack.py --input images/ --output MyPack_P.pak
 
 ### Image Preprocessing (before injection)
 
-Before injecting, upscale all images to 2048×2048 with transparent padding and fix gamma:
+Before injecting, ensure all images are 2048×2048 with transparent padding and correct gamma. **Do NOT resize to 512×512** — texconv handles the DXT5 compression resize automatically.
 
 ```bash
 CONVERT="/path/to/imagemagick/convert"
@@ -87,6 +87,8 @@ done
 ```
 
 The `-colorspace RGB` converts to linear before resize, then `-colorspace sRGB` converts back. This compensates for texconv's DXT5 sRGB→linear gamma conversion during compression, preventing darkened colors in-game.
+
+After preprocessing, texconv injects the 2048×2048 PNG and compresses it to 512×512 DXT5 automatically.
 
 ### Pipeline (automated by script)
 
@@ -126,9 +128,8 @@ This preserves hash integrity. Old NameMap entries remain but are harmless unuse
 
 ### Decal Texture Format
 
-- **Source resolution**: **2048×2048** PNG with transparent background and transparent padding for non-square images
-- **Injection resolution**: **512×512** (auto-resized by texconv during DXT5 compression)
-- **Pixel format**: **PF_DXT5** (BC3_UNORM, compressed with alpha)
+- **Source resolution**: **MUST be 2048×2048** PNG with transparent background. Non-square images get transparent padding. Do NOT resize to 512×512 — texconv handles the DXT5 compression resize automatically.
+- **Pixel format**: **PF_DXT5** (BC3_UNORM, compressed with alpha). Texconv compresses 2048×2048 → 512×512 during injection.
 - **Colorspace**: Source PNGs must be sRGB. Pipeline converts through linear RGB during resize to prevent gamma darkening
 - **Filename requirement**: No spaces, parentheses, or dashes — use underscores only
 - **Template**: Any base game decal texture from `out/` (prefers `GeomShape_01/001-circle`)
@@ -139,11 +140,15 @@ This preserves hash integrity. Old NameMap entries remain but are harmless unuse
 ```
 images/ (498 PNGs, 2048×2048, sanitized filenames)
   → ImageMagick: -colorspace RGB -resize 2048x2048 -gravity center -extent 2048x2048 -colorspace sRGB
-  → UE4-DDS-Tools: inject into template .uasset (DXT5, 512×512)
+     (ensures 2048×2048, transparent padding, gamma correction)
+  → UE4-DDS-Tools: inject into template .uasset
+     (texconv compresses 2048×2048 → 512×512 DXT5 automatically)
   → C# TexturePathFix: set FolderName + Export.ObjectName
   → C# --add-decals: generate Decals DataTable
   → mod_pack: create PAK file
 ```
+
+The source images stay at **2048×2048** throughout. Texconv handles the downscale to 512×512 during DXT5 compression.
 
 ### How the Engine Resolves Textures
 
