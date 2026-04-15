@@ -92,9 +92,15 @@
             (python312.withPackages (ps: with ps; [
               pip
             ]))
+            imagemagick
+            librsvg
+            sqlite
           ];
 
           shellHook = ''
+            # Oodle decompression (via repak) dlopen's libstdc++.so.6 at runtime.
+            # On NixOS this isn't in a standard path — we must point LD_LIBRARY_PATH at it.
+            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
             echo "MotorTown PAK Extraction Environment"
             echo "  Rust: $(rustc --version)"
             echo "  .NET: $(dotnet --version)"
