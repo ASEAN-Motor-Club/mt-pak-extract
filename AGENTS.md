@@ -60,12 +60,41 @@ python3 scripts/create_decal_pack.py --input images/ --output MyPack_P.pak
 | `--template, -t` | auto from `out/` | Template decal texture .uasset |
 | `--decals, -d` | auto from `out/` | Template Decals.uasset |
 
+### Image Requirements
+
+- **Resolution**: Source PNGs should be **2048×2048**. Smaller images are auto-resized with transparent padding (preserves aspect ratio). Square images give best results.
+- **Format**: PNG with transparency (RGBA). JPG/BMP also accepted but PNG preferred.
+- **Colorspace**: sRGB. The pipeline converts through linear RGB before DXT5 compression to prevent gamma darkening.
+- **Filenames**: Must not contain spaces, parentheses, or dashes. Use underscores instead (e.g., `Group_108_1.png` not `Group 108 (1).png`).
+- **No extraneous files**: Remove any `.py`, `.txt`, or non-image files from the source directories.
+
+### Image Preprocessing (before injection)
+
+Before injecting, upscale all images to 2048×2048 with transparent padding and fix gamma:
+
+```bash
+CONVERT="/path/to/imagemagick/convert"
+for img in source_images/*.png; do
+  "$CONVERT" "$img" \
+    -colorspace RGB \
+    -resize 2048x2048 \
+    -gravity center \
+    -background none \
+    -extent 2048x2048 \
+    -colorspace sRGB \
+    PNG32:"processed/$name.png"
+done
+```
+
+The `-colorspace RGB` converts to linear before resize, then `-colorspace sRGB` converts back. This compensates for texconv's DXT5 sRGB→linear gamma conversion during compression, preventing darkened colors in-game.
+
 ### Pipeline (automated by script)
 
-1. **Inject** each image into a base game decal texture template (auto-resizes to 512×512 via texconv)
-2. **Modify** uasset metadata via C# UAssetAPI: set `FolderName` to new path, set `Export.ObjectName` to new name (uses `FName.FromString` — does NOT modify NameMap directly)
-3. **Generate** Decals DataTable entries via C# `--add-decals` mode (uses ASEAN-Motor-Club/UAssetAPI fork)
-4. **Package** into mod PAK with `mod_pack` binary (V11, mount `../../../`)
+1. **Preprocess** images: sanitize filenames, upscale to 2048×2048 with transparent padding, fix gamma colorspace
+2. **Inject** each image into a base game decal texture template (auto-resizes to 512×512 via texconv DXT5)
+3. **Modify** uasset metadata via C# UAssetAPI: set `FolderName` to new path, set `Export.ObjectName` to new name (uses `FName.FromString` — does NOT modify NameMap directly)
+4. **Generate** Decals DataTable entries via C# `--add-decals` mode (uses ASEAN-Motor-Club/UAssetAPI fork)
+5. **Package** into mod PAK with `mod_pack` binary (V11, mount `../../../`)
 
 ### Texture Modification (CRITICAL)
 
@@ -97,12 +126,26 @@ This preserves hash integrity. Old NameMap entries remain but are harmless unuse
 
 ### Decal Texture Format
 
-- Resolution: **512×512** (auto-resized if different)
-- Pixel format: **PF_DXT5** (BC3_UNORM, compressed with alpha)
-- Template: Any base game decal texture from `out/` (prefers `GeomShape_01/001-circle`)
-- uasset metadata must match PAK file path (script patches automatically)
+- **Source resolution**: **2048×2048** PNG with transparent background and transparent padding for non-square images
+- **Injection resolution**: **512×512** (auto-resized by texconv during DXT5 compression)
+- **Pixel format**: **PF_DXT5** (BC3_UNORM, compressed with alpha)
+- **Colorspace**: Source PNGs must be sRGB. Pipeline converts through linear RGB during resize to prevent gamma darkening
+- **Filename requirement**: No spaces, parentheses, or dashes — use underscores only
+- **Template**: Any base game decal texture from `out/` (prefers `GeomShape_01/001-circle`)
+- uasset metadata must match PAK file path (FolderName + Export.ObjectName via C# UAssetAPI)
 
-### Decals DataTable
+### Working Pipeline
+
+```
+images/ (498 PNGs, 2048×2048, sanitized filenames)
+  → ImageMagick: -colorspace RGB -resize 2048x2048 -gravity center -extent 2048x2048 -colorspace sRGB
+  → UE4-DDS-Tools: inject into template .uasset (DXT5, 512×512)
+  → C# TexturePathFix: set FolderName + Export.ObjectName
+  → C# --add-decals: generate Decals DataTable
+  → mod_pack: create PAK file
+```
+
+### How the Engine Resolves Textures
 
 Each decal needs a row in `Decals.uasset` with:
 - `RowName`: `{Category}_{Name}` (e.g. `Custom_01_Driftweld`)
