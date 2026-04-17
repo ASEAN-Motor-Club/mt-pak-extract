@@ -297,6 +297,12 @@ scripts/new-version.sh       # New version pipeline (one command)
 - **Large output**: Parser output is massive. Redirect to file: `> /tmp/parser-output.log 2>&1`
 - **`Mappings.usmap` permissions**: Must be owned by `opencode`. If copied from submodule, re-copy: `rm Mappings.usmap && cp csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap Mappings.usmap`
 
+## Authoritative Modding Resources
+
+- https://github.com/Dmgvol/UE_Modding/
+- https://github.com/donaldwuid/unreal_source_explained/
+- https://tempo-organization.github.io/Unreal-Modding-Guides/
+
 ## Lint / Typecheck
 
 No lint or typecheck commands defined for this project. Rust is checked by `cargo build`, C# by `dotnet build`, Python has no type checking.

@@ -478,7 +478,6 @@ class Program
             var newPath = spec.GetProperty("new_path").GetString()!;
             var renameExports = spec.TryGetProperty("rename_exports", out var reProp) && reProp.GetBoolean();
             var renameImports = spec.TryGetProperty("rename_imports", out var riProp) && riProp.GetBoolean();
-            var patchNamemap0 = spec.TryGetProperty("patch_namemap_0", out var pnProp) && pnProp.GetBoolean();
             var fnameNumber = spec.TryGetProperty("fname_number", out var fnProp) ? fnProp.GetInt32() : -1;
             
             Console.WriteLine($"\nCloning asset: {newName}");
@@ -507,8 +506,9 @@ class Program
                 }
             }
             
-            // 1. Patch FolderName
+            // 1. Patch FolderName and PackageGuid
             asset.FolderName = FString.FromString(newPath);
+            asset.PackageGuid = Guid.NewGuid();
             
             // 2. Rename exports
             if (renameExports)
@@ -545,14 +545,21 @@ class Program
                 }
             }
             
-            // 4. Patch NameMap[0]
-            if (patchNamemap0)
+            // 4. Patch all NameMap entries referencing old path/name
+            var nameList = asset.GetNameMapIndexList();
+            for (int ni = 0; ni < nameList.Count; ni++)
             {
-                var oldPkgPath = asset.GetNameReference(0)?.Value;
-                if (oldPkgPath != null)
+                var entry = nameList[ni]?.Value;
+                if (entry == null) continue;
+                string replaced = entry;
+                if (entry.Contains(oldExportName))
+                    replaced = replaced.Replace(oldExportName, newName);
+                if (entry != oldName && entry.Contains(oldName))
+                    replaced = replaced.Replace(oldName, newName);
+                if (replaced != entry)
                 {
-                    asset.SetNameReference(0, FString.FromString(newPath));
-                    Console.WriteLine($"  Renamed NameMap[0]: {oldPkgPath} -> {newPath}");
+                    asset.SetNameReference(ni, FString.FromString(replaced));
+                    Console.WriteLine($"  Renamed NameMap[{ni}]: {entry} -> {replaced}");
                 }
             }
             
@@ -955,7 +962,11 @@ class Program
             case "set_localization_guid":
             {
                 var prop = ResolveProperty(properties, path);
-                if (prop != null) SetLocalizationGuid(prop);
+                if (prop != null)
+                {
+                    string? displayText = patch.TryGetProperty("value", out var vProp) ? vProp.GetString() : null;
+                    SetLocalizationGuid(prop, displayText);
+                }
                 break;
             }
             
@@ -1479,13 +1490,17 @@ class Program
         }
     }
     
-    static void SetLocalizationGuid(PropertyData prop)
+    static void SetLocalizationGuid(PropertyData prop, string? displayText = null)
     {
         if (prop is TextPropertyData nameTxt)
         {
             var guid = Guid.NewGuid().ToString("N").ToUpper();
             nameTxt.Value = FString.FromString(guid.Substring(0, 32));
-            nameTxt.HistoryType = TextHistoryType.None;
+            nameTxt.HistoryType = TextHistoryType.Base;
+            if (displayText != null)
+            {
+                nameTxt.CultureInvariantString = FString.FromString(displayText);
+            }
         }
     }
     
@@ -1502,9 +1517,10 @@ class Program
                     {
                         var textVal = txt.GetString();
                         var textProp = new TextPropertyData(FName.FromString(asset, "Texts"));
-                        textProp.Value = FString.FromString(textVal);
+                        textProp.Namespace = FString.FromString("");
+                        textProp.Value = FString.FromString(Guid.NewGuid().ToString("N").ToUpper().Substring(0, 32));
                         textProp.CultureInvariantString = FString.FromString(textVal);
-                        textProp.HistoryType = TextHistoryType.None;
+                        textProp.HistoryType = TextHistoryType.Base;
                         textList.Add(textProp);
                     }
                     textsArr.Value = textList.ToArray();
@@ -1517,9 +1533,10 @@ class Program
     {
         if (prop is TextPropertyData descTxt)
         {
-            descTxt.Value = FString.FromString(text);
+            descTxt.Namespace = FString.FromString("");
+            descTxt.Value = FString.FromString(Guid.NewGuid().ToString("N").ToUpper().Substring(0, 32));
             descTxt.CultureInvariantString = FString.FromString(text);
-            descTxt.HistoryType = TextHistoryType.None;
+            descTxt.HistoryType = TextHistoryType.Base;
         }
     }
     

@@ -85,7 +85,8 @@ class TireModBuilder(ModBuilder):
         tire_name = entry["tire_physics"]["name"]
 
         patches = [
-            {"path": "Name", "op": "set_localization_guid"},
+            {"path": "Name", "op": "set_localization_guid",
+             "value": tp["display_name"][0]},
             {"path": "Cost", "op": "set", "value": tp["cost"]},
             {"path": "bIsHidden", "op": "set", "value": False},
             {"path": "MassKg", "op": "set", "value": tp.get("mass_kg", 10.0)},

@@ -123,7 +123,8 @@ class CargoModBuilder(ModBuilder):
         for entry in self.config["entries"]:
             patches = [
                 {"path": "bDepcreated", "op": "set", "value": False},
-                {"path": "Name", "op": "set_localization_guid"},
+                {"path": "Name", "op": "set_localization_guid",
+                 "value": entry["display_name"][0]},
                 {"path": "Name2", "op": "set_display_name",
                  "value": entry["display_name"]},
                 {"path": "CargoType", "op": "set_enum",
@@ -191,6 +192,8 @@ class CargoModBuilder(ModBuilder):
 
             arrays.append({
                 "property_name": "ProductionConfigs",
+                "template_source": os.path.join(
+                    self.repo_root, "out", "Factory_Toy.uasset"),
                 "entries": entries,
                 "replace": replace_production_configs,
             })

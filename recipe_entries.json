@@ -1,20 +1,20 @@
 {
   "sources": [
     {
-      "delivery_point": "Harbor_Export",
-      "template_path": "out/Factory_Toy.uasset",
-      "replace_production_configs": true,
+      "delivery_point": "Export_Harbor",
+      "template_path": "out/Export_Harbor.uasset",
+      "replace_production_configs": false,
       "recipes": [
-        {
-          "cargo": "Money",
-          "production_time": 60,
-          "hidden": false
-        },
-        {
-          "cargo": "MoneyPallet",
-          "production_time": 120,
-          "hidden": false
-        }
+        {"cargo": "Money", "production_time": 60, "hidden": false},
+        {"cargo": "MoneyPallet", "production_time": 120, "hidden": false}
+      ]
+    },
+    {
+      "delivery_point": "Mine_CopperOre",
+      "template_path": "out/Mine_CopperOre.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {"cargo": "Moonshine", "production_time": 300, "hidden": false}
       ]
     }
   ],
@@ -22,21 +22,61 @@
     {
       "delivery_point": "Factory_Toy",
       "template_path": "out/Factory_Toy.uasset",
+      "replace_production_configs": false,
       "recipes": [
-        {
-          "cargo": "Money",
-          "production_time": 60,
-          "hidden": true
-        },
-        {
-          "cargo": "MoneyPallet",
-          "production_time": 120,
-          "hidden": true
-        }
+        {"cargo": "Money", "production_time": 60, "hidden": true},
+        {"cargo": "MoneyPallet", "production_time": 120, "hidden": true}
+      ]
+    },
+    {
+      "delivery_point": "Supermarket",
+      "template_path": "out/Supermarket.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {"cargo": "Moonshine", "production_time": 600, "hidden": false}
+      ]
+    },
+    {
+      "delivery_point": "GasStation",
+      "template_path": "out/GasStation.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {"cargo": "Moonshine", "production_time": 480, "hidden": false}
       ]
     }
   ],
   "transforms": [],
   "catalysts": [],
-  "storage": []
+  "storage": [
+    {
+      "delivery_point": "Mine_CopperOre",
+      "template_path": "out/Mine_CopperOre.uasset",
+      "entries": [
+        {"cargo_key": "Moonshine", "max_storage": 15}
+      ]
+    }
+  ],
+  "demand_configs": [
+    {
+      "delivery_point": "Mine_CopperOre",
+      "template_path": "out/Mine_CopperOre.uasset",
+      "entries": [
+        {"cargo_type": "None", "cargo_key": "Moonshine", "payment_multiplier": 1, "max_storage": 15}
+      ]
+    },
+    {
+      "delivery_point": "Supermarket",
+      "template_path": "out/Supermarket.uasset",
+      "entries": [
+        {"cargo_type": "None", "cargo_key": "Moonshine", "payment_multiplier": 1.5, "max_storage": 10}
+      ]
+    },
+    {
+      "delivery_point": "GasStation",
+      "template_path": "out/GasStation.uasset",
+      "entries": [
+        {"cargo_type": "None", "cargo_key": "Moonshine", "payment_multiplier": 1.2, "max_storage": 10}
+      ]
+    }
+  ]
 }
