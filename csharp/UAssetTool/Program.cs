@@ -1001,12 +1001,7 @@ class Program
                         break;
                     case JsonValueKind.True:
                     case JsonValueKind.False:
-                        if (prop is BoolPropertyData bp)
-                        {
-                            bp.Value = val.GetBoolean();
-                            // CDO-level unversioned bools encode value in ZeroMask
-                            bp.IsZero = !val.GetBoolean();
-                        }
+                        if (prop is BoolPropertyData bp) bp.Value = val.GetBoolean();
                         break;
                     case JsonValueKind.String:
                         if (prop is StrPropertyData sp) sp.Value = FString.FromString(val.GetString());
