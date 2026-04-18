@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> **⛔ NEVER restart the Motor Town game server (`systemctl restart motortown-server` or similar). It is a LIVE server with active players. Only the user may restart it.**
+
 ## Build & Run
 
 Always use the Nix dev shell — do not rely on system tools:
@@ -38,7 +40,7 @@ nix develop --command bash -c 'scripts/new-version.sh v0.7.19 v0.7.19.pak'
 
 - **`MotorTown-Windows.pak`** — game PAK file (symlinked to versioned PAK, e.g. `v0.7.18.pak`)
 - **`.env`** — AES key (`KEY=0x...`), gitignored
-- **`Mappings.usmap`** — UE5 type mappings, gitignored. Source: `csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap`
+- **`Mappings.usmap`** — UE5 type mappings, gitignored. Versioned per game version in `versions/<version>/Mappings.usmap`, symlinked at repo root. Pull from Windows: `scp freeman@100.85.236.98:'D:/SteamLibrary/steamapps/common/Motor Town/MotorTown/Binaries/Win64/ue4ss/MotorTown-5.5.4-0+UE5-unknown.usmap' Mappings.usmap`
 - **UAssetAPI** — C# dependency, included as a git submodule at `csharp/UAssetAPI` (fork: `ASEAN-Motor-Club/UAssetAPI`). Initialize with:
   ```bash
   git submodule update --init
@@ -266,7 +268,9 @@ versions/                    # Archived game data (gitignored)
     out/                     # Extracted .uasset templates
     motortown.db             # SQLite database
     *_parsed.json            # Parsed game data
+    Mappings.usmap           # UE5 type mappings (version-specific)
     pak.sha256               # PAK file hash
+Mappings.usmap               # Symlink → versions/<active>/Mappings.usmap
 v0.7.18.pak                  # Game PAK (gitignored, symlinked as MotorTown-Windows.pak)
 game_versions.json           # Version manifest (tracked)
 scripts/mt-version.sh        # Version management CLI
@@ -295,7 +299,8 @@ scripts/new-version.sh       # New version pipeline (one command)
   export LD_LIBRARY_PATH=$(nix develop --command bash -c 'echo $LIBRARY_PATH' | tr : '\n' | xargs -I{} echo {}/lib | tr '\n' :)
   ```
 - **Large output**: Parser output is massive. Redirect to file: `> /tmp/parser-output.log 2>&1`
-- **`Mappings.usmap` permissions**: Must be owned by `opencode`. If copied from submodule, re-copy: `rm Mappings.usmap && cp csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap Mappings.usmap`
+- **`Mappings.usmap` permissions**: Must be owned by `opencode`. If copied from submodule, re-copy: `rm Mappings.usmap && cp csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap Mappings.usmap`. Mappings.usmap is now versioned — the root symlink points to `versions/<active_version>/Mappings.usmap`.
+- **CDO imports for new blueprint discovery**: When adding new cargo (or any blueprint-based) rows to a DataTable via `set_import_ref`, you **must** set `"add_cdo_import": true` in the patch config. This creates a `Default__*_C` CDO import (with `ClassPkg=packagePath`, `Class=assetName_C`) that forces the engine to load packages at new paths. Without it, new blueprints are silently ignored — only overrides of existing paths work. The base game's Cargos DataTable has 3 imports per blueprint: Package, BlueprintGeneratedClass, and `Default__*_C` CDO.
 
 ## Authoritative Modding Resources
 

@@ -66,7 +66,9 @@ DataTables are the backbone of MotorTown's data-driven design. Most mod types wo
 | `Transmissions` | `DataAsset/VehicleParts/` | varies | Transmission DataAsset refs |
 | `AeroParts` | `DataAsset/VehicleParts/` | varies | Aero body kits |
 | `LSD` | `DataAsset/VehicleParts/` | varies | Limited-slip differential configs |
-| `Cargos` | `DataAsset/` | ~100 | Cargo type definitions |
+| `Cargos` | `DataAsset/` | ~100 | Cargo type definitions (**CompositeDataTable** — see below) |
+| `Cargos_01` | `DataAsset/` | ~100 | Child of `Cargos` — actual cargo rows |
+| `Cargos_Deprecated` | `DataAsset/` | 1 | Child of `Cargos` — deprecated cargo rows |
 | `Vehicles` | `DataAsset/` | ~80 | Vehicle definitions, types, flags |
 | `Decals` | `Materials/Decal/` | ~423 | Decal texture catalog |
 
@@ -81,6 +83,82 @@ This means:
 - If you add a tire only to `VehicleParts` but `VehicleParts0` has its own tire list, yours won't appear
 
 **Strategy:** For tire mods, only modify `VehicleParts0` (50 rows). This avoids touching the massive 713-row `VehicleParts` table, which other mods also modify.
+
+### CompositeDataTable Pattern
+
+`Cargos.uasset` is a **CompositeDataTable** — a special UE5 DataTable subclass that merges rows from child DataTables via its `ParentTables` array property. The base game has:
+
+```
+Cargos (CompositeDataTable)
+├── ParentTables[0] → Cargos_01 (DataTable, ~100 rows)
+└── ParentTables[1] → Cargos_Deprecated (DataTable, 1 row)
+```
+
+At runtime, the engine loads `Cargos` and recursively loads + merges all child tables in `ParentTables`. **Directly adding rows to the parent `Cargos.uasset` does NOT work** — the engine re-merges from children and discards any rows not in a child table.
+
+#### Adding Rows to a CompositeDataTable
+
+To add new rows, you must:
+1. **Create a new child DataTable** (e.g., `Cargos_ScheduleI`) with your rows
+2. **Override the parent** (`Cargos.uasset`) to append your child to `ParentTables`
+
+> [!CAUTION]
+> The child DataTable **MUST be clone-renamed** from an existing DataTable using `--clone-asset`. Simply renaming the output file via `output_filename` does NOT change the internal package path (`NameMap[0]`). The engine resolves assets by internal path, not filename — if the internal path says `/Game/DataAsset/Cargos_Deprecated` but the file is at `Cargos_ScheduleI.uasset`, the engine cannot find it.
+
+**Correct 3-step flow:**
+
+```python
+# Step 1: Clone-rename to fix internal package path
+clone_config = {
+    "assets": [{
+        "new_name": "Cargos_ScheduleI",
+        "old_name": "Cargos_Deprecated",
+        "new_path": "/Game/DataAsset/Cargos_ScheduleI",
+        "rename_exports": True,
+        "rename_imports": True,
+        "patch_namemap_0": True,  # Critical: updates internal path
+    }]
+}
+run_generic("--clone-asset", clone_config, "Cargos_Deprecated.uasset", clone_dir)
+
+# Step 2: Add rows to the clone
+rows_config = {"output_filename": "Cargos_ScheduleI", "rows": [...]}
+run_generic("--add-rows", rows_config, cloned_child, output_dir)
+
+# Step 3: Patch parent to register child in ParentTables
+parent_config = {
+    "patches": [{
+        "path": "ParentTables",
+        "op": "append_import_to_array",
+        "class_package": "/Script/Engine",
+        "class_name": "DataTable",
+        "package_path": "/Game/DataAsset/Cargos_ScheduleI",
+        "asset_name": "Cargos_ScheduleI",
+    }]
+}
+run_generic("--patch-export-props", parent_config, "Cargos.uasset", cargos_dir)
+```
+
+**Both** the parent `Cargos.uasset` and child `Cargos_ScheduleI.uasset` must be staged in the PAK at `DataAsset/`.
+
+#### UE4SS Runtime Diagnostics
+
+Use UE4SS Lua scripts to verify DataTable loading at runtime:
+
+```lua
+-- Check if objects are loaded
+local obj = StaticFindObject("/Game/DataAsset/Cargos_ScheduleI.Cargos_ScheduleI")
+if obj ~= nil and obj:IsValid() then
+    print("FOUND: " .. obj:GetClass():GetFName():ToString())
+end
+
+-- Force-load an asset (must run in game thread)
+ExecuteInGameThread(function()
+    local asset = LoadAsset("/Game/DataAsset/Cargos_ScheduleI")
+end)
+```
+
+Deploy UE4SS Lua scripts via SCP to `Mods/<ModName>/Scripts/main.lua` on the Windows machine.
 
 ### DataTable Row Structure
 
@@ -437,12 +515,11 @@ dotnet run --configuration Release --verbosity quiet -- <command> [args]
 |---------|---------|
 | `--batch` | Parse all extracted `.uasset` files |
 | `--dump <file>` | Debug dump of a `.uasset` file |
-| `--patch-tire <config> <template> <outdir>` | Create tire physics asset |
-| `--add-tire-parts <config> <template> <outdir>` | Add tire row to VehicleParts DataTable |
-| `--add-cargos <config> <template> <outdir>` | Add cargo rows to Cargos DataTable |
-| `--patch-blueprint <config> <template> <outdir>` | Create cargo blueprint from template |
-| `--add-recipes <config> <template> <outdir>` | Add delivery recipes |
-| `--add-decals <config> <template> <outdir>` | Add decal entries |
+| `--add-rows <config> <template> <outdir>` | Add rows to any DataTable (clone-based) |
+| `--patch-rows <config> <template> <outdir>` | Modify existing DataTable rows by RowName |
+| `--clone-asset <config> <template> <outdir>` | Clone and rename any asset with property patches |
+| `--patch-cdo-arrays <config> <template> <outdir>` | Patch CDO properties and arrays in blueprint exports |
+| `--patch-export-props <config> <template> <outdir>` | Patch properties on the main export (e.g., CompositeDataTable `ParentTables`) |
 
 ### Python Build Scripts
 
@@ -491,7 +568,7 @@ The C# tool (`Program.cs`) provides shared helpers used across all DataTable com
 
 ### CDO Patch Engine Operations
 
-The `--patch-cdo-arrays` and `--patch-rows` commands use a JSON-driven patch engine. Key operations:
+The `--patch-cdo-arrays`, `--patch-rows`, and `--patch-export-props` commands use a JSON-driven patch engine. Key operations:
 
 | Operation | Purpose | Creates if missing? |
 |-----------|---------|--------------------|
@@ -508,6 +585,7 @@ The `--patch-cdo-arrays` and `--patch-rows` commands use a JSON-driven patch eng
 | `clear_map` | Empty a map property | No |
 | `add_gameplay_tags` | Add tags to existing GameplayTagContainer | No |
 | `add_map_entry` | Add entry to existing map (clones key/value from existing entries) | No |
+| `append_import_to_array` | Append new import reference to array (e.g., `ParentTables`) | No |
 
 The `set_or_create_*` variants are essential for patching **inherited** CDO properties that aren't serialized in the child blueprint.
 
@@ -641,6 +719,11 @@ Key tables: `vehicles`, `vehicle_parts`, `vehicle_default_parts`, `vehicle_tags`
 ## UAssetAPI Gotchas
 
 These apply to ALL mod types when working with `UAssetAPI` in the C# tool.
+
+### Clone-Rename for New Assets
+
+> [!CAUTION]
+> When creating a new asset derived from an existing template (e.g., a new child DataTable), you **MUST** use `--clone-asset` with `patch_namemap_0: true` to rename the internal package path. Simply writing the file with a new filename (e.g., via `output_filename` in `--add-rows`) does NOT update `NameMap[0]`, which is the internal package path. The engine resolves assets by this internal path — if it doesn't match the file path, `LoadAsset()` and `StaticFindObject()` fail silently.
 
 ### FName Number Suffix Trap
 

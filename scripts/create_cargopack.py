@@ -27,6 +27,8 @@ class CargoModBuilder(ModBuilder):
     """Builds cargo mod PAKs with new cargo types and delivery routes."""
 
     CARGOS_PAK_PATH = "MotorTown/Content/DataAsset/Cargos.uasset"
+    # Name for the child DataTable added to the CompositeDataTable
+    CHILD_TABLE_NAME = "Cargos_ScheduleI"
 
     def __init__(self, config_path, output_path, recipes_path,
                  compat_mods=None, cargos_template=None,
@@ -35,6 +37,8 @@ class CargoModBuilder(ModBuilder):
         self.recipes_path = os.path.abspath(recipes_path)
         self.cargos_template = cargos_template or os.path.join(
             self.repo_root, "out", "Cargos.uasset")
+        self.child_table_template = os.path.join(
+            self.repo_root, "out", "Cargos_Deprecated.uasset")
         self.blueprint_template = blueprint_template or os.path.join(
             self.repo_root, "out", "SmallBox.uasset")
 
@@ -48,6 +52,7 @@ class CargoModBuilder(ModBuilder):
 
         # Outputs
         self.cargos_output_dir: str | None = None
+        self.child_table_output_dir: str | None = None
         self.blueprints_output_dir: str | None = None
         self.recipes_output_dir: str | None = None
 
@@ -82,7 +87,7 @@ class CargoModBuilder(ModBuilder):
 
             asset_spec = {
                 "new_name": bp_name,
-                "old_name": template_name,
+                "old_name": entry.get("clone_old_name", template_name),
                 "new_path": f"/Game/Objects/Mission/Delivery/{bp_name}",
                 "rename_exports": True,
                 "rename_imports": True,
@@ -118,7 +123,11 @@ class CargoModBuilder(ModBuilder):
         return {tpl: {"assets": assets} for tpl, assets in groups.items()}
 
     def _cargo_rows_config(self):
-        """Generate --add-rows config for Cargos DataTable."""
+        """Generate --add-rows config for child DataTable.
+
+        Rows are added to a standalone child DataTable (not the parent
+        CompositeDataTable), which gets registered via ParentTables.
+        """
         rows = []
         for entry in self.config["entries"]:
             patches = [
@@ -147,7 +156,8 @@ class CargoModBuilder(ModBuilder):
                  "class_package": "/Script/Engine",
                  "class_name": "BlueprintGeneratedClass",
                  "package_path": f"/Game/Objects/Mission/Delivery/{entry['blueprint_name']}",
-                 "asset_name": f"{entry['blueprint_name']}_C"},
+                 "asset_name": f"{entry['blueprint_name']}_C",
+                 "add_cdo_import": True},
                 {"path": "GameplayTags", "op": "clear_tags"},
                 {"path": "bAllowStacking", "op": "set",
                  "value": entry.get("allow_stacking", False)},
@@ -176,7 +186,29 @@ class CargoModBuilder(ModBuilder):
                 "patches": patches,
             })
 
-        return {"rows": rows}
+        return {
+            "output_filename": self.CHILD_TABLE_NAME,
+            "rows": rows,
+        }
+
+    def _composite_parent_config(self):
+        """Generate --patch-export-props config for the parent CompositeDataTable.
+
+        Appends our child DataTable to the ParentTables array so the engine
+        discovers and merges our cargo rows at runtime.
+        """
+        return {
+            "patches": [
+                {
+                    "path": "ParentTables",
+                    "op": "append_import_to_array",
+                    "class_package": "/Script/Engine",
+                    "class_name": "DataTable",
+                    "package_path": f"/Game/DataAsset/{self.CHILD_TABLE_NAME}",
+                    "asset_name": self.CHILD_TABLE_NAME,
+                },
+            ],
+        }
 
     def _recipe_cdo_config(self, dp_name, recipes, storage_entries,
                           demand_entries=None, cdo_patches=None,
@@ -320,21 +352,52 @@ class CargoModBuilder(ModBuilder):
                              "clone-blueprints")
 
     def register_in_tables(self):
-        """Add cargo rows to Cargos DataTable and delivery point recipes."""
+        """Create child DataTable and register in parent CompositeDataTable."""
         # Resolve Cargos template (base game or compat mod)
         cargos_template = self.resolve_template_with_compat(
             self.cargos_template, self.CARGOS_PAK_PATH,
         )
 
-        # Step: Add cargo rows
-        self.log_step(2, "Add cargo rows to Cargos DataTable")
+        # Step 2a: Clone Cargos_Deprecated → Cargos_ScheduleI (renames internal paths)
+        self.log_step("2a", f"Clone child DataTable ({self.CHILD_TABLE_NAME})")
+        clone_dir = os.path.join(self.build_dir, "child_clone")
+        os.makedirs(clone_dir)
+
+        clone_config = {
+            "assets": [{
+                "new_name": self.CHILD_TABLE_NAME,
+                "old_name": "Cargos_Deprecated",
+                "new_path": f"/Game/DataAsset/{self.CHILD_TABLE_NAME}",
+                "rename_exports": True,
+                "rename_imports": True,
+                "patch_namemap_0": True,
+            }],
+        }
+        self.run_generic("--clone-asset", clone_config,
+                         self.child_table_template, clone_dir,
+                         "clone-child-table")
+
+        # Step 2b: Add cargo rows to the cloned child table
+        self.log_step("2b", f"Add cargo rows to {self.CHILD_TABLE_NAME}")
+        self.child_table_output_dir = os.path.join(self.build_dir, "child_table")
+        os.makedirs(self.child_table_output_dir)
+
+        cloned_child = os.path.join(
+            clone_dir, self.CHILD_TABLE_NAME, f"{self.CHILD_TABLE_NAME}.uasset")
+        config = self._cargo_rows_config()
+        self.run_generic("--add-rows", config,
+                         cloned_child, self.child_table_output_dir,
+                         "add-cargo-rows-child")
+
+        # Step 2c: Patch parent CompositeDataTable to register child
+        self.log_step("2c", "Register child in parent CompositeDataTable")
         self.cargos_output_dir = os.path.join(self.build_dir, "cargos")
         os.makedirs(self.cargos_output_dir)
 
-        config = self._cargo_rows_config()
-        self.run_generic("--add-rows", config,
+        parent_config = self._composite_parent_config()
+        self.run_generic("--patch-export-props", parent_config,
                          cargos_template, self.cargos_output_dir,
-                         "add-cargo-rows")
+                         "patch-composite-parent")
 
         # Step: Add production config recipes
         self.log_step(3, "Add delivery point recipes")
@@ -416,12 +479,17 @@ class CargoModBuilder(ModBuilder):
                              f"recipes-{dp_name}")
 
     def assemble_pak(self):
-        """Stage Cargos DataTable, blueprints, and delivery point assets."""
+        """Stage DataTables, blueprints, and delivery point assets."""
         self.log_step(4, "Assemble PAK directory")
 
-        # Cargos DataTable
+        # Parent CompositeDataTable (Cargos.uasset with updated ParentTables)
         cargos_asset = os.path.join(self.cargos_output_dir, "Cargos.uasset")
         self.stage_datatable(cargos_asset, "Cargos", "DataAsset")
+
+        # Child DataTable (Cargos_ScheduleI.uasset with our cargo rows)
+        child_asset = os.path.join(
+            self.child_table_output_dir, f"{self.CHILD_TABLE_NAME}.uasset")
+        self.stage_datatable(child_asset, self.CHILD_TABLE_NAME, "DataAsset")
 
         # Cargo blueprints
         for name in self.cargo_names:

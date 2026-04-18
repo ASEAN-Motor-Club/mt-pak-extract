@@ -30,6 +30,7 @@ class Program
         bool cloneAssetMode = args.Contains("--clone-asset");
         bool patchCdoMode = args.Contains("--patch-cdo-arrays");
         bool patchRowsMode = args.Contains("--patch-rows");
+        bool patchExportMode = args.Contains("--patch-export-props");
         bool dumpMode = args.Contains("--dump");
         
         Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--dump ...] [path/to/asset.uasset]");
@@ -87,6 +88,14 @@ class Program
             var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
             PatchRows(configPath, templatePath, outputDir);
         }
+        else if (patchExportMode)
+        {
+            var idx = Array.IndexOf(args, "--patch-export-props");
+            var configPath = args.ElementAtOrDefault(idx + 1) ?? "config.json";
+            var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
+            var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
+            PatchExportProps(configPath, templatePath, outputDir);
+        }
         else if (dumpMode)
         {
             var idx = Array.IndexOf(args, "--dump");
@@ -96,6 +105,7 @@ class Program
             var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
             Console.WriteLine($"\n=== Dump: {Path.GetFileName(dumpPath)} ===");
             Console.WriteLine($"  HasUnversioned={dumpAsset.HasUnversionedProperties}, FolderName: {dumpAsset.FolderName}");
+            Console.WriteLine($"  PackageFlags: {dumpAsset.PackageFlags} (0x{(uint)dumpAsset.PackageFlags:X8})");
             Console.WriteLine($"  PackageGuid: {dumpAsset.PackageGuid}");
             
             Console.WriteLine($"\n  --- NameMap ({dumpAsset.GetNameMapIndexList().Count} entries) ---");
@@ -658,13 +668,72 @@ class Program
                 }
             }
             
-            // Write output
+// Write output
             var assetOutputDir = Path.Combine(outputDir, newName);
             Directory.CreateDirectory(assetOutputDir);
             var outputPath = Path.Combine(assetOutputDir, $"{newName}.uasset");
             asset.Write(outputPath);
             Console.WriteLine($"  Written: {newName}.uasset + .uexp to {assetOutputDir}");
         }
+    }
+    
+    // ========================================================================
+    // --patch-export-props: Patch properties on the main export directly
+    // ========================================================================
+    static void PatchExportProps(string configPath, string templatePath, string outputDir)
+    {
+        if (!File.Exists(configPath)) { Console.WriteLine($"Error: Config not found: {configPath}"); return; }
+        if (!File.Exists(templatePath)) { Console.WriteLine($"Error: Template not found: {templatePath}"); return; }
+        
+        var configJson = File.ReadAllText(configPath);
+        using var doc = JsonDocument.Parse(configJson);
+        var root = doc.RootElement;
+        
+        Console.WriteLine($"Loading: {Path.GetFileName(templatePath)}");
+        var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
+        
+        var outputFileName = root.TryGetProperty("output_filename", out var ofProp)
+            ? ofProp.GetString()!
+            : Path.GetFileNameWithoutExtension(templatePath);
+        
+        // Find the first NormalExport (typically Export[0])
+        NormalExport? mainExport = null;
+        foreach (var export in asset.Exports)
+        {
+            if (export is NormalExport ne)
+            {
+                mainExport = ne;
+                break;
+            }
+        }
+        if (mainExport == null)
+        {
+            // Try DataTableExport
+            foreach (var export in asset.Exports)
+            {
+                if (export is DataTableExport dte)
+                {
+                    mainExport = dte;
+                    break;
+                }
+            }
+        }
+        if (mainExport == null) { Console.WriteLine("Error: No NormalExport found"); return; }
+        
+        Console.WriteLine($"  Export: {mainExport.ObjectName.Value.Value}");
+        
+        // Apply patches on the export's properties
+        if (root.TryGetProperty("patches", out var patches))
+        {
+            ApplyPatches(mainExport.Data, patches, asset);
+            Console.WriteLine("  Applied export property patches");
+        }
+        
+        asset.ResolveAncestries();
+        Directory.CreateDirectory(outputDir);
+        var outputPath = Path.Combine(outputDir, $"{outputFileName}.uasset");
+        asset.Write(outputPath);
+        Console.WriteLine($"Written: {outputFileName}.uasset + {outputFileName}.uexp to {outputDir}");
     }
     
     // ========================================================================
@@ -997,11 +1066,13 @@ class Program
             case "set_or_create_import_ref":
             {
                 var (container, prop) = ResolvePropertyWithContainer(properties, path);
+                var addCdoImport = patch.TryGetProperty("add_cdo_import", out var cdoFlag) && cdoFlag.GetBoolean();
                 var (_, importIdx) = AddImportChain(asset,
                     patch.GetProperty("class_package").GetString()!,
                     patch.GetProperty("class_name").GetString()!,
                     patch.GetProperty("package_path").GetString()!,
-                    patch.GetProperty("asset_name").GetString()!);
+                    patch.GetProperty("asset_name").GetString()!,
+                    addCdoImport);
                 var pkgIdx = FPackageIndex.FromImport(importIdx - 1);
                 
                 if (prop is ObjectPropertyData objProp)
@@ -1060,6 +1131,34 @@ class Program
                 var prop = ResolveProperty(properties, path);
                 if (prop is ArrayPropertyData arr)
                     arr.Value = Array.Empty<PropertyData>();
+                break;
+            }
+            
+            case "append_import_to_array":
+            {
+                // Append a new import reference to an array of ObjectPropertyData
+                // Used for adding child tables to CompositeDataTable's ParentTables
+                var prop = ResolveProperty(properties, path);
+                if (prop is ArrayPropertyData arr)
+                {
+                    var addCdoImport = patch.TryGetProperty("add_cdo_import", out var cdoFlag) && cdoFlag.GetBoolean();
+                    var (_, importIdx) = AddImportChain(asset,
+                        patch.GetProperty("class_package").GetString()!,
+                        patch.GetProperty("class_name").GetString()!,
+                        patch.GetProperty("package_path").GetString()!,
+                        patch.GetProperty("asset_name").GetString()!,
+                        addCdoImport);
+                    
+                    var newEntry = new ObjectPropertyData(FName.FromString(asset, arr.Value.Length.ToString()))
+                    {
+                        Value = FPackageIndex.FromImport(importIdx - 1)
+                    };
+                    
+                    var list = new List<PropertyData>(arr.Value);
+                    list.Add(newEntry);
+                    arr.Value = list.ToArray();
+                    Console.WriteLine($"    Appended to {path}: {patch.GetProperty("asset_name").GetString()} (array now has {arr.Value.Length} entries)");
+                }
                 break;
             }
             
@@ -1542,7 +1641,7 @@ class Program
     
     static (int pkgIdx, int assetIdx) AddImportChain(
         UAsset asset, string classPackage, string className,
-        string packagePath, string assetName)
+        string packagePath, string assetName, bool addCdoImport = false)
     {
         var pkgImport = new Import(
             "/Script/CoreUObject", "Package",
@@ -1558,6 +1657,20 @@ class Program
         
         Console.WriteLine($"  Added imports: Package [{pkgIdx}] = {packagePath}");
         Console.WriteLine($"  Added imports: Asset [{assetIdx}] = {assetName}");
+        
+        if (addCdoImport)
+        {
+            // Add Default__*_C CDO import — this forces the engine to load
+            // the blueprint package for new (non-overriding) assets
+            var cdoName = $"Default__{assetName}";
+            var cdoImport = new Import(
+                packagePath, assetName,
+                FPackageIndex.FromImport(pkgIdx - 1), cdoName, false, asset);
+            asset.Imports.Add(cdoImport);
+            int cdoIdx = asset.Imports.Count;
+            Console.WriteLine($"  Added imports: CDO [{cdoIdx}] = {cdoName}");
+        }
+        
         return (pkgIdx, assetIdx);
     }
     
