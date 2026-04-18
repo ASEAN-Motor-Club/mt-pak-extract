@@ -11,9 +11,14 @@ Create mod PAKs that add new cargo types to MotorTown. This skill covers the ful
 
 ```bash
 nix develop --command bash -c '
+python3 scripts/mods.py build schedule-i
+'
+
+# Or directly:
+nix develop --command bash -c '
 python3 scripts/create_cargopack.py \
-  --config cargo_entries.json \
-  --recipes recipe_entries.json \
+  --config mods/schedule-i/cargo_entries.json \
+  --recipes mods/schedule-i/recipe_entries.json \
   --output CarPartsImport_P.pak
 '
 ```
@@ -22,15 +27,15 @@ python3 scripts/create_cargopack.py \
 
 | Step | Tool | Input | Output |
 |------|------|-------|--------|
-| 1. Add cargo rows | C# `--add-cargos` | `cargo_entries.json` + `Cargos.uasset` | Modified `Cargos.uasset` |
-| 2. Patch blueprints | C# `--patch-blueprint` | `cargo_entries.json` + `SmallBox.uasset` | Per-cargo `.uasset/.uexp` |
-| 3. Add recipes | C# `--add-recipes` | `recipe_entries.json` + delivery point templates | Modified delivery point assets |
+| 1. Add cargo rows | C# `--add-cargos` | `mods/schedule-i/cargo_entries.json` + `Cargos.uasset` | Modified `Cargos.uasset` |
+| 2. Patch blueprints | C# `--patch-blueprint` | `mods/schedule-i/cargo_entries.json` + `SmallBox.uasset` | Per-cargo `.uasset/.uexp` |
+| 3. Add recipes | C# `--add-recipes` | `mods/schedule-i/recipe_entries.json` + delivery point templates | Modified delivery point assets |
 | 4. Assemble PAK | Python | All outputs | Directory structure |
 | 5. Build PAK | Rust `mod_pack` | Directory | `.pak` file |
 
 ## Configuration Files
 
-### `cargo_entries.json`
+### `mods/schedule-i/cargo_entries.json`
 
 ```json
 {
@@ -73,7 +78,7 @@ python3 scripts/create_cargopack.py \
 | `allow_stacking` | `false` | If `true`, sets `bAllowStacking` so cargo stacks on top of each other |
 | `extra_export_patches` | — | Per-component position/rotation adjustments (see Multi-Mesh Pallets) |
 
-### `recipe_entries.json`
+### `mods/schedule-i/recipe_entries.json`
 
 Four recipe sections: `sources`, `sinks`, `transforms`, `catalysts`.
 
@@ -196,7 +201,7 @@ Each new cargo in the Cargos DataTable needs two Import entries added to the ass
 
 ### 7. Sink Visibility
 
-Set `hidden: false` in `recipe_entries.json` for sinks where you want the cargo demand to appear as a visible delivery task. Default for sinks is `hidden: true` (invisible demand).
+Set `hidden: false` in `mods/schedule-i/recipe_entries.json` for sinks where you want the cargo demand to appear as a visible delivery task. Default for sinks is `hidden: true` (invisible demand).
 
 ### 8. CargoFlags = 11
 
@@ -442,8 +447,8 @@ for p in paths: print(p)
 |------|---------|
 | `scripts/create_cargopack.py` | Orchestrates the full build pipeline |
 | `csharp/UAssetTool/Program.cs` | C# tool: `--add-rows`, `--clone-asset` (supports `import_index`), `--patch-cdo-arrays`, `--dump` |
-| `cargo_entries.json` | Cargo definitions (types, weights, meshes, patches) |
-| `recipe_entries.json` | Delivery point source/sink/transform/catalyst recipes |
+| `mods/schedule-i/cargo_entries.json` | Cargo definitions (types, weights, meshes, patches) |
+| `mods/schedule-i/recipe_entries.json` | Delivery point source/sink/transform/catalyst recipes |
 | `out/SmallBox.uasset` | Default blueprint template (single mesh) |
 | `out/Pizza_05.uasset` | Multi-mesh template (5 stacked, no pallet) |
 | `out/BoxPalletA.uasset` | Multi-mesh template (root mesh + 8 child, `NoCollision` on children) |

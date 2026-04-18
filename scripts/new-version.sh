@@ -250,12 +250,12 @@ json.dump(m, open('$ROOT_DIR/game_versions.json', 'w'), indent=2)
   log "Version $version is now active."
   log ""
   log "Next steps — rebuild mods:"
-  log "  nix develop --command bash -c 'python3 scripts/create_tirepack.py --config tire_entries.json --output zzz_ASEAN_PoliceTyres_<mod_version>_P.pak'"
-  log "  nix develop --command bash -c 'python3 scripts/create_cargopack.py --config cargo_entries.json --recipes recipe_entries.json --output MoneyRun_${version}_P.pak'"
+  log "  nix develop --command bash -c 'python3 scripts/mods.py build police-tyres'"
+  log "  nix develop --command bash -c 'python3 scripts/mods.py build schedule-i'"
   log ""
   if [[ -n "$current" && "$current" != "$version" ]]; then
     log "Old version $current is available at: ../mt-$current"
-    log "  cd ../mt-$current && python3 scripts/create_tirepack.py ..."
+    log "  cd ../mt-$current && python3 scripts/mods.py build police-tyres"
   fi
 }
 

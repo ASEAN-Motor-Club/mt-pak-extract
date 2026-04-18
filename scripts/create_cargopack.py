@@ -20,7 +20,7 @@ import argparse
 import json
 import os
 
-from modbase import ModBuilder, add_common_args
+from modbase import ModBuilder, add_common_args, load_mod_config, compute_output_path, resolve_game_version
 
 
 class CargoModBuilder(ModBuilder):
@@ -522,18 +522,31 @@ class CargoModBuilder(ModBuilder):
 def main():
     parser = argparse.ArgumentParser(description="Create MotorTown cargo mod PAK")
     add_common_args(parser)
-    parser.add_argument("--recipes", "-r", default="recipe_entries.json",
+    parser.add_argument("--recipes", "-r", default=None,
                         help="Delivery point recipe entries JSON config")
     parser.add_argument("--cargos-template", default=None,
                         help="Base game Cargos.uasset template")
     parser.add_argument("--blueprint-template", default=None,
                         help="Base game SmallBox.uasset template")
+    parser.add_argument("--mod", default=None,
+                        help="Mod directory (e.g. mods/schedule-i) to load mod.json from")
     args = parser.parse_args()
 
+    if args.mod:
+        mod = load_mod_config(args.mod)
+        config_path = mod["configs"][0]
+        recipes_path = mod["configs"][1] if len(mod["configs"]) > 1 else args.recipes
+        game_ver = resolve_game_version()
+        output_path = compute_output_path(mod, game_ver)
+    else:
+        config_path = args.config
+        recipes_path = args.recipes or "recipe_entries.json"
+        output_path = args.output
+
     builder = CargoModBuilder(
-        config_path=args.config,
-        output_path=args.output,
-        recipes_path=args.recipes,
+        config_path=config_path,
+        output_path=output_path,
+        recipes_path=recipes_path,
         compat_mods=args.compat_mod,
         cargos_template=args.cargos_template,
         blueprint_template=args.blueprint_template,

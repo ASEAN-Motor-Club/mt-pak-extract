@@ -350,7 +350,7 @@ nix develop --command bash -c '
 
   # 2. Patch CDO
   cd csharp/UAssetTool && dotnet run --configuration Release --verbosity quiet -- \
-    --patch-cdo-arrays horn_patch.json ../../out/Jemusi.uasset /tmp/horn_out
+    --patch-cdo-arrays mods/truck-horn/horn_patch.json ../../out/Jemusi.uasset /tmp/horn_out
   cd ../..
 
   # 3. Build PAK
@@ -388,13 +388,16 @@ The build tools support a `--compat-mod` flag that **extracts a DataTable from a
 
 ```bash
 # Build standalone (base game only)
+python3 scripts/mods.py build police-tyres
+
+# Or directly with script:
 python3 scripts/create_tirepack.py \
-  --config tire_entries.json \
+  --config mods/police-tyres/tire_entries.json \
   --output ASEAN_PoliceTyres_P.pak
 
 # Build compatible with MoreTuning
 python3 scripts/create_tirepack.py \
-  --config tire_entries.json \
+  --config mods/police-tyres/tire_entries.json \
   --output ASEAN_PoliceTyres_MoreTuningCompat_P.pak \
   --compat-mod path/to/qxZap_MoreTuning_P.pak
 ```
@@ -411,7 +414,7 @@ You can chain multiple `--compat-mod` flags. They're processed in order — the 
 
 ```bash
 python3 scripts/create_tirepack.py \
-  --config tire_entries.json \
+  --config mods/police-tyres/tire_entries.json \
   --output output.pak \
   --compat-mod MoreTuning_P.pak \
   --compat-mod NoLimits_P.pak
@@ -625,8 +628,8 @@ To add a new mod type (e.g., engine mods, wheel mods):
 ### 1. Define JSON config schema
 
 Create a JSON format for the new mod type. Follow existing patterns:
-- Tire: `tire_entries.json` with `tire_physics` + `tire_part` sections
-- Cargo: `cargo_entries.json` with entries array + `recipe_entries.json`
+- Tire: `mods/police-tyres/tire_entries.json` with `tire_physics` + `tire_part` sections
+- Cargo: `mods/schedule-i/cargo_entries.json` with entries array + `mods/schedule-i/recipe_entries.json`
 
 ### 2. Add C# command(s) to `Program.cs`
 

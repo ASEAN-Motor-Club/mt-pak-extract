@@ -6,6 +6,7 @@ Provides:
   - ModBuilder: base class with the standard 4-stage build flow
   - Shared helpers: run_dotnet, build_pak, verify_pak, compat-mod extraction
   - PAK staging utilities
+  - mod.json loading and game version resolution
 
 All mod-type scripts (create_tirepack.py, create_cargopack.py, etc.)
 subclass ModBuilder and implement only their type-specific logic.
@@ -20,13 +21,111 @@ import tempfile
 from pathlib import Path
 
 
+MODS_DIR = "mods"
+GAME_VERSIONS_FILE = "game_versions.json"
+
+
+def get_active_game_version(repo_root: str = None) -> str | None:
+    """Read the active game version from game_versions.json."""
+    if repo_root is None:
+        repo_root = str(Path(__file__).resolve().parent.parent)
+    manifest_path = os.path.join(repo_root, GAME_VERSIONS_FILE)
+    if not os.path.exists(manifest_path):
+        return None
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+    return manifest.get("active")
+
+
+def resolve_game_version(repo_root: str = None) -> str:
+    """Resolve the active game version, stripping the 'v' prefix.
+
+    Returns e.g. '0.7.18+1' from active version 'v0.7.18+1'.
+    Exits with error if no active version is set.
+    """
+    active = get_active_game_version(repo_root)
+    if not active:
+        print("Error: No active game version set in game_versions.json", file=sys.stderr)
+        print("  Run: scripts/mt-version.sh switch <version>", file=sys.stderr)
+        sys.exit(1)
+    if active.startswith("v"):
+        return active[1:]
+    return active
+
+
+def load_mod_config(mod_dir: str) -> dict:
+    """Load mod.json from a mod directory.
+
+    Returns the parsed dict with resolved paths:
+      - config_dir: absolute path to the mod directory
+      - configs: absolute paths to config files
+      - builds_dir: absolute path to the builds output directory
+    """
+    mod_json_path = os.path.join(mod_dir, "mod.json")
+    if not os.path.exists(mod_json_path):
+        print(f"Error: mod.json not found at {mod_json_path}", file=sys.stderr)
+        sys.exit(1)
+
+    with open(mod_json_path) as f:
+        mod = json.load(f)
+
+    mod["config_dir"] = os.path.abspath(mod_dir)
+    mod["configs"] = [
+        os.path.abspath(os.path.join(mod_dir, c))
+        for c in mod.get("configs", [])
+    ]
+    mod["builds_dir"] = os.path.join(os.path.abspath(mod_dir), "builds")
+
+    return mod
+
+
+def compute_output_path(mod: dict, game_version: str = None,
+                        compat_suffix: str = None) -> str:
+    """Compute the output PAK path from mod metadata and game version.
+
+    Format: {prefix}{display_name}_v{mod_version}_{game_version}[_{compat_suffix}]_P.pak
+    Example: zzz_ASEAN_PoliceTyres_v0.1.9_0.7.18+1_MoreTuningCompat_P.pak
+    """
+    if game_version is None:
+        game_version = resolve_game_version()
+
+    prefix = mod.get("prefix", "")
+    display_name = mod["display_name"]
+    mod_version = mod["version"]
+
+    parts = [f"{prefix}{display_name}_v{mod_version}_{game_version}"]
+    if compat_suffix:
+        parts.append(compat_suffix)
+    filename = "_".join(parts) + "_P.pak"
+
+    return os.path.join(mod["builds_dir"], filename)
+
+
+def list_mods(repo_root: str = None) -> list[dict]:
+    """List all mods with valid mod.json in the mods/ directory."""
+    if repo_root is None:
+        repo_root = str(Path(__file__).resolve().parent.parent)
+    mods_path = os.path.join(repo_root, MODS_DIR)
+    if not os.path.isdir(mods_path):
+        return []
+
+    result = []
+    for name in sorted(os.listdir(mods_path)):
+        mod_dir = os.path.join(mods_path, name)
+        mod_json = os.path.join(mod_dir, "mod.json")
+        if os.path.isfile(mod_json):
+            mod = load_mod_config(mod_dir)
+            result.append(mod)
+    return result
+
+
 class ModBuilder:
     """Base class for MotorTown mod PAK creation.
 
     Subclasses implement:
       - transform_assets(): create/patch type-specific UAsset files
       - register_in_tables(): add rows to DataTables
-      - assemble_pak(): arrange files into the PAK directory layout
+      - assemble_pak(): arrange files in PAK directory layout
 
     The build() method orchestrates the full pipeline:
       1. transform_assets()
@@ -186,7 +285,7 @@ class ModBuilder:
         return extracted if os.path.exists(extracted) else None
 
     def resolve_template_with_compat(self, base_template: str,
-                                      asset_pak_path: str) -> str:
+                                       asset_pak_path: str) -> str:
         """Resolve a DataTable template, preferring compat mod version if available.
 
         Iterates through --compat-mod PAKs in order; the last one that contains
@@ -284,6 +383,9 @@ class ModBuilder:
 
             print(f"\n=== Building PAK ===")
             self.build_pak(self.pak_staging)
+
+        # Ensure builds/ directory exists
+        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
         # Report results
         if os.path.exists(self.output_path):

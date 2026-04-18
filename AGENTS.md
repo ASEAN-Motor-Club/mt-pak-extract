@@ -56,12 +56,18 @@ python3 scripts/create_decal_pack.py --input images/ --output MyPack_P.pak
 '
 ```
 
+Or using the mod management CLI:
+
+```bash
+nix develop --command bash -c 'python3 scripts/mods.py build custom-decals --input images/'
+```
+
 ### Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--input, -i` | (required) | Directory of images (PNG/TGA/BMP/JPG) |
-| `--output, -o` | (required) | Output .pak path |
+| `--output, -o` | auto from `mod.json` | Output .pak path |
 | `--category, -c` | `Custom` | Category folder name |
 | `--cost` | `100` | In-game decal price |
 | `--template, -t` | auto from `out/` | Template decal texture .uasset |
@@ -155,10 +161,12 @@ Packages: `imagemagick` (convert/mogrify/identify), `librsvg` (rsvg-convert + SV
 - `tools/ue4-dds-tools/` — Vendored [UE4-DDS-Tools](https://github.com/hypermodule/UE4-DDS-Tools/tree/5.5) (MIT) with UE5.5 support
 - `tools/ue4-dds-tools/src/directx/libtexconv.so` — Pre-built [Texconv-Custom-DLL](https://github.com/matyalatte/Texconv-Custom-DLL/releases/tag/v0.6.0) for DXT5 compression
 - `scripts/create_decal_pack.py` — Main decal pack creator script
+- `scripts/mods.py` — Mod management CLI (build, list, show)
+- `scripts/modbase.py` — Shared ModBuilder base class + mod.json utilities
 - `src/bin/mod_pack.rs` — PAK creator binary
 - `src/bin/mod_explore.rs` — PAK reader/explorer binary
 - `decal_assets.json` — Config for batch extraction of 423 base game decal textures
-- `horn_patch.json` — Config for patching vehicle CDO HornSound property
+- `mods/truck-horn/horn_patch.json` — Config for patching vehicle CDO HornSound property
 
 ### Dependency Management
 
@@ -191,8 +199,16 @@ This single command archives the old version, extracts the new PAK, archives the
 **Step 3 — Rebuild mods:**
 ```bash
 nix develop --command bash -c '
-python3 scripts/create_tirepack.py --config tire_entries.json --output zzz_ASEAN_PoliceTyres_v0.2.0_P.pak
-python3 scripts/create_cargopack.py --config cargo_entries.json --recipes recipe_entries.json --output MoneyRun_v0.7.19_P.pak
+python3 scripts/mods.py build police-tyres
+python3 scripts/mods.py build schedule-i
+'
+```
+
+Or using individual scripts directly:
+```bash
+nix develop --command bash -c '
+python3 scripts/create_tirepack.py --config mods/police-tyres/tire_entries.json --output mods/police-tyres/builds/zzz_ASEAN_PoliceTyres_v0.2.0_0.7.19_P.pak
+python3 scripts/create_cargopack.py --config mods/schedule-i/cargo_entries.json --recipes mods/schedule-i/recipe_entries.json --output mods/schedule-i/builds/Schedule_I_v0.3.0_0.7.19_P.pak
 '
 ```
 
@@ -228,13 +244,13 @@ Place the PAK in the repo root. The filename should be `<version>.pak` (e.g., `v
 **Option A — Worktree (parallel, recommended):**
 ```bash
 cd ../mt-v0.7.18
-python3 scripts/create_tirepack.py --config tire_entries.json --output zzz_ASEAN_PoliceTyres_P.pak
+python3 scripts/mods.py build police-tyres
 ```
 
 **Option B — Switch in main repo:**
 ```bash
 scripts/mt-version.sh switch v0.7.18
-python3 scripts/create_tirepack.py --config tire_entries.json --output zzz_ASEAN_PoliceTyres_P.pak
+python3 scripts/mods.py build police-tyres
 scripts/mt-version.sh switch v0.7.19  # switch back
 ```
 
@@ -255,14 +271,60 @@ scripts/mt-version.sh diff v0.7.17 v0.7.18 # compare two versions
 | Type | Examples | Tracked? |
 |------|----------|----------|
 | **Game data** (from PAK) | `out/`, `motortown.db`, `*_parsed.json` | gitignored, archived in `versions/` |
-| **Mod definitions** | `recipe_entries.json`, `tire_entries.json`, `cargo_entries.json` | tracked |
-| **Mod scripts** | `scripts/create_*.py`, `scripts/modbase.py` | tracked |
-| **Mod outputs** | `*_P.pak` files | gitignored |
+| **Mod definitions** | `mods/*/mod.json`, `mods/*/*.json` | tracked |
+| **Mod scripts** | `scripts/create_*.py`, `scripts/modbase.py`, `scripts/mods.py` | tracked |
+| **Mod outputs** | `mods/*/builds/*_P.pak` | gitignored |
 | **Version metadata** | `game_versions.json` | tracked |
+
+### Mod Management CLI: `scripts/mods.py`
+
+```bash
+python3 scripts/mods.py list                    # List all mods
+python3 scripts/mods.py build police-tyres     # Build a mod (auto-resolves game version)
+python3 scripts/mods.py build schedule-i        # Build another mod
+python3 scripts/mods.py show police-tyres       # Show mod details
+python3 scripts/mods.py game-version            # Show active game version
+```
+
+Each mod is defined by `mods/<name>/mod.json`:
+
+```json
+{
+  "name": "police-tyres",
+  "display_name": "ASEAN_PoliceTyres",
+  "version": "0.1.9",
+  "type": "tire",
+  "prefix": "zzz_",
+  "script": "scripts/create_tirepack.py",
+  "configs": ["tire_entries.json"],
+  "compat_suffix": "MoreTuningCompat",
+  "extra_args": {}
+}
+```
+
+Output PAK naming: `{prefix}{display_name}_v{mod_version}_{game_version}[_{compat_suffix}]_P.pak`
+
+Example: `zzz_ASEAN_PoliceTyres_v0.1.9_0.7.18+1_P.pak`
+
+Built PAKs go to `mods/<name>/builds/` — gitignored but versioned in the filename.
 
 ### Directory Layout
 
 ```
+mods/                         # Mod definitions + outputs
+  police-tyres/
+    mod.json                  # Mod identity (name, version, type, script)
+    tire_entries.json          # Tire physics + part config
+    builds/                   # Built PAK outputs (gitignored)
+  schedule-i/
+    mod.json
+    cargo_entries.json
+    recipe_entries.json
+    builds/
+  truck-horn/
+    mod.json
+    horn_patch.json
+    builds/
 versions/                    # Archived game data (gitignored)
   v0.7.18/
     out/                     # Extracted .uasset templates
@@ -275,11 +337,13 @@ v0.7.18.pak                  # Game PAK (gitignored, symlinked as MotorTown-Wind
 game_versions.json           # Version manifest (tracked)
 scripts/mt-version.sh        # Version management CLI
 scripts/new-version.sh       # New version pipeline (one command)
+scripts/mods.py              # Mod management CLI (build, list, show)
 ```
 
 ### Tips
 
-- Include game version in mod filenames: `zzz_ASEAN_PoliceTyres_v0.1.9_P.pak`
+- Mod PAK filenames include both mod version and game version: `zzz_ASEAN_PoliceTyres_v0.1.9_0.7.18+1_P.pak`
+- Use `mods.py build <name>` for consistent, versioned output paths
 - Each mod's output PAK is independent — rebuilding one doesn't affect others
 - Worktrees share the same git history; any commit is visible from all worktrees
 - The `versions/` directory uses ~1-2GB per version (out/ + db + parsed JSON)
@@ -319,6 +383,13 @@ src/main.rs                    # Rust PAK extractor (AES decrypt + Oodle decompr
 csharp/UAssetTool/            # C# generic UAsset SDK (5 operations: --add-rows, --patch-rows, --clone-asset, --patch-cdo-arrays, --dump)
 csharp/LevelExtractor/         # C# map/level actor extractor
 scripts/aggregate_to_sqlite.py # Python: parsed JSON → normalized SQLite
+scripts/mods.py               # Mod management CLI (build, list, show)
+scripts/modbase.py             # Shared ModBuilder base class + mod.json utilities
+scripts/create_tirepack.py    # Tire mod builder
+scripts/create_cargopack.py   # Cargo mod builder
+scripts/create_decal_pack.py  # Decal mod builder
+scripts/create_font_mod.py    # Font replacement mod builder
+mods/                         # Mod definitions (mod.json + configs)
 assets.json                    # List of 264 asset paths to extract
 blueprint_assets.json          # Blueprint variant paths for weight aggregation
 flake.nix                      # Nix dev environment + apps

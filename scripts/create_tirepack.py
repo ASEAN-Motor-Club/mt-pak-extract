@@ -25,7 +25,7 @@ Usage:
 import argparse
 import os
 
-from modbase import ModBuilder, add_common_args
+from modbase import ModBuilder, add_common_args, load_mod_config, compute_output_path, resolve_game_version
 
 
 class TireModBuilder(ModBuilder):
@@ -209,11 +209,24 @@ def main():
     add_common_args(parser)
     parser.add_argument("--tire-template", default=None,
                         help="Override tire physics template .uasset")
+    parser.add_argument("--mod", default=None,
+                        help="Mod directory (e.g. mods/police-tyres) to load mod.json from")
     args = parser.parse_args()
 
+    if args.mod:
+        mod = load_mod_config(args.mod)
+        config_path = mod["configs"][0]
+        game_ver = resolve_game_version()
+        output_path = compute_output_path(mod, game_ver)
+        compat_suffix = mod.get("compat_suffix")
+    else:
+        config_path = args.config
+        output_path = args.output
+        compat_suffix = None
+
     builder = TireModBuilder(
-        config_path=args.config,
-        output_path=args.output,
+        config_path=config_path,
+        output_path=output_path,
         compat_mods=args.compat_mod,
         tire_template=args.tire_template,
     )

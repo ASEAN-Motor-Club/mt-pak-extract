@@ -1,0 +1,10 @@
+{
+  "name": "truck-horn",
+  "display_name": "ASEAN_JemusiTruckHorn",
+  "version": "0.1.0",
+  "type": "horn",
+  "prefix": "",
+  "script": null,
+  "configs": ["horn_patch.json"],
+  "extra_args": {}
+}

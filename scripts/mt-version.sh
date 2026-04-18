@@ -408,7 +408,7 @@ cmd_worktree() {
   fi
 
   log "Worktree ready. Build mods with:"
-  log "  cd $worktree_dir && python3 scripts/create_tirepack.py ..."
+  log "  cd $worktree_dir && python3 scripts/mods.py build <mod-name>"
 }
 
 # ── diff ──────────────────────────────────────────────────────────────────

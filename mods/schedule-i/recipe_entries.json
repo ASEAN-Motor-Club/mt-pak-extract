@@ -8,14 +8,6 @@
         {"cargo": "Money", "production_time": 60, "hidden": false},
         {"cargo": "MoneyPallet", "production_time": 120, "hidden": false}
       ]
-    },
-    {
-      "delivery_point": "Mine_CopperOre",
-      "template_path": "out/Mine_CopperOre.uasset",
-      "replace_production_configs": false,
-      "recipes": [
-        {"cargo": "Moonshine", "production_time": 300, "hidden": false}
-      ]
     }
   ],
   "sinks": [
@@ -45,13 +37,23 @@
       ]
     }
   ],
-  "transforms": [],
+  "transforms": [
+    {
+      "delivery_point": "Mine_CopperOre",
+      "template_path": "out/Mine_CopperOre.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {"input_cargo": "CornPallet", "input_count": 2, "output_cargo": "Moonshine", "output_count": 1, "production_time": 180, "hidden": false}
+      ]
+    }
+  ],
   "catalysts": [],
   "storage": [
     {
       "delivery_point": "Mine_CopperOre",
       "template_path": "out/Mine_CopperOre.uasset",
       "entries": [
+        {"cargo_key": "CornPallet", "max_storage": 10},
         {"cargo_key": "Moonshine", "max_storage": 15}
       ]
     }
@@ -61,7 +63,7 @@
       "delivery_point": "Mine_CopperOre",
       "template_path": "out/Mine_CopperOre.uasset",
       "entries": [
-        {"cargo_type": "None", "cargo_key": "Moonshine", "payment_multiplier": 1, "max_storage": 15}
+        {"cargo_type": "None", "cargo_key": "CornPallet", "payment_multiplier": 1, "max_storage": 10}
       ]
     },
     {

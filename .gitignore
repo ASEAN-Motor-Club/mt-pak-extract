@@ -52,6 +52,6 @@ qxZap_*/
 # Versioned game data archive (large, derived from PAKs)
 /versions/
 
-# Built mod PAK outputs
-/mods/
+# Built mod PAK outputs (build artifacts within mod dirs)
+mods/*/builds/
 /cargo_build/

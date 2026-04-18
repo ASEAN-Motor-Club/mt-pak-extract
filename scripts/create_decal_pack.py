@@ -26,7 +26,7 @@ import subprocess
 import sys
 import tempfile
 
-from modbase import ModBuilder
+from modbase import ModBuilder, load_mod_config, compute_output_path, resolve_game_version
 
 
 def find_template(template_dir: str = "out") -> str:
@@ -355,8 +355,8 @@ Each image becomes a decal named after its filename (without extension).
     )
     parser.add_argument("--input", "-i", required=True,
                         help="Directory containing images (PNG/TGA/BMP/JPG)")
-    parser.add_argument("--output", "-o", required=True,
-                        help="Output .pak file path (e.g. MyPack_P.pak)")
+    parser.add_argument("--output", "-o", default=None,
+                        help="Output .pak file path (auto-generated from mod.json if omitted)")
     parser.add_argument("--template", "-t",
                         help="Template decal texture .uasset (auto-detected from out/)")
     parser.add_argument("--decals", "-d",
@@ -367,11 +367,22 @@ Each image becomes a decal named after its filename (without extension).
                         help="Decal cost in-game (default: 100)")
     parser.add_argument("--version", "-v", default="5.5",
                         help="UE version (default: 5.5)")
+    parser.add_argument("--mod", default=None,
+                        help="Mod directory (e.g. mods/my-decals) to load mod.json from")
     args = parser.parse_args()
+
+    if args.mod and not args.output:
+        mod = load_mod_config(args.mod)
+        game_ver = resolve_game_version()
+        output_path = compute_output_path(mod, game_ver)
+    elif args.output:
+        output_path = args.output
+    else:
+        parser.error("Either --output or --mod is required")
 
     builder = DecalModBuilder(
         config_path="/dev/null",  # config is built from images
-        output_path=args.output,
+        output_path=output_path,
         input_dir=args.input,
         category=args.category,
         cost=args.cost,

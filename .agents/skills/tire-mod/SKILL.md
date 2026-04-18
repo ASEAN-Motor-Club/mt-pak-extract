@@ -12,15 +12,20 @@ Create mod PAKs that add new tire types to MotorTown with custom friction and ph
 ```bash
 # Standalone
 nix develop --command bash -c '
+python3 scripts/mods.py build police-tyres
+'
+
+# Or directly with script:
+nix develop --command bash -c '
 python3 scripts/create_tirepack.py \
-  --config tire_entries.json \
+  --config mods/police-tyres/tire_entries.json \
   --output ASEAN_PoliceTyres_P.pak
 '
 
 # Compatible with another mod
 nix develop --command bash -c '
 python3 scripts/create_tirepack.py \
-  --config tire_entries.json \
+  --config mods/police-tyres/tire_entries.json \
   --output ASEAN_PoliceTyres_MoreTuningCompat_P.pak \
   --compat-mod path/to/qxZap_MoreTuning_P.pak
 '
@@ -31,8 +36,8 @@ python3 scripts/create_tirepack.py \
 | Step | Tool | Input | Output |
 |------|------|-------|--------|
 | 0. Extract compat base | Rust `mod_explore` | `--compat-mod` PAK | VehicleParts0 template |
-| 1. Patch tire physics | C# `--patch-tire` | `tire_entries.json` + `BasicTire_45.uasset` | New tire `.uasset/.uexp` |
-| 2. Add to VehicleParts0 | C# `--add-tire-parts` | `tire_entries.json` + `VehicleParts0.uasset` | Modified `VehicleParts0.uasset` |
+| 1. Patch tire physics | C# `--patch-tire` | `mods/police-tyres/tire_entries.json` + `BasicTire_45.uasset` | New tire `.uasset/.uexp` |
+| 2. Add to VehicleParts0 | C# `--add-tire-parts` | `mods/police-tyres/tire_entries.json` + `VehicleParts0.uasset` | Modified `VehicleParts0.uasset` |
 | 3. Assemble PAK dir | Python | All outputs | Directory structure |
 | 4. Build PAK | Rust `mod_pack` | Directory | `.pak` file |
 
@@ -41,7 +46,7 @@ python3 scripts/create_tirepack.py \
 
 ## Configuration
 
-### `tire_entries.json`
+### `mods/police-tyres/tire_entries.json`
 
 ```json
 {
@@ -317,7 +322,7 @@ If the tire doesn't appear in-game:
 |------|---------|
 | `scripts/create_tirepack.py` | Orchestrates the full tire mod build pipeline |
 | `csharp/UAssetTool/Program.cs` | C# tool: `--patch-tire`, `--add-tire-parts`, `--dump` |
-| `tire_entries.json` | Tire physics + VehicleParts config |
+| `mods/police-tyres/tire_entries.json` | Tire physics + VehicleParts config |
 | `out/BasicTire_45.uasset` | Default tire physics template |
 | `out/VehicleParts.uasset` | Base game VehicleParts DataTable (713 rows) |
 | `out/VehicleParts0.uasset` | Override VehicleParts DataTable (50 rows) |
