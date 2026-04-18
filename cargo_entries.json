@@ -14,6 +14,8 @@
       "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_Money_Stack_01",
       "mass_kg": 8,
       "blueprint_name": "Money",
+      "blueprint_template": "out/SmallBox.uasset",
+      "clone_old_name": "SmallBox",
       "cargo_flags": 11,
       "allow_stacking": true
     },
@@ -31,6 +33,8 @@
       "mesh_path": "/Game/Models/PolygonPoliceStation/Meshes/Props/SM_Prop_Box_01",
       "mass_kg": 25,
       "blueprint_name": "MoneyPallet",
+      "blueprint_template": "out/SmallBox.uasset",
+      "clone_old_name": "SmallBox",
       "extra_export_patches": [
         {"patches": [{"path": "bCanPickup", "op": "set", "value": false}]}
       ],
@@ -51,6 +55,8 @@
       "mesh_path": "/Game/Models/PolygonApocalypse/Meshes/Props/SM_Prop_Keg_01",
       "mass_kg": 12,
       "blueprint_name": "Moonshine",
+      "blueprint_template": "out/SmallBox.uasset",
+      "clone_old_name": "SmallBox",
       "cargo_flags": 11,
       "allow_stacking": true
     }
