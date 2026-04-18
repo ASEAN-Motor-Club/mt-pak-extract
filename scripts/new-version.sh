@@ -87,7 +87,8 @@ preflight() {
 
   if [[ ! -f "$ROOT_DIR/Mappings.usmap" ]]; then
     err "Mappings.usmap not found"
-    err "  cp csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap Mappings.usmap"
+    err "  Pull from Windows: scp freeman@100.85.236.98:'D:/SteamLibrary/steamapps/common/Motor Town/MotorTown/Binaries/Win64/ue4ss/MotorTown-5.5.4-0+UE5-unknown.usmap' Mappings.usmap"
+    err "  Or copy from submodule: cp csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap Mappings.usmap"
     exit 1
   fi
 

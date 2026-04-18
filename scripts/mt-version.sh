@@ -134,6 +134,12 @@ cmd_archive() {
     fi
   done
 
+  # Archive Mappings.usmap (follow symlink to get real file)
+  if [[ -f "$ROOT_DIR/Mappings.usmap" ]]; then
+    cp -L "$ROOT_DIR/Mappings.usmap" "$dest/Mappings.usmap"
+    log "  Copied Mappings.usmap"
+  fi
+
   # Archive *_parsed.json files from root
   local parsed_count=0
   for f in "$ROOT_DIR"/*_parsed.json; do
@@ -193,6 +199,13 @@ cmd_restore() {
       log "  Linked $f → $src/$f"
     fi
   done
+
+  # Symlink Mappings.usmap from archive
+  if [[ -f "$src/Mappings.usmap" ]]; then
+    rm -f "$ROOT_DIR/Mappings.usmap"
+    ln -sf "$src/Mappings.usmap" "$ROOT_DIR/Mappings.usmap"
+    log "  Linked Mappings.usmap → $src/Mappings.usmap"
+  fi
 
   # Symlink parsed JSON files
   for f in "$src"/*_parsed.json; do
@@ -386,12 +399,12 @@ cmd_worktree() {
     log "  Linked MotorTown-Windows.pak → $pak_file"
   fi
 
-  # Symlink Mappings.usmap from main repo (not version-specific)
-  if [[ -f "$ROOT_DIR/Mappings.usmap" ]]; then
-    ln -sf "$ROOT_DIR/Mappings.usmap" "$worktree_dir/Mappings.usmap"
-    log "  Linked Mappings.usmap → $ROOT_DIR/Mappings.usmap"
+  # Symlink Mappings.usmap from version archive
+  if [[ -f "$src/Mappings.usmap" ]]; then
+    ln -sf "$src/Mappings.usmap" "$worktree_dir/Mappings.usmap"
+    log "  Linked Mappings.usmap → $src/Mappings.usmap"
   else
-    warn "  Mappings.usmap not found in main repo — worktree will need it manually"
+    warn "  Mappings.usmap not found in archive — worktree will need it manually"
   fi
 
   log "Worktree ready. Build mods with:"
