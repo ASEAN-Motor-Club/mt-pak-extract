@@ -43,7 +43,7 @@
       "template_path": "out/Mine_CopperOre.uasset",
       "replace_production_configs": false,
       "recipes": [
-        {"input_cargo": "CornPallet", "input_count": 2, "output_cargo": "Moonshine", "output_count": 1, "production_time": 180, "hidden": false}
+        {"input_cargo": "CornPallet", "input_count": 1, "output_cargo": "Moonshine", "output_count": 5, "production_time": 180, "hidden": false}
       ]
     }
   ],
@@ -53,8 +53,8 @@
       "delivery_point": "Mine_CopperOre",
       "template_path": "out/Mine_CopperOre.uasset",
       "entries": [
-        {"cargo_key": "CornPallet", "max_storage": 10},
-        {"cargo_key": "Moonshine", "max_storage": 15}
+        {"cargo_key": "CornPallet", "max_storage": 20},
+        {"cargo_key": "Moonshine", "max_storage": 100}
       ]
     }
   ],

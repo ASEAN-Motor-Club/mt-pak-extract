@@ -832,6 +832,34 @@ asset.Imports.Add(assetImport);
    "
    ```
 
+### Rebuilt PAK still has old values
+1. **Always verify the final PAK output directly** — extract and dump the `.uasset` from the built `.pak` file, not from intermediate temp directories
+2. Stale temp build directories (`/tmp/nix-shell.*/modpack_*/`) persist across builds inside `nix develop` sessions. These contain configs from **previous** builds and are NOT reliable indicators of current PAK contents
+3. To verify PAK values, use this pattern:
+   ```bash
+   # Extract the specific asset from the built PAK
+   cargo run --release --quiet --bin mod_explore -- \
+     mods/<name>/builds/<pak_file> --extract \
+     MotorTown/Content/<path>/<Asset>.uasset mod_out/
+   cargo run --release --quiet --bin mod_explore -- \
+     mods/<name>/builds/<pak_file> --extract \
+     MotorTown/Content/<path>/<Asset>.uexp mod_out/
+   
+   # Dump and verify values
+   cd csharp/UAssetTool && dotnet run --configuration Release --verbosity quiet -- \
+     --dump /path/to/repo/mod_out/<Asset>.uasset
+   ```
+4. For numeric values (e.g. storage limits, production counts), binary-scan the `.uexp`:
+   ```python
+   import struct
+   with open("mod_out/Asset.uexp", "rb") as f:
+       data = f.read()
+   for val in [100, 20, 15, 10]:
+       encoded = struct.pack('<i', val)
+       offsets = [i for i in range(len(data)-3) if data[i:i+4] == encoded]
+       print(f"Value {val}: offsets {offsets}")
+   ```
+
 ### CDO patches don't take effect
 1. Check parent blueprint (e.g. `MTVehicleBaseBP.uasset`) was in same directory during patching
 2. Use `--dump` to verify the import was added (look for the asset name in imports)
