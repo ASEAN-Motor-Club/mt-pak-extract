@@ -63,7 +63,7 @@
       "delivery_point": "Mine_CopperOre",
       "template_path": "out/Mine_CopperOre.uasset",
       "entries": [
-        {"cargo_type": "None", "cargo_key": "CornPallet", "payment_multiplier": 1, "max_storage": 10}
+        {"cargo_type": "None", "cargo_key": "CornPallet", "payment_multiplier": 1, "max_storage": 20}
       ]
     },
     {
