@@ -28,6 +28,7 @@ REPO_ROOT = str(Path(__file__).resolve().parent.parent)
 
 TYPE_TO_SCRIPT = {
     "tire": "scripts/create_tirepack.py",
+    "intake": "scripts/create_intakepack.py",
     "cargo": "scripts/create_cargopack.py",
     "decal": "scripts/create_decal_pack.py",
     "font": "scripts/create_font_mod.py",
@@ -114,6 +115,13 @@ def cmd_build(args):
     if mod_type == "tire":
         for cfg in mod["configs"]:
             cmd.extend(["--config", cfg])
+        cmd.extend(["--output", output_path])
+        if args.compat_mod:
+            for cm in args.compat_mod:
+                cmd.extend(["--compat-mod", cm])
+
+    elif mod_type == "intake":
+        cmd.extend(["--config", mod["configs"][0]])
         cmd.extend(["--output", output_path])
         if args.compat_mod:
             for cm in args.compat_mod:

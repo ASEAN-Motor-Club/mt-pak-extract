@@ -1,0 +1,11 @@
+{
+  "name": "police-sc",
+  "display_name": "AMC_PDParts",
+  "version": "0.1.0",
+  "type": "intake",
+  "prefix": "zzz_",
+  "script": "scripts/create_intakepack.py",
+  "configs": ["intake_entries.json"],
+  "compat_suffix": "MoreTuningCompat",
+  "extra_args": {}
+}

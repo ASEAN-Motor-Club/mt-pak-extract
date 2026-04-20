@@ -174,7 +174,39 @@ PartType: Tire
 ├── MassKg: 10
 ├── Name2.Texts: ["AMC Police 78"]               ← display name
 └── ... (hundreds of other fields, inactive for tires)
+
+PartType: Intake
+├── Intake.Slope → torque curve slope (higher = more torque bias)
+├── Intake.BaseRPMRatio → RPM ratio where effect begins (lower = earlier response)
+├── Intake.IntakeSpeedEfficencyMultiplier → overall HP multiplier
+├── VehicleTypes: [Small]
+├── VehicleKeys: [...]
+└── ... (common fields same as above)
+
+PartType: Turbocharger
+├── Turbocharger.bIsValid → must be true for turbo to activate
+├── Turbocharger.TorqueMultiplier → peak torque multiplier
+├── Turbocharger.BaseTorqueMultiplier → base torque at all RPMs
+├── Turbocharger.IntakePressureMultiplier → boost pressure
+├── Turbocharger.TurbineWeight → rotational inertia (spool time)
+├── Turbocharger.TurbineAspectRatio → turbine A/R ratio
+├── Turbocharger.HeatingMultiplier → engine heat generation
+├── Turbocharger.FuelConsumptionMultiplier → fuel usage
+└── ... (common fields same as above)
 ```
+
+### Intake vs Turbocharger — Supercharger Simulation
+
+Intake parts can simulate superchargers: low `BaseRPMRatio` (instant response), positive `Slope` (torque), high `EfficiencyMult` (HP). Unlike turbochargers, intakes have **no spool lag** (no TurbineWeight). See the `intake-mod` skill for full details.
+
+**Vanilla values (v0.7.18+1):**
+
+| Type | Row | Key Values |
+|------|-----|------------|
+| Intake | Row 201 | Slope=0.1, BaseRPMRatio=0.7, EfficiencyMult=1.5 |
+| Intake | Row 202 | Slope=-0.1, BaseRPMRatio=0.8, EfficiencyMult=0.7 |
+| Turbocharger | Stock | TorqueMult=1.1, BaseTorqueMult=0.98, TurbineWeight=30 |
+| Turbocharger | Stage1 | TorqueMult=1.2, BaseTorqueMult=0.95, TurbineWeight=100 |
 
 ## Vehicle Restriction System
 
@@ -530,6 +562,7 @@ dotnet run --configuration Release --verbosity quiet -- <command> [args]
 |--------|---------|
 | `scripts/modbase.py` | **Shared base module** — `ModBuilder` class with common build infrastructure |
 | `scripts/create_tirepack.py` | Tire mod PAK builder (subclasses `ModBuilder`) |
+| `scripts/create_intakepack.py` | Intake mod PAK builder (subclasses `ModBuilder`) |
 | `scripts/create_cargopack.py` | Cargo mod PAK builder (subclasses `ModBuilder`) |
 | `scripts/create_decal_pack.py` | Decal mod PAK builder (subclasses `ModBuilder`) |
 | `scripts/aggregate_to_sqlite.py` | Parsed JSON → SQLite database |
@@ -750,6 +783,22 @@ var newRow = (StructPropertyData)templateRow.Clone();
 ```
 
 Constructing properties manually corrupts unversioned header serialization.
+
+### Dot-Path Resolution Through Sub-Structs
+
+The C# `ResolvePropertyWithContainer` function resolves dot-separated paths through `StructPropertyData` containers. This means `Intake.Slope` correctly traverses into the `Intake` struct and finds the `Slope` float inside it:
+
+```csharp
+// "Intake.Slope" resolves as:
+// 1. Find "Intake" in row properties → StructPropertyData
+// 2. Traverse into struct.Value (its child properties)
+// 3. Find "Slope" in those children → FloatPropertyData
+```
+
+This works with `set_or_add_float`, `set_or_create_name`, `set_or_create_int`, etc. If the property doesn't exist, the `set_or_add_*` variants clone the first same-type property in the container as a template and add it.
+
+> [!IMPORTANT]
+> Only ONE level of dot-path nesting is needed for VehicleParts sub-structs (e.g., `Intake.Slope`, `Turbocharger.bIsValid`). The sub-structs themselves are direct children of the row.
 
 ### Map Property Types — NamePropertyData vs StrPropertyData
 
