@@ -46,6 +46,59 @@ nix develop --command bash -c 'scripts/new-version.sh v0.7.19 v0.7.19.pak'
   git submodule update --init
   ```
 
+## Intake Pack Creation
+
+Create intake/supercharger mod PAKs from a JSON config:
+
+```bash
+nix develop --command bash -c '
+python3 scripts/create_intakepack.py --config mods/police-sc/intake_entries.json --output MySC_P.pak
+'
+```
+
+Or using the mod management CLI:
+
+```bash
+nix develop --command bash -c 'python3 scripts/mods.py build police-sc'
+```
+
+### How It Works
+
+Unlike tire mods, intake parts have **no separate physics DataAsset** — all tuning (Slope, BaseRPMRatio, IntakeSpeedEfficencyMultiplier) is inline in the VehicleParts row. The build pipeline only modifies `VehicleParts0`.
+
+1. **Clone** an existing Intake row from VehicleParts0 via `--add-rows` with `template_row_match: {"PartType": "*Intake*"}`
+2. **Patch** Intake sub-struct fields via dot-path notation (`Intake.Slope`, `Intake.BaseRPMRatio`, `Intake.IntakeSpeedEfficencyMultiplier`)
+3. **Package** into mod PAK with `mod_pack` binary
+
+### Intake Tuning Fields
+
+| Field | Effect | Supercharger feel |
+|-------|--------|-------------------|
+| `Slope` | Torque curve slope (higher = more torque bias) | 0.05–0.15 (positive for power) |
+| `BaseRPMRatio` | RPM ratio where effect begins (lower = earlier) | 0.1–0.3 (instant response) |
+| `IntakeSpeedEfficencyMultiplier` | Overall HP multiplier | 2.0–2.5+ (high HP) |
+
+### Vanilla Game Values (v0.7.18+1)
+
+| Row | Slope | BaseRPMRatio | EfficiencyMult |
+|-----|-------|-------------|----------------|
+| Intake Row 201 | 0.1 | 0.7 | 1.5 |
+| Intake Row 202 | -0.1 | 0.8 | 0.7 |
+| Turbo Stock (Small) | TorqueMult=1.1, TurbineWeight=30 | — | — |
+| Turbo Stage1 (Small) | TorqueMult=1.2, TurbineWeight=100 | — | — |
+
+### Compat-Mod Support
+
+```bash
+# Build compatible with MoreTuning + AMC Tires
+nix develop --command bash -c '
+python3 scripts/create_intakepack.py \
+  --config mods/police-sc/intake_entries.json \
+  --output zzz_AMC_PDParts_MoreTuningCompat_P.pak \
+  --compat-mod path/to/zzz_ASEAN_PoliceTyres_v0.2.0_MoreTuningCompat_P.pak
+'
+```
+
 ## Decal Pack Creation
 
 Create decal mod PAKs from images in one command:
