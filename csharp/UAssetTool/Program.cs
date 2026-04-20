@@ -1447,6 +1447,90 @@ class Program
                 break;
             }
             
+            case "set_collision_profile":
+            {
+                var profileName = patch.GetProperty("profile_name").GetString()!;
+                var channelResponses = patch.GetProperty("channels");
+                
+                var (container, existingProp) = ResolvePropertyWithContainer(properties, path);
+                
+                var bodyInstance = existingProp as StructPropertyData;
+                if (bodyInstance == null && container != null)
+                {
+                    var leafName = path.Split('.').Last();
+                    bodyInstance = new StructPropertyData(FName.FromString(asset, leafName));
+                    bodyInstance.StructType = FName.DefineDummy(asset, "BodyInstance");
+                    bodyInstance.Value = new List<PropertyData>();
+                    container.Add(bodyInstance);
+                    Console.WriteLine($"    Created BodyInstance struct at {path}");
+                }
+                
+                if (bodyInstance != null)
+                {
+                    var bodyProps = new List<PropertyData>(bodyInstance.Value);
+                    
+                    var profileNameProp = bodyProps.OfType<NamePropertyData>().FirstOrDefault(p => p.Name.Value.Value == "CollisionProfileName");
+                    if (profileNameProp == null)
+                    {
+                        profileNameProp = new NamePropertyData(FName.FromString(asset, "CollisionProfileName"));
+                        bodyProps.Add(profileNameProp);
+                    }
+                    profileNameProp.Value = FName.FromString(asset, profileName);
+                    
+                    var responsesStruct = bodyProps.OfType<StructPropertyData>().FirstOrDefault(p => p.Name.Value.Value == "CollisionResponses");
+                    if (responsesStruct == null)
+                    {
+                        responsesStruct = new StructPropertyData(FName.FromString(asset, "CollisionResponses"));
+                        responsesStruct.StructType = FName.DefineDummy(asset, "CollisionResponse");
+                        responsesStruct.Value = new List<PropertyData>();
+                        bodyProps.Add(responsesStruct);
+                    }
+                    
+                    var responsesProps = new List<PropertyData>(responsesStruct.Value);
+                    
+                    var responseToChannels = responsesProps.OfType<StructPropertyData>().FirstOrDefault(p => p.Name.Value.Value == "ResponseToChannels");
+                    if (responseToChannels == null)
+                    {
+                        responseToChannels = new StructPropertyData(FName.FromString(asset, "ResponseToChannels"));
+                        responseToChannels.StructType = FName.DefineDummy(asset, "CollisionResponseContainer");
+                        responseToChannels.Value = new List<PropertyData>();
+                        responsesProps.Add(responseToChannels);
+                    }
+                    
+                    var channelProps = new List<PropertyData>(responseToChannels.Value);
+                    foreach (var ch in channelResponses.EnumerateArray())
+                    {
+                        var channelName = ch.GetProperty("channel").GetString()!;
+                        var responseName = ch.GetProperty("response").GetString()!;
+                        
+                        var existing = channelProps.OfType<EnumPropertyData>().FirstOrDefault(p => p.Name.Value.Value == channelName);
+                        if (existing != null)
+                        {
+                            existing.Value = FName.FromString(asset, responseName);
+                        }
+                        else
+                        {
+                            var channelEnum = new EnumPropertyData(FName.FromString(asset, channelName));
+                            channelEnum.Value = FName.FromString(asset, responseName);
+                            channelEnum.EnumType = FName.DefineDummy(asset, "ECollisionResponse");
+                            channelEnum.InnerType = FName.DefineDummy(asset, "ByteProperty");
+                            channelProps.Add(channelEnum);
+                        }
+                    }
+                    responseToChannels.Value = channelProps;
+                    
+                    responsesStruct.Value = responsesProps;
+                    bodyInstance.Value = bodyProps;
+                    
+                    Console.WriteLine($"    Set collision profile: {profileName} with {channelProps.Count} channel responses");
+                }
+                else
+                {
+                    Console.WriteLine($"    Warning: Cannot set collision profile at '{path}' — BodyInstance not found and cannot be created");
+                }
+                break;
+            }
+            
             default:
                 Console.WriteLine($"    Warning: Unknown op '{op}' for path '{path}'");
                 break;

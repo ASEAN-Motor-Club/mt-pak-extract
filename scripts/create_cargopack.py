@@ -100,6 +100,19 @@ class CargoModBuilder(ModBuilder):
                 }],
             }
 
+            cargo_flags = entry.get("cargo_flags", 0)
+            is_loadable = bool(cargo_flags & (1 | 2 | 8))
+            if is_loadable:
+                asset_spec["export_patches"][0]["patches"].append({
+                    "path": "BodyInstance",
+                    "op": "set_collision_profile",
+                    "profile_name": "Cargo",
+                    "channels": [
+                        {"channel": "Camera", "response": "ECR_Ignore"},
+                        {"channel": "GameTraceChannel3", "response": "ECR_Overlap"},
+                    ],
+                })
+
             # Only replace mesh if mesh_path is provided
             if "import_replacements" in entry:
                 # Use explicit import_replacements from entry (supports import_index)
