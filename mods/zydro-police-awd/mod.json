@@ -1,0 +1,10 @@
+{
+  "name": "zydro-police-awd",
+  "display_name": "ASEAN_ZydroPoliceAWD",
+  "version": "0.1.0",
+  "type": "vehicle",
+  "prefix": "zzz_",
+  "script": "scripts/create_vehicle_mod.py",
+  "configs": ["awd_patch.json"],
+  "extra_args": {}
+}

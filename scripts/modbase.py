@@ -361,6 +361,18 @@ class ModBuilder:
         """
         self.stage_asset(src_path, pak_subdir, name=datatable_name)
 
+    def stage_blueprint(self, src_path: str, blueprint_name: str, pak_subdir: str):
+        """Stage a blueprint asset into the PAK layout.
+
+        Convenience wrapper around stage_asset for vehicle blueprints.
+
+        Args:
+            src_path: path to the .uasset file
+            blueprint_name: name of the blueprint (e.g., 'Zydro_Police')
+            pak_subdir: PAK content subdirectory (e.g., 'Cars/Models/Zydro_Police')
+        """
+        self.stage_asset(src_path, pak_subdir, name=blueprint_name)
+
     # ── Main build flow ────────────────────────────────────────────────
 
     def build(self):

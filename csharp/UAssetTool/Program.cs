@@ -31,9 +31,10 @@ class Program
         bool patchCdoMode = args.Contains("--patch-cdo-arrays");
         bool patchRowsMode = args.Contains("--patch-rows");
         bool patchExportMode = args.Contains("--patch-export-props");
+        bool patchNamedExportsMode = args.Contains("--patch-named-exports");
         bool dumpMode = args.Contains("--dump");
         
-        Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--dump ...] [path/to/asset.uasset]");
+        Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--patch-export-props ...] [--patch-named-exports ...] [--dump ...] [path/to/asset.uasset]");
         Console.WriteLine();
         
         if (!File.Exists(usmapPath))
@@ -95,6 +96,14 @@ class Program
             var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
             var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
             PatchExportProps(configPath, templatePath, outputDir);
+        }
+        else if (patchNamedExportsMode)
+        {
+            var idx = Array.IndexOf(args, "--patch-named-exports");
+            var configPath = args.ElementAtOrDefault(idx + 1) ?? "config.json";
+            var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
+            var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
+            PatchNamedExports(configPath, templatePath, outputDir);
         }
         else if (dumpMode)
         {
@@ -728,6 +737,104 @@ class Program
             ApplyPatches(mainExport.Data, patches, asset);
             Console.WriteLine("  Applied export property patches");
         }
+        
+        asset.ResolveAncestries();
+        Directory.CreateDirectory(outputDir);
+        var outputPath = Path.Combine(outputDir, $"{outputFileName}.uasset");
+        asset.Write(outputPath);
+        Console.WriteLine($"Written: {outputFileName}.uasset + {outputFileName}.uexp to {outputDir}");
+    }
+    
+    // ========================================================================
+    // --patch-named-exports: Patch properties on specific named exports
+    // ========================================================================
+    static void PatchNamedExports(string configPath, string templatePath, string outputDir)
+    {
+        if (!File.Exists(configPath)) { Console.WriteLine($"Error: Config not found: {configPath}"); return; }
+        if (!File.Exists(templatePath)) { Console.WriteLine($"Error: Template not found: {templatePath}"); return; }
+        
+        var configJson = File.ReadAllText(configPath);
+        using var doc = JsonDocument.Parse(configJson);
+        var root = doc.RootElement;
+        
+        if (!root.TryGetProperty("exports", out var exportPatches))
+        {
+            Console.WriteLine("Error: Config must have 'exports' array with {export_name, patches} entries");
+            return;
+        }
+        
+        Console.WriteLine($"Loading: {Path.GetFileName(templatePath)}");
+        var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
+        
+        var outputFileName = root.TryGetProperty("output_filename", out var ofProp)
+            ? ofProp.GetString()!
+            : Path.GetFileNameWithoutExtension(templatePath);
+        
+        int patched = 0;
+        foreach (var exportSpec in exportPatches.EnumerateArray())
+        {
+            var exportName = exportSpec.GetProperty("export_name").GetString()!;
+            
+            Export? targetExport = null;
+            foreach (var export in asset.Exports)
+            {
+                if (export.ObjectName.Value.Value == exportName)
+                {
+                    targetExport = export;
+                    break;
+                }
+            }
+            
+            if (targetExport == null)
+            {
+                Console.WriteLine($"  Warning: Export '{exportName}' not found, skipping");
+                continue;
+            }
+            
+            NormalExport? normalExport = null;
+            if (targetExport is NormalExport ne)
+            {
+                normalExport = ne;
+            }
+            else if (targetExport is RawExport rawExp)
+            {
+                try
+                {
+                    var converted = rawExp.ConvertToChildExport<NormalExport>();
+                    var reader = new AssetBinaryReader(new MemoryStream(rawExp.Data ?? []))
+                    {
+                        Asset = asset
+                    };
+                    converted.Data = new List<PropertyData>();
+                    var nextStarting = rawExp.Data?.Length ?? 0;
+                    converted.Read(reader, nextStarting);
+                    var idx = asset.Exports.IndexOf(rawExp);
+                    asset.Exports[idx] = converted;
+                    normalExport = converted;
+                    Console.WriteLine($"  Reparsed RawExport '{exportName}' as NormalExport ({converted.Data?.Count ?? 0} properties)");
+                }
+                catch (Exception convEx)
+                {
+                    Console.WriteLine($"  Warning: RawExport reparse failed for '{exportName}': {convEx.Message}");
+                    continue;
+                }
+            }
+            
+            if (normalExport == null)
+            {
+                Console.WriteLine($"  Warning: Export '{exportName}' is not a NormalExport, skipping");
+                continue;
+            }
+            
+            if (exportSpec.TryGetProperty("patches", out var patches))
+            {
+                ApplyPatches(normalExport.Data, patches, asset);
+                Console.WriteLine($"  Patched export: {exportName}");
+                patched++;
+            }
+        }
+        
+        Console.WriteLine($"Patched {patched} exports.");
         
         asset.ResolveAncestries();
         Directory.CreateDirectory(outputDir);
