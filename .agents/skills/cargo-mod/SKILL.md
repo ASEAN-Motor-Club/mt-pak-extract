@@ -203,9 +203,21 @@ Each new cargo in the Cargos DataTable needs two Import entries added to the ass
 
 Set `hidden: false` in `mods/schedule-i/recipe_entries.json` for sinks where you want the cargo demand to appear as a visible delivery task. Default for sinks is `hidden: true` (invisible demand).
 
-### 8. CargoFlags = 11
+### 8. CargoFlags = 11 (Loadable Flag)
 
-The standard value for loadable cargo (forklift/crane compatible). 58 of 61 proxy mod cargos use this. Without it, cargo appears greyed-out and can't be loaded.
+> [!CAUTION]
+> **Never set `cargo_flags` to `0`** for loadable cargo. The value `0` disables the Cargo collision profile entirely, causing **random or intermittent issues where players cannot load the cargo** — it may appear in the world but be completely non-interactable (no grapple prompt, cannot be lifted by forklift or crane).
+
+The standard value is **`11`** (`0b1011`, bits 0, 1, and 3 set) for loadable cargo (forklift/crane compatible). 58 of 61 proxy mod cargos use this value.
+
+How it works: `create_cargopack.py` checks `cargo_flags & (1 | 2 | 8)` to decide whether to apply the `Cargo` collision profile on the blueprint's `BodyInstance`. If the flag is `0`, the collision profile is skipped, and the resulting blueprint has no cargo collision — making it impossible for players to interact with it. This is a silent failure: the cargo spawns and renders, but **cannot be loaded**.
+
+Symptoms of incorrect `cargo_flags`:
+- Cargo appears in jobs but players report "I can't load it"
+- No grapple/forklift interaction prompt appears
+- The cargo mesh is visible but "ghost-like" — trucks drive through it
+
+Always use `11` for any cargo meant to be loaded by vehicles. Only use `0` for hand-carried items that don't need vehicle loading.
 
 ### 9. Mesh Collision — Use `SM_Prop_*` Only
 
