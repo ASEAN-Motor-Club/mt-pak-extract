@@ -54,7 +54,7 @@
       "blueprint_name": "Moonshine",
       "blueprint_template": "out/SmallBox.uasset",
       "clone_old_name": "SmallBox",
-      "cargo_flags": 0,
+      "cargo_flags": 11,
       "allow_stacking": false
     }
   ]
