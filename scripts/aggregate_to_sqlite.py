@@ -39,7 +39,7 @@ def create_schema(conn: sqlite3.Connection):
     """)
     cursor.execute("""
         INSERT OR REPLACE INTO schema_version (version, game_version) 
-        VALUES (6, '0.7.17')
+        VALUES (7, '0.7.18+1')
     """)
     
     # Vehicles table
@@ -306,6 +306,17 @@ def create_schema(conn: sqlite3.Connection):
             quantity INTEGER,
             FOREIGN KEY (production_config_id) REFERENCES production_configs(id),
             FOREIGN KEY (cargo_id) REFERENCES cargos(id)
+        )
+    """)
+    
+    # Houses (housing plots)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS houses (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            cost INTEGER,
+            b_allow_building BOOLEAN,
+            source_file TEXT
         )
     """)
     
@@ -1185,6 +1196,36 @@ def process_delivery_points(conn: sqlite3.Connection, json_files: List[Path]):
     print(f"Inserted {cursor.execute('SELECT COUNT(*) FROM production_configs').fetchone()[0]} production configs")
 
 
+def process_houses(conn: sqlite3.Connection, json_files: List[Path]):
+    """Process Houses DataTable for housing plot prices."""
+    cursor = conn.cursor()
+    
+    for json_file in json_files:
+        if not json_file.name.startswith("Houses"):
+            continue
+            
+        print(f"Processing houses from {json_file.name}...")
+        with open(json_file) as f:
+            data = json.load(f)
+        
+        if data.get("Data", {}).get("Type") != "DataTable":
+            continue
+        
+        for row in data["Data"]["Rows"]:
+            cursor.execute("""
+                INSERT OR REPLACE INTO houses VALUES (?, ?, ?, ?, ?)
+            """, (
+                row["RowName"],
+                row.get("Name"),
+                row.get("Cost"),
+                row.get("bAllowBuilding"),
+                json_file.name
+            ))
+    
+    conn.commit()
+    print(f"Inserted {cursor.execute('SELECT COUNT(*) FROM houses').fetchone()[0]} houses")
+
+
 def create_views(conn: sqlite3.Connection):
     """Create useful views."""
     cursor = conn.cursor()
@@ -1344,6 +1385,7 @@ def main():
     process_vehicle_cargo_space(conn, json_files)
     process_vehicle_weights(conn, json_files)
     process_delivery_points(conn, json_files)
+    process_houses(conn, json_files)
     
     # Phase 3: Views
     print("\n=== Phase 3: Creating Views ===")
@@ -1367,6 +1409,7 @@ def main():
         ("Vehicle Tags", "SELECT COUNT(*) FROM vehicle_tags"),
         ("Delivery Points", "SELECT COUNT(*) FROM delivery_points"),
         ("Production Configs", "SELECT COUNT(*) FROM production_configs"),
+        ("Houses", "SELECT COUNT(*) FROM houses"),
     ]
     
     for name, query in stats:
