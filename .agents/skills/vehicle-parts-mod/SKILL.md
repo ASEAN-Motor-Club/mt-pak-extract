@@ -159,11 +159,38 @@ python3 scripts/create_tirepack.py \
 > [!WARNING]
 > **Rollover risk:** High StaticMu (1.8+) on tall vehicles (SUVs, police cars) generates so much lateral G-force that the car rolls over instead of sliding. Fix: lower SpringX to ~150000, or reduce StaticMu to ~1.5.
 
+### Bike Tires — Dual Physics Assets
+
+Unlike car tires which use a **single** physics asset, bike tires reference **two separate assets** — one for the front wheel and one for the rear:
+
+| Property | Car Tire | Bike Tire |
+|----------|----------|-----------|
+| `Tire.TirePhysicsDataAsset` | Front + Rear (same) | **Front only** |
+| `Tire.TirePhysicsDataAsset_BikeRear` | `null` (unused) | **Rear only** |
+| Asset count per tire | 1 | 2 |
+
+Stock bike (`MotorCycleTire_01`) references:
+- Front: `Motorcycle_Front` — SpringX=25000, SpringY=2500, DampingY=40, MaxWeightKg=200
+- Rear: `Motorcycle_Rear` — SpringY=3000, DampingY=50, MaxWeightKg=300
+
+The rear is slightly stiffer and supports more weight. When creating custom bike tires, you MUST clone and patch **both** assets.
+
+**Builder support:** The `create_tirepack.py` script auto-detects bike mode when `tire_physics` has `front` and `rear` sub-dicts. It automatically sets both import references and nulls out the car-only rear ref for non-bike tires.
+
+```json
+{
+  "tire_physics": {
+    "front": {"name": "APF_Cruiser_78_Front", "template": "Motorcycle_Front", ...},
+    "rear":  {"name": "APF_Cruiser_78_Rear",  "template": "Motorcycle_Rear",  ...}
+  }
+}
+```
+
 ### Tire Gotchas
 
 1. **PAK Path — FLAT, No Subfolder:** Tire physics assets MUST be in `Cars/Parts/Tire/` directly, not in a subfolder. The engine maps `/Game/Cars/Parts/Tire/{Name}` to `Content/Cars/Parts/Tire/{Name}.uasset`.
 
-2. **NameMap[0] — Must Rename:** When cloning a tire, `NameMap[0]` has the old package path. Must update it or the game uses default physics.
+2. **NameMap[0] — Must Rename:** When cloning a tire, `NameMap[0]` has the old package path. Must update it or the game uses default physics. For cooked assets, `--clone-asset` MUST have `patch_namemap_0: true`.
 
 3. **FName Number Suffix:** `BasicTire_45` is stored as FName(`"BasicTire"`, Number=46). Always use `new FName(asset, name, 0)` to avoid stale Number suffixes.
 
@@ -176,6 +203,8 @@ python3 scripts/create_tirepack.py \
 7. **Rename Order:** Exports → Imports → NameMap. Renaming NameMap first causes silent corruption.
 
 8. **Pure Digit Row Names:** `APF_78` gets parsed as FName(`"APF"`, Number=79), causing save/load mismatches and disappearing tires. Append a letter: `APF_78A`.
+
+9. **Combining mods manually requires merging all assets:** The tire pack builder only stages its own assets. If combining PD Parts (which has 6 car tire physics assets) with bike tires, you must extract BOTH PAKs, merge directories (so all tire physics assets are present), patch VehicleParts0 for any cross-mod changes, then repack. See `general-modding` skill for the manual merge workflow.
 
 ---
 
@@ -317,6 +346,8 @@ Intake parts can simulate superchargers by tuning for instant response and high 
 
 4. **BaseRPMRatio Below 0.5 = Instant Response:** Vanilla has 0.7–0.8 (boost at 70–80% RPM). Supercharger feel: 0.1–0.3 (boost from 10–30% RPM).
 
+5. **VehicleKeys Must Include All Target Vehicles:** If an intake row has `VehicleKeys: ["Elisa_Police", "Muhan_Police"]`, ONLY those vehicles can equip it. Adding a new vehicle (e.g., `Gunthoo_Police`) requires patching the row to include it. Use `--patch-rows` with `set_name_array` to update the whitelist.
+
 ---
 
 ## Shared Mechanics
@@ -409,11 +440,13 @@ for m in re.finditer(rb'BasicTire|OldTemplate', data):
 |---------|-------------|
 | Part not in list | Missing from VehicleParts0, or wrong PartType |
 | Shows wrong template name | `Name2.Texts` not set |
-| Tire has no friction values | Asset in subfolder, NameMap[0] stale, or `_NN` suffix |
+| Tire has no friction values | Asset in subfolder, NameMap[0] stale, `_NN` suffix, or **physics asset missing from PAK** |
 | Intake doesn't feel different | Dot-path not patched correctly |
 | Only on wrong vehicles | `VehicleTypes`/`VehicleKeys` mismatch |
 | Conflicting with another mod | Rebuild with `--compat-mod` |
 | Tire disappears on restart | Pure digit row name (use `APF_78A` not `APF_78`) |
+| Bike tire has no grip | Only front OR rear physics asset present — bike tires need BOTH |
+| Combined mod loses car tire grip | Other mod's tire physics assets not merged — use manual merge, not just `--compat-mod` |
 
 ## Key Files
 

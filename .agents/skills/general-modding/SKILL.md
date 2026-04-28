@@ -52,6 +52,35 @@ MotorTown/Content/
 
 The mount point is `../../../` (three levels up from the PAK file location), which resolves to the game's root `Content/` directory.
 
+### Config INI Files
+
+UE5 config `.ini` files can also be shipped inside PAK mods. The game reads config from the PAK virtual filesystem at:
+
+```
+MotorTown/Config/
+├── DefaultEngine.ini        ← base engine config
+├── UserEngine.ini           ← user overrides (higher priority)
+├── DefaultGame.ini
+└── ...
+```
+
+**PAK path for config overrides:** `MotorTown/Config/UserEngine.ini`
+
+To ship a config-only mod, create the INI file in the staging directory at `MotorTown/Config/` and pack it with `mod_pack`:
+
+```bash
+mkdir -p /tmp/staging/MotorTown/Config
+cat > /tmp/staging/MotorTown/Config/UserEngine.ini << 'EOF'
+[Audio]
+UnfocusedVolumeMultiplier=1.0
+EOF
+
+cargo run --release --quiet --bin mod_pack -- /tmp/staging MyConfigMod_P.pak
+```
+
+> [!NOTE]
+> The `MotorTown/Config/` path is relative to the mount point (`../../../`), resolving from `Content/Paks/` up to the game root then into `MotorTown/Config/`. **Do NOT** use `MotorTown/Saved/Config/Windows/` — that path is for runtime user config on disk, not PAK-based config overrides.
+
 ## DataTable System
 
 DataTables are the backbone of MotorTown's data-driven design. Most mod types work by adding rows to or overriding these tables.
@@ -486,6 +515,33 @@ ASEAN_PoliceTyres_v0.1.5_MoreTuningNoLimitsCompat_P.pak  ← MoreTuning + NoLimi
 > [!WARNING]
 > Users should install **only one variant** of a mod. Installing both standalone and compat versions causes a double-override conflict.
 
+### Manual Mod Merging (When `--compat-mod` Is Not Enough)
+
+The `--compat-mod` flag works when your mod **only** adds rows to a DataTable that the other mod also modifies. But if you need to combine mods that each bring **their own assets** (e.g., tire physics `.uasset` files), `--compat-mod` only extracts the DataTable — the other mod's assets are lost.
+
+**Example:** Combining PD Parts (6 car tire physics assets + VehicleParts0 with intakes) with Gunthoo bike tires (6 bike tire physics assets + VehicleParts0 with bike tires).
+
+**The problem:**
+- `create_tirepack.py --compat-mod PDParts.pak` → extracts PD Parts' VehicleParts0 as template, adds bike tire rows ✅
+- But the output PAK only contains the **bike tire physics assets** — the 6 PD Parts car tire physics assets are NOT staged ❌
+- Result: PD Parts' car tires appear in the list but have no grip values (physics assets missing)
+
+**Solution — Manual merge:**
+
+```python
+# 1. Extract both PAKs to a staging directory
+#    PD Parts → staging/MotorTown/Content/...
+#    Bike tires → staging/MotorTown/Content/... (overwrites VehicleParts0)
+
+# 2. Patch cross-mod changes (e.g., add Gunthoo_Police to SC intake VehicleKeys)
+#    Use --patch-rows on the merged VehicleParts0
+
+# 3. Build final PAK from the merged staging directory
+#    mod_pack staging/ output.pak
+```
+
+**Key rule:** When combining mods that each have `.uasset` assets (not just DataTables), you MUST manually merge the asset directories before repacking.
+
 ### Analyzing Another Mod's Contents
 
 Before building a compat version, analyze what DataTables the other mod modifies:
@@ -865,6 +921,7 @@ asset.Imports.Add(assetImport);
 3. Check `LevelRequirementToBuy` — player may not have required level
 4. Check `bIsHidden` is `false`
 5. For tires: verify `VehicleParts0` contains the row (override table takes precedence)
+6. For intakes: verify `VehicleKeys` includes the target vehicle — intakes with non-empty VehicleKeys are restricted to ONLY those vehicles
 
 ### Asset loads but has wrong values
 1. Check flat PAK path (no subfolders for physics/blueprint assets)
@@ -910,11 +967,14 @@ asset.Imports.Add(assetImport);
    ```
 
 ### CDO patches don't take effect
-1. Check parent blueprint (e.g. `MTVehicleBaseBP.uasset`) was in same directory during patching
-2. Use `--dump` to verify the import was added (look for the asset name in imports)
-3. Use `--dump` to verify CDO size changed (compare with original)
-4. For inherited properties, ensure you used `set_or_create_import_ref` (not `set_import_ref`)
-5. Check CDO loads as `RawExport` — if reparse failed, the property was NOT added
+1. **Parent blueprint MUST be present** — `MTVehicleBaseBP.uasset` + `.uexp` must be in the same directory as the target blueprint during patching. Without it, CDO reparse fails with schema resolution errors
+2. **Schema gaps in `Mappings.usmap`** — Some structs like `MTVehicleColorSlot` have incomplete schemas. The patcher will fail with `FormatException` unless `MainSerializer.cs` is modified to skip unknown properties (return `null` with a warning instead of throwing)
+3. Use `--dump` to verify the import was added (look for the asset name in imports)
+4. Use `--dump` to verify CDO size changed (compare with original)
+5. For inherited properties, ensure you used `set_or_create_import_ref` (not `set_import_ref`)
+6. Check CDO loads as `RawExport` — if reparse failed, the property was NOT added
+7. **Use `set_or_add_float` for new float properties** — `set_float` is not a valid op. For adding properties like `HornFadeInSeconds`, use `set_or_add_float` which creates the property if it doesn't exist
+8. **Some vehicle types can't be CDO-patched** — Bikes, karts, and trailers have different parent classes that don't include `HornSound` in their schema. These will fail even with `MTVehicleBaseBP` present
 
 ## Key Files
 
