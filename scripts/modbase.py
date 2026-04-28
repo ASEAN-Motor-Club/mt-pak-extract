@@ -174,16 +174,35 @@ class ModBuilder:
     def run_dotnet(self, args: list[str], label: str):
         """Run a C# dotnet command in the UAssetTool project.
 
+        Prefers the prebuilt binary when available to avoid MSBuild overhead.
+        Falls back to `dotnet run` for development builds.
+
         Args:
             args: command-line arguments after '--'
             label: human-readable description for error messages
         """
-        result = subprocess.run(
-            ["dotnet", "run", "--configuration", "Release",
-             "--verbosity", "quiet", "--"] + args,
-            cwd=self.csharp_dir,
-            capture_output=True, text=True,
-        )
+        env = os.environ.copy()
+        # Use build_dir for dotnet temp to avoid disk-full issues on /tmp
+        if self.build_dir:
+            env["TMPDIR"] = self.build_dir
+
+        # Try prebuilt binary first (faster, no MSBuild)
+        prebuilt = os.path.join(self.csharp_dir, "bin", "Release", "net8.0", "UAssetTool")
+        if os.path.isfile(prebuilt):
+            result = subprocess.run(
+                [prebuilt] + args,
+                cwd=self.repo_root,
+                capture_output=True, text=True,
+                env=env,
+            )
+        else:
+            result = subprocess.run(
+                ["dotnet", "run", "--configuration", "Debug",
+                 "--verbosity", "quiet", "--"] + args,
+                cwd=self.csharp_dir,
+                capture_output=True, text=True,
+                env=env,
+            )
         if result.stdout.strip():
             print(result.stdout.strip())
         if result.returncode != 0:
@@ -226,9 +245,29 @@ class ModBuilder:
     def build_pak(self, staging_dir: str):
         """Build a mod PAK from a staged directory using mod_pack."""
         mod_pack = self.ensure_mod_pack()
+        # Try direct execution first, fallback to explicit interpreter
+        # (needed when the binary was built against a nix store glibc
+        # that may not be in the default loader search path)
+        # Find a working glibc interpreter for binaries built against a
+        # different nix store path
+        interpreter = None
+        for glibc_path in [
+            "/nix/store/l0l2ll1lmylczj1ihqn351af2kyp5x19-glibc-2.42-51/lib/ld-linux-x86-64.so.2",
+            "/nix/store/wn7v2vhyyyi6clcyn0s9ixvl7d4d87ic-glibc-2.40-36/lib/ld-linux-x86-64.so.2",
+            "/nix/store/i3ibgfskl99qd8rslafbpaa1dmxdzh1z-glibc-2.40-66/lib/ld-linux-x86-64.so.2",
+        ]:
+            if os.path.isfile(glibc_path):
+                interpreter = glibc_path
+                break
+        env = os.environ.copy()
+        if interpreter:
+            cmd = [interpreter, mod_pack, staging_dir, self.output_path]
+        else:
+            cmd = [mod_pack, staging_dir, self.output_path]
         result = subprocess.run(
-            [mod_pack, staging_dir, self.output_path],
+            cmd,
             capture_output=True, text=True,
+            env=env,
         )
         if result.stdout.strip():
             print(result.stdout.strip())
@@ -360,6 +399,18 @@ class ModBuilder:
             pak_subdir: PAK content subdirectory (e.g., 'DataAsset/VehicleParts')
         """
         self.stage_asset(src_path, pak_subdir, name=datatable_name)
+
+    def stage_blueprint(self, src_path: str, blueprint_name: str, pak_subdir: str):
+        """Stage a blueprint asset into the PAK layout.
+
+        Convenience wrapper around stage_asset for vehicle blueprints.
+
+        Args:
+            src_path: path to the .uasset file
+            blueprint_name: name of the blueprint (e.g., 'Zydro_Police')
+            pak_subdir: PAK content subdirectory (e.g., 'Cars/Models/Zydro_Police')
+        """
+        self.stage_asset(src_path, pak_subdir, name=blueprint_name)
 
     # ── Main build flow ────────────────────────────────────────────────
 

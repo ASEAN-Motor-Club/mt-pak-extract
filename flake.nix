@@ -95,6 +95,7 @@
             imagemagick
             librsvg
             sqlite
+            gcc.cc.lib  # libstdc++.so.6 for Oodle decompression at runtime
           ];
 
           shellHook = ''
