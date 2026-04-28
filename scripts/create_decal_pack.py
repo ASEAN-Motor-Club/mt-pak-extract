@@ -131,31 +131,6 @@ def patch_uasset(injected_path: str, template_path: str, new_path: str, new_name
                 data[pos:pos + 4] = new_len
             idx = pos + 1
 
-    # Copy hashes/metadata from template (preserve string sites)
-    string_sites = set()
-    for s in (new_path_b, new_name_b):
-        idx = 0
-        while True:
-            pos = data.find(s, idx)
-            if pos == -1:
-                break
-            for i in range(pos, pos + len(s)):
-                string_sites.add(i)
-            idx = pos + 1
-    for s, old in [(new_path_b, old_path), (new_name_b, old_name)]:
-        idx = 0
-        while True:
-            pos = data.find(s, idx)
-            if pos == -1:
-                break
-            for i in range(pos + len(s), pos + len(old)):
-                string_sites.add(i)
-            idx = pos + 1
-
-    for i in range(len(data)):
-        if i not in string_sites:
-            data[i] = template_data[i]
-
     open(injected_path, "wb").write(data)
 
 
@@ -254,7 +229,7 @@ class DecalModBuilder(ModBuilder):
                 if os.path.exists(src_uexp):
                     os.rename(src_uexp, dst_uexp)
 
-                # Patch metadata
+                # Patch asset path/name in uasset metadata
                 patch_uasset(dst_uasset, self.texture_template, asset_path, name)
 
                 print("OK")

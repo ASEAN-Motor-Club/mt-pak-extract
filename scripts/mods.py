@@ -32,6 +32,8 @@ TYPE_TO_SCRIPT = {
     "cargo": "scripts/create_cargopack.py",
     "decal": "scripts/create_decal_pack.py",
     "font": "scripts/create_font_mod.py",
+    "vehicle": "scripts/create_vehicle_mod.py",
+    "fueltank": "scripts/create_fueltank_mod.py",
 }
 
 
@@ -156,6 +158,20 @@ def cmd_build(args):
             sys.exit(1)
         cmd.extend(["--input", input_file])
         cmd.extend(["--output", output_path])
+
+    elif mod_type == "vehicle":
+        cmd.extend(["--config", mod["configs"][0]])
+        cmd.extend(["--output", output_path])
+        if args.compat_mod:
+            for cm in args.compat_mod:
+                cmd.extend(["--compat-mod", cm])
+
+    elif mod_type == "fueltank":
+        cmd.extend(["--config", mod["configs"][0]])
+        cmd.extend(["--output", output_path])
+        if args.compat_mod:
+            for cm in args.compat_mod:
+                cmd.extend(["--compat-mod", cm])
 
     else:
         print(f"Error: Unknown mod type: {mod_type}", file=sys.stderr)
