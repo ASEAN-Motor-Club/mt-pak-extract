@@ -1,0 +1,10 @@
+{
+  "name": "trophy-weight",
+  "display_name": "AMC_TrophyWeight",
+  "version": "0.1.0",
+  "type": "vehicle",
+  "prefix": "zzz_",
+  "script": "scripts/create_vehicle_mod.py",
+  "configs": ["trophy_weight.json"],
+  "extra_args": {}
+}

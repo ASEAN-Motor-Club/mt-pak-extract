@@ -1,0 +1,54 @@
+{
+  "vehicles": [
+    {
+      "vehicle_id": "Trophy2",
+      "datatable_file": "Vehicles",
+      "patches": [
+        {
+          "path": "CurbWeight",
+          "op": "set",
+          "value": 1080
+        }
+      ],
+      "blueprint_file": "Trophy2",
+      "blueprint_folder": "Trophy2",
+      "blueprint_patches": [
+        {
+          "export_name": "Mesh",
+          "patches": [
+            {
+              "path": "BodyInstance.MassInKgOverride",
+              "op": "set",
+              "value": 500
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "vehicle_id": "Trophy_Taxi",
+      "datatable_file": "Vehicles",
+      "patches": [
+        {
+          "path": "CurbWeight",
+          "op": "set",
+          "value": 1080
+        }
+      ],
+      "blueprint_file": "Trophy_Taxi",
+      "blueprint_folder": "Trophy",
+      "blueprint_patches": [
+        {
+          "export_name": "Mesh",
+          "patches": [
+            {
+              "path": "BodyInstance.MassInKgOverride",
+              "op": "set",
+              "value": 500
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

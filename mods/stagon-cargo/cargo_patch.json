@@ -1,0 +1,19 @@
+{
+  "vehicle_id": "Stagon",
+  "blueprint_file": "Stagon",
+  "blueprint_folder": "Stagon",
+  "blueprint_patches": [
+    {
+      "export_name": "MTVehicleCargoSpace_GEN_VARIABLE",
+      "patches": [
+        {
+          "path": "RelativeScale3D",
+          "op": "set_vector",
+          "x": 1.1,
+          "y": 1.2,
+          "z": 0.76
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "stagon-cargo",
+  "display_name": "ASEAN_StagonCargo",
+  "version": "0.1.0",
+  "type": "vehicle",
+  "prefix": "zzz_",
+  "script": "scripts/create_vehicle_mod.py",
+  "configs": ["cargo_patch.json"],
+  "extra_args": {}
+}

@@ -1,0 +1,64 @@
+{
+  "blueprint_clone": {
+    "template": "out/Trophy2.uasset",
+    "output_name": "Trophy2_Police",
+    "old_name": "Trophy2",
+    "new_path": "/Game/Cars/Models/Trophy2/Trophy2_Police"
+  },
+  "vehicle_row": {
+    "template_row_match": {"RowName": "Trophy2"},
+    "new_row_name": "Trophy2_Police",
+    "vehicle_name": "Trophy2Police",
+    "patches": [
+      {
+        "path": "VehicleClass",
+        "op": "set_import_ref",
+        "class_package": "/Script/Engine",
+        "class_name": "BlueprintGeneratedClass",
+        "package_path": "/Game/Cars/Models/Trophy2/Trophy2_Police",
+        "asset_name": "Trophy2_Police_C",
+        "add_cdo_import": true
+      },
+      {
+        "path": "VehicleTypeFlags",
+        "op": "set",
+        "value": 24
+      },
+      {
+        "path": "GameplayTags",
+        "op": "clear_tags"
+      },
+      {
+        "path": "GameplayTags",
+        "op": "add_gameplay_tags",
+        "tags": ["Vehicle.Delivery.Police", "Vehicle.Police"]
+      },
+      {
+        "path": "Cost",
+        "op": "set",
+        "value": 50000
+      },
+      {
+        "path": "bIsTaxiable",
+        "op": "set",
+        "value": false
+      },
+      {
+        "path": "LevelRequirementToDrive",
+        "op": "clear_map"
+      },
+      {
+        "path": "LevelRequirementToDrive",
+        "op": "add_map_entry",
+        "key": "CL_Police",
+        "value": 5
+      },
+      {
+        "path": "LevelRequirementToDrive",
+        "op": "add_map_entry",
+        "key": "CL_Driver",
+        "value": 10
+      }
+    ]
+  }
+}

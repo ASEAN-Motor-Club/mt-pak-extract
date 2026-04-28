@@ -1,0 +1,10 @@
+{
+  "name": "trophy2-police",
+  "display_name": "ASEAN_Trophy2Police",
+  "version": "0.1.0",
+  "type": "vehicle",
+  "prefix": "zzz_",
+  "script": "scripts/create_trophy2_police.py",
+  "configs": ["trophy2_police.json"],
+  "extra_args": {}
+}
