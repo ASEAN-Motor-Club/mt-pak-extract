@@ -1,0 +1,242 @@
+{
+  "version": "0.7.18+1",
+  "extracted_at": "2026-04-29T04:36:49.919Z",
+  "source": "MotorTown/Content/DataAsset/Houses",
+  "count": 39,
+  "plots": [
+    {
+      "id": "HousingTest_House0",
+      "name": null,
+      "cost": 100,
+      "b_allow_building": false
+    },
+    {
+      "id": "FirstHouse",
+      "name": "C95CF4FE45D999682FCB97887C9ECCE2",
+      "cost": 300000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Gujwa_ContainerHouse",
+      "name": "D8EE1DB5409C016E5793C39A509A69D8",
+      "cost": 30000,
+      "b_allow_building": false
+    },
+    {
+      "id": "GimNyungBeach_01",
+      "name": null,
+      "cost": 200000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Gujwa_01",
+      "name": null,
+      "cost": 500000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Oedo_01",
+      "name": "63C925214B276406AB1DFCBCD1104B9C",
+      "cost": 50000,
+      "b_allow_building": false
+    },
+    {
+      "id": "BuildingTest",
+      "name": null,
+      "cost": 1000,
+      "b_allow_building": false
+    },
+    {
+      "id": "BuildingTest",
+      "name": null,
+      "cost": 1000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Aewol_01",
+      "name": null,
+      "cost": 50000,
+      "b_allow_building": false
+    },
+    {
+      "id": "CheonJin_01",
+      "name": null,
+      "cost": 100000,
+      "b_allow_building": false
+    },
+    {
+      "id": "CheonJin_02",
+      "name": null,
+      "cost": 100000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Downtown_01",
+      "name": null,
+      "cost": 300000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Downtown_02",
+      "name": null,
+      "cost": 280000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Downtown_03",
+      "name": null,
+      "cost": 400000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Gapa_01",
+      "name": null,
+      "cost": 100000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Gapa_02",
+      "name": null,
+      "cost": 50000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Hallim_01",
+      "name": null,
+      "cost": 80000,
+      "b_allow_building": false
+    },
+    {
+      "id": "JoCheon_01",
+      "name": null,
+      "cost": 30000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Lake_01",
+      "name": null,
+      "cost": 80000,
+      "b_allow_building": false
+    },
+    {
+      "id": "PyoSun_01",
+      "name": null,
+      "cost": 80000,
+      "b_allow_building": false
+    },
+    {
+      "id": "SeoGuiPo_WestTown_01",
+      "name": null,
+      "cost": 200000,
+      "b_allow_building": false
+    },
+    {
+      "id": "SeoGuiPo_WestTown_02",
+      "name": null,
+      "cost": 350000,
+      "b_allow_building": false
+    },
+    {
+      "id": "SinChang_01",
+      "name": null,
+      "cost": 100000,
+      "b_allow_building": false
+    },
+    {
+      "id": "SungSan_01",
+      "name": null,
+      "cost": 50000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Gwangjin_01",
+      "name": null,
+      "cost": 300000,
+      "b_allow_building": false
+    },
+    {
+      "id": "GwangjinTown_01",
+      "name": null,
+      "cost": 180000,
+      "b_allow_building": false
+    },
+    {
+      "id": "GwangjinTown_02",
+      "name": null,
+      "cost": 250000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Biyang_01",
+      "name": null,
+      "cost": 150000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Biyang_02",
+      "name": null,
+      "cost": 300000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Sanho_01",
+      "name": null,
+      "cost": 300000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Sanho_02",
+      "name": null,
+      "cost": 150000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Dongsan_01",
+      "name": null,
+      "cost": 120000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Daejin_01",
+      "name": null,
+      "cost": 100000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Obo_01",
+      "name": null,
+      "cost": 300000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Obo_02",
+      "name": null,
+      "cost": 300000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Gwangjin_02",
+      "name": null,
+      "cost": 250000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Ara_01",
+      "name": null,
+      "cost": 200000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Gaon_01",
+      "name": null,
+      "cost": 200000,
+      "b_allow_building": false
+    },
+    {
+      "id": "Baram_01",
+      "name": null,
+      "cost": 250000,
+      "b_allow_building": false
+    }
+  ]
+}
