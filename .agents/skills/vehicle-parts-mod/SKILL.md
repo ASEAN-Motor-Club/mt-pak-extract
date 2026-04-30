@@ -135,8 +135,8 @@ python3 scripts/create_tirepack.py \
 | `cost` | required | Purchase price |
 | `mass_kg` | `10` | Tire mass |
 | `vehicle_types` | required | `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle`, `Pickup`, `Bus`, `Truck`, `SemiTractor`, `SemiTrailer`, `Motorhome` |
-| `vehicle_keys` | cleared | Restrict to specific vehicles. **Cleared by default** when cloning from compat templates to avoid inheriting police-only keys |
-| `level_requirement` | cleared | Career level gate. **Cleared by default** when cloning from compat templates |
+| `vehicle_keys` | cleared | Restrict to specific vehicles. Auto-cleared when cloning from compat templates (see `general-modding` → Row Cloning Behavior) |
+| `level_requirement` | cleared | Career level gate. Auto-cleared when cloning from compat templates |
 | `truck_classes` | not set | `HeavyDuty`, `MediumDuty` — only needed for truck/bus tires |
 | `bIsDualRearWheel` | `false` | Set `true` for DRW (dual rear wheel) truck tires |
 | `tire_asset_path` | required | UE path: `/Game/Cars/Parts/Tire/{Name}/{Name}` |
@@ -215,11 +215,11 @@ The rear is slightly stiffer and supports more weight. When creating custom bike
 
 9. **Combining mods manually requires merging all assets:** The tire pack builder only stages its own assets. If combining PD Parts (which has 6 car tire physics assets) with bike tires, you must extract BOTH PAKs, merge directories (so all tire physics assets are present), patch VehicleParts0 for any cross-mod changes, then repack. See `general-modding` skill for the manual merge workflow.
 
-10. **Inherited VehicleKeys from compat templates:** When using `--compat-mod`, the template row may have `VehicleKeys` (e.g., police-only vehicles). The builder now clears `VehicleKeys` and `LevelRequirementToBuy` by default when not specified in config. Without this, ALL tires would be restricted to police vehicles only.
+10. **Inherited properties from compat templates:** When using `--compat-mod`, the template row's `VehicleKeys` and `LevelRequirementToBuy` carry over. The builder auto-clears these when not in config. See `general-modding` skill → "Row Cloning Behavior" for the full pattern.
 
-11. **Truck tire vehicle types:** Use `Bus`, `Truck`, `SemiTractor`, `SemiTrailer`, `Motorhome` for truck/bus tires. Also set `truck_classes` to `HeavyDuty` and/or `MediumDuty`. These are separate from `vehicle_types` — `vehicle_types` controls which vehicle categories can equip the part, while `truck_classes` filters within truck-type vehicles.
+11. **Truck/bus vehicle types:** Use `Bus`, `Truck`, `SemiTractor`, `SemiTrailer`, `Motorhome` for truck parts. Also set `truck_classes` to `HeavyDuty` and/or `MediumDuty`. `vehicle_types` controls which vehicle categories can equip the part; `truck_classes` filters within truck-type vehicles.
 
-12. **DRW tires:** Set `bIsDualRearWheel: true` on the tire part. This tells the engine to render two wheels on the rear axle. The `BasicHeavyDutyRearTire` row is a good template for DRW truck tires.
+12. **DRW tires:** Set `bIsDualRearWheel: true` on the tire part to render two wheels on the rear axle. `BasicHeavyDutyRearTire` is the best template for DRW truck tires.
 
 ---
 
@@ -416,9 +416,9 @@ python3 scripts/create_intakepack.py \
 > [!CAUTION]
 > Users must install **only one variant**. Both standalone + compat causes double-override on VehicleParts0.
 
-### Combining Two Tire Mods Into One PAK
+### Combining Two VehiclePart Mods Into One PAK
 
-When two tire mods both override `VehicleParts0`, only one loads (alphabetically last wins). To combine them:
+When two mods both override `VehicleParts0`, only one loads (alphabetically last wins). To combine them into a single PAK:
 
 ```bash
 # 1. Build the "base" mod standalone first
@@ -431,12 +431,12 @@ python3 scripts/create_tirepack.py \
   --output mods/amc-tyres/builds/zzz_ASEAN_MCTyres_Combined_P.pak
 ```
 
-The `--compat-mod` PAK's `VehicleParts0` is extracted and used as the template. The new tire rows are appended on top of the existing rows from the compat mod. The combined PAK contains ALL tire physics assets from the add-on mod, plus the merged `VehicleParts0` with rows from both mods.
+The `--compat-mod` PAK's `VehicleParts0` is extracted and used as the template. New rows are appended on top of existing rows from the compat mod. The combined PAK contains all add-on physics assets plus the merged `VehicleParts0`.
 
-**Important:** The combined PAK only contains the add-on mod's tire physics assets. The base mod's tire physics assets must also be present — either in the combined PAK (manual merge) or as a separate PAK the user installs alongside.
+**Important:** The combined PAK only contains the add-on mod's physics assets. The base mod's assets must also be present — either manually merged into the PAK or as a separate PAK the user installs alongside.
 
 > [!WARNING]
-> **Inherited properties carry over from compat template!** When cloning a row from a compat mod's VehicleParts0, properties like `VehicleKeys` and `LevelRequirementToBuy` are inherited from the template row. The builder now automatically clears these unless explicitly set in the config. If you add new fields that should be cleared, add `else: clear_array/clear_map` logic in `_parts_row_config()`.
+> **Inherited properties carry over from compat template.** See `general-modding` skill → "Row Cloning Behavior" for which properties to clear and how.
 
 ### Display Name (`Name2.Texts`)
 
