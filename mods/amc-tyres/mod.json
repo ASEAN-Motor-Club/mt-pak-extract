@@ -1,0 +1,11 @@
+{
+  "name": "amc-tyres",
+  "display_name": "ASEAN_MCTyres",
+  "version": "0.2.0",
+  "type": "tire",
+  "prefix": "zzz_",
+  "script": "scripts/create_tirepack.py",
+  "configs": ["tire_entries.json"],
+  "compat_suffix": "MoreTuningCompat",
+  "extra_args": {}
+}

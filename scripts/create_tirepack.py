@@ -64,7 +64,8 @@ class TireModBuilder(ModBuilder):
         patches = []
         for param in ["static_mu", "sliding_mu", "offroad_friction",
                        "spring_x", "spring_y", "damping_x", "damping_y",
-                       "max_weight_kg", "rolling_resistance_coeff"]:
+                       "max_weight_kg", "rolling_resistance_coeff",
+                       "wear_rate", "patch_length_coefficient"]:
             if param in physics:
                 pascal = "".join(w.capitalize() for w in param.split("_"))
                 patches.append({
@@ -140,11 +141,25 @@ class TireModBuilder(ModBuilder):
         if "vehicle_keys" in tp:
             patches.append({"path": "VehicleKeys", "op": "set_name_array",
                             "values": tp["vehicle_keys"]})
+        else:
+            patches.append({"path": "VehicleKeys", "op": "clear_array"})
 
         if "level_requirement" in tp:
             patches.append({"path": "LevelRequirementToBuy",
                             "op": "set_name_int_map",
                             "value": tp["level_requirement"]})
+        else:
+            patches.append({"path": "LevelRequirementToBuy",
+                            "op": "clear_map"})
+
+        if "truck_classes" in tp:
+            patches.append({"path": "TruckClasses", "op": "set_enum_array",
+                            "enum_type": "EMTTruckClass",
+                            "values": tp["truck_classes"]})
+
+        if "bIsDualRearWheel" in tp:
+            patches.append({"path": "Tire.bIsDualRearWheel", "op": "set",
+                            "value": tp["bIsDualRearWheel"]})
 
         return {
             "template_row_match": {"PartType": "*Tire*"},

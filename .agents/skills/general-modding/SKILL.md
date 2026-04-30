@@ -275,7 +275,30 @@ Array of vehicle size classes. Part only appears for vehicles of matching type.
 "vehicle_types": ["Small"]
 ```
 
-Values: `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle`.
+Values: `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle`, `Pickup`, `Bus`, `Truck`, `SemiTractor`, `SemiTrailer`, `Motorhome`.
+
+> [!NOTE]
+> `Pickup` was discovered in v0.7.18+1 — it covers pickup trucks that can equip both Small and truck-class parts. `Bus`, `Truck`, `SemiTractor`, `SemiTrailer`, `Motorhome` are for heavy-duty vehicle tires.
+
+### TruckClasses — Truck Sub-Class Filter
+
+For truck/bus tires, `TruckClasses` filters within the truck vehicle types:
+
+```json
+"truck_classes": ["HeavyDuty", "MediumDuty"]
+```
+
+Values: `HeavyDuty`, `MediumDuty`. Set alongside `vehicle_types: ["Bus", "Truck", ...]`.
+
+### bIsDualRearWheel — DRW Truck Tires
+
+Boolean on the `Tire` sub-struct. When `true`, the engine renders two wheels on the rear axle:
+
+```json
+"bIsDualRearWheel": true
+```
+
+Use `BasicHeavyDutyRearTire` as the template for DRW truck tires.
 
 ### OverrideAllowedVehicleKeys — Whitelist Override
 
@@ -541,6 +564,9 @@ The `--compat-mod` flag works when your mod **only** adds rows to a DataTable th
 ```
 
 **Key rule:** When combining mods that each have `.uasset` assets (not just DataTables), you MUST manually merge the asset directories before repacking.
+
+> [!WARNING]
+> **Inherited properties from compat templates:** When `--compat-mod` extracts a VehicleParts0 and your mod clones rows from it, properties like `VehicleKeys` and `LevelRequirementToBuy` are inherited from the template row. If the template row is a police tire with `VehicleKeys: ["Elisa_Police", ...]`, your new tire will ALSO be police-only unless you explicitly clear it. The tire/intake builders now auto-clear these, but for manual merges or new mod types, always check for stale inherited restrictions.
 
 ### Analyzing Another Mod's Contents
 
