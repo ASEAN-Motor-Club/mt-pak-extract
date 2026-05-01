@@ -266,6 +266,9 @@
     "MotorTown/Content/Cars/Models/Zino/Zino",
     "MotorTown/Content/Cars/Models/Zydro/Zydro",
     "MotorTown/Content/Cars/Models/Zydro/Zydro_Police",
-    "MotorTown/Content/Models/PolygonPoliceStation/Meshes/Props/SM_Prop_Box_01"
+    "MotorTown/Content/Models/PolygonPoliceStation/Meshes/Props/SM_Prop_Box_01",
+    "MotorTown/Content/DataAsset/Buildings/Buildings_Furnitures",
+    "MotorTown/Content/Objects/Housing/Furnitures/_Common_Prop",
+    "MotorTown/Content/Objects/Housing/Furnitures/_Common_InventoryProp"
   ]
 }

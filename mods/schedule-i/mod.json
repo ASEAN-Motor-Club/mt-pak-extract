@@ -6,5 +6,8 @@
   "prefix": "",
   "script": "scripts/create_cargopack.py",
   "configs": ["cargo_entries.json", "recipe_entries.json"],
+  "extra_configs": {
+    "furniture": "furniture_entries.json"
+  },
   "extra_args": {}
 }

@@ -32,7 +32,7 @@ class CargoModBuilder(ModBuilder):
 
     def __init__(self, config_path, output_path, recipes_path,
                  compat_mods=None, cargos_template=None,
-                 blueprint_template=None):
+                 blueprint_template=None, furniture_config_path=None):
         super().__init__("cargo mod", config_path, output_path, compat_mods)
         self.recipes_path = os.path.abspath(recipes_path)
         self.cargos_template = cargos_template or os.path.join(
@@ -50,11 +50,26 @@ class CargoModBuilder(ModBuilder):
 
         self.cargo_names = [e["blueprint_name"] for e in self.config["entries"]]
 
+        # Furniture support (optional)
+        self.furniture_config = None
+        if furniture_config_path:
+            furniture_config_path = os.path.abspath(furniture_config_path)
+            if not os.path.exists(furniture_config_path):
+                self.fail(f"Furniture config not found: {furniture_config_path}")
+            with open(furniture_config_path) as f:
+                self.furniture_config = json.load(f)
+            self.furniture_names = [e["row_name"] for e in self.furniture_config["entries"]]
+            self.log(f"  Furniture: {', '.join(self.furniture_names)}")
+        else:
+            self.furniture_names = []
+
         # Outputs
         self.cargos_output_dir: str | None = None
         self.child_table_output_dir: str | None = None
         self.blueprints_output_dir: str | None = None
         self.recipes_output_dir: str | None = None
+        self.furniture_blueprints_dir: str | None = None
+        self.furniture_buildings_dir: str | None = None
 
         self.log(f"\n=== Cargo Mod ===")
         self.log(f"  Cargos: {', '.join(self.cargo_names)}")
@@ -134,6 +149,77 @@ class CargoModBuilder(ModBuilder):
             groups[template].append(asset_spec)
 
         return {tpl: {"assets": assets} for tpl, assets in groups.items()}
+
+    # ── Furniture config generation ────────────────────────────────────
+
+    def _furniture_blueprint_clone_configs(self):
+        """Generate --clone-asset configs for furniture blueprints."""
+        from collections import defaultdict
+        groups = defaultdict(list)
+
+        for entry in self.furniture_config["entries"]:
+            bp_name = entry["row_name"]
+            mesh_path = entry["mesh_path"]
+
+            template = entry.get("blueprint_template",
+                                 os.path.join(self.repo_root, "out", "_Common_Prop.uasset"))
+            template = os.path.join(self.repo_root, template) \
+                if not os.path.isabs(template) else template
+            template_name = os.path.splitext(os.path.basename(template))[0]
+
+            asset_spec = {
+                "new_name": bp_name,
+                "old_name": entry.get("clone_old_name", template_name),
+                "new_path": f"/Game/Objects/Housing/Furnitures/{bp_name}",
+                "rename_exports": True,
+                "rename_imports": True,
+                "import_replacements": [{
+                    "match_class": "StaticMesh",
+                    "new_package_path": mesh_path,
+                    "new_name": mesh_path.split("/")[-1],
+                }],
+            }
+            groups[template].append(asset_spec)
+
+        return {tpl: {"assets": assets} for tpl, assets in groups.items()}
+
+    def _furniture_rows_config(self):
+        """Generate --add-rows config for Buildings_Furnitures DataTable."""
+        rows = []
+        for entry in self.furniture_config["entries"]:
+            bp_name = entry["row_name"]
+            mesh_path = entry["mesh_path"]
+            bp_package = f"/Game/Objects/Housing/Furnitures/{bp_name}"
+            bp_asset = f"{bp_name}_C"
+
+            patches = [
+                {"path": "Steps[0].ActorClass", "op": "set_import_ref",
+                 "class_package": "/Script/Engine",
+                 "class_name": "BlueprintGeneratedClass",
+                 "package_path": bp_package,
+                 "asset_name": bp_asset},
+                {"path": "Steps[0].StaticMeshes", "op": "set_import_ref_map",
+                 "entries": [{
+                     "key": "StaticMesh",
+                     "class_package": "/Script/Engine",
+                     "class_name": "StaticMesh",
+                     "package_path": mesh_path.rsplit("/", 1)[0],
+                     "asset_name": mesh_path.rsplit("/", 1)[-1],
+                 }]},
+            ]
+
+            template_match = entry.get("template_row_match",
+                                       {"BuildingRowType": "Furniture"})
+
+            rows.append({
+                "row_name": bp_name,
+                "patches": patches,
+                "template_row_match": template_match,
+            })
+
+        return {
+            "rows": rows,
+        }
 
     def _cargo_rows_config(self):
         """Generate --add-rows config for child DataTable.
@@ -353,7 +439,7 @@ class CargoModBuilder(ModBuilder):
     # ── Build hooks ────────────────────────────────────────────────────
 
     def transform_assets(self):
-        """Patch templates into new cargo blueprints."""
+        """Patch templates into new cargo blueprints (and furniture blueprints)."""
         self.log_step(1, "Patch cargo blueprints")
         self.blueprints_output_dir = os.path.join(self.build_dir, "blueprints")
         os.makedirs(self.blueprints_output_dir)
@@ -363,6 +449,19 @@ class CargoModBuilder(ModBuilder):
             self.run_generic("--clone-asset", config,
                              template_path, self.blueprints_output_dir,
                              "clone-blueprints")
+
+        # Clone furniture blueprints if furniture config is present
+        if self.furniture_config:
+            self.log_step("1b", "Clone furniture blueprints")
+            self.furniture_blueprints_dir = os.path.join(
+                self.build_dir, "furniture_blueprints")
+            os.makedirs(self.furniture_blueprints_dir)
+
+            furniture_configs = self._furniture_blueprint_clone_configs()
+            for template_path, config in furniture_configs.items():
+                self.run_generic("--clone-asset", config,
+                                 template_path, self.furniture_blueprints_dir,
+                                 "clone-furniture-blueprints")
 
     def register_in_tables(self):
         """Create child DataTable and register in parent CompositeDataTable."""
@@ -491,6 +590,20 @@ class CargoModBuilder(ModBuilder):
                              template, self.recipes_output_dir,
                              f"recipes-{dp_name}")
 
+        # Add furniture rows to Buildings_Furnitures if furniture config is present
+        if self.furniture_config:
+            self.log_step("3b", "Add furniture rows to Buildings_Furnitures")
+            buildings_template = os.path.join(
+                self.repo_root, "out", "Buildings_Furnitures.uasset")
+            self.furniture_buildings_dir = os.path.join(
+                self.build_dir, "furniture_buildings")
+            os.makedirs(self.furniture_buildings_dir)
+
+            config = self._furniture_rows_config()
+            self.run_generic("--add-rows", config,
+                             buildings_template, self.furniture_buildings_dir,
+                             "add-furniture-rows")
+
     def assemble_pak(self):
         """Stage DataTables, blueprints, and delivery point assets."""
         self.log_step(4, "Assemble PAK directory")
@@ -528,8 +641,26 @@ class CargoModBuilder(ModBuilder):
                     name=dp_name,
                 )
 
+        # Stage furniture assets if present
+        if self.furniture_config:
+            # Buildings_Furnitures DataTable
+            buildings_asset = os.path.join(
+                self.furniture_buildings_dir, "Buildings_Furnitures.uasset")
+            self.stage_datatable(buildings_asset, "Buildings_Furnitures",
+                                 "DataAsset/Buildings")
+
+            # Furniture blueprints
+            for name in self.furniture_names:
+                bp_asset = os.path.join(
+                    self.furniture_blueprints_dir, name, f"{name}.uasset")
+                if os.path.exists(bp_asset):
+                    self.stage_asset(
+                        bp_asset, "Objects/Housing/Furnitures", name=name)
+
     def print_summary(self):
         self.log(f"  Cargos: {', '.join(self.cargo_names)}")
+        if self.furniture_names:
+            self.log(f"  Furniture: {', '.join(self.furniture_names)}")
 
 
 def main():
@@ -541,9 +672,13 @@ def main():
                         help="Base game Cargos.uasset template")
     parser.add_argument("--blueprint-template", default=None,
                         help="Base game SmallBox.uasset template")
+    parser.add_argument("--furniture-config", default=None,
+                        help="Furniture entries JSON config (optional)")
     parser.add_argument("--mod", default=None,
                         help="Mod directory (e.g. mods/schedule-i) to load mod.json from")
     args = parser.parse_args()
+
+    furniture_config_path = None
 
     if args.mod:
         mod = load_mod_config(args.mod)
@@ -551,10 +686,17 @@ def main():
         recipes_path = mod["configs"][1] if len(mod["configs"]) > 1 else args.recipes
         game_ver = resolve_game_version()
         output_path = compute_output_path(mod, game_ver)
+        # Check for furniture config in mod.json extra_configs
+        if "extra_configs" in mod and "furniture" in mod["extra_configs"]:
+            furniture_config_path = os.path.join(
+                mod["config_dir"], mod["extra_configs"]["furniture"])
     else:
+        if not args.config:
+            parser.error("--config/-c is required when --mod is not specified")
         config_path = args.config
         recipes_path = args.recipes or "recipe_entries.json"
-        output_path = args.output
+        output_path = args.output or parser.error("--output/-o is required when --mod is not specified")
+        furniture_config_path = args.furniture_config
 
     builder = CargoModBuilder(
         config_path=config_path,
@@ -563,6 +705,7 @@ def main():
         compat_mods=args.compat_mod,
         cargos_template=args.cargos_template,
         blueprint_template=args.blueprint_template,
+        furniture_config_path=furniture_config_path,
     )
     builder.build()
 

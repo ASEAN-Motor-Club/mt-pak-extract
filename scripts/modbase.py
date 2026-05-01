@@ -195,14 +195,21 @@ class ModBuilder:
                 capture_output=True, text=True,
                 env=env,
             )
-        else:
-            result = subprocess.run(
-                ["dotnet", "run", "--configuration", "Debug",
-                 "--verbosity", "quiet", "--"] + args,
-                cwd=self.csharp_dir,
-                capture_output=True, text=True,
-                env=env,
-            )
+            if result.returncode == 0:
+                if result.stdout.strip():
+                    print(result.stdout.strip())
+                return result
+            # Prebuilt failed (e.g. missing .NET runtime) — fall back to dotnet run
+            print(f"  Note: Prebuilt binary failed, falling back to dotnet run",
+                  file=sys.stderr)
+
+        result = subprocess.run(
+            ["dotnet", "run", "--configuration", "Release",
+             "--verbosity", "quiet", "--"] + args,
+            cwd=self.csharp_dir,
+            capture_output=True, text=True,
+            env=env,
+        )
         if result.stdout.strip():
             print(result.stdout.strip())
         if result.returncode != 0:
@@ -485,9 +492,9 @@ class ModBuilder:
 
 def add_common_args(parser):
     """Add arguments common to all mod builders."""
-    parser.add_argument("--config", "-c", required=True,
+    parser.add_argument("--config", "-c", default=None,
                         help="Mod config JSON file")
-    parser.add_argument("--output", "-o", required=True,
+    parser.add_argument("--output", "-o", default=None,
                         help="Output PAK file path (must end in _P.pak)")
     parser.add_argument("--compat-mod", action="append", default=[], metavar="PAK",
                         help="Build on top of another mod's DataTable "

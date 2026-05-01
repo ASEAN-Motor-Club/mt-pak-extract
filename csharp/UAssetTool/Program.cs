@@ -1486,6 +1486,43 @@ class Program
                 break;
             }
             
+            case "set_import_ref_map":
+            {
+                // Set a TMap<NameProperty, ObjectProperty> with import references
+                // Config: { "path": "...", "op": "set_import_ref_map", "entries": [
+                //   {"key": "StaticMesh", "class_package": "/Script/Engine",
+                //    "class_name": "StaticMesh", "package_path": "/Game/...", "asset_name": "SM_..."}
+                // ]}
+                var prop = ResolveProperty(properties, path);
+                if (prop is MapPropertyData mapProp)
+                {
+                    mapProp.Value = new TMap<PropertyData, PropertyData>();
+                    if (patch.TryGetProperty("entries", out var entries))
+                    {
+                        foreach (var entry in entries.EnumerateArray())
+                        {
+                            var keyName = entry.GetProperty("key").GetString()!;
+                            var classPkg = entry.GetProperty("class_package").GetString()!;
+                            var className = entry.GetProperty("class_name").GetString()!;
+                            var pkgPath = entry.GetProperty("package_path").GetString()!;
+                            var assetName = entry.GetProperty("asset_name").GetString()!;
+                            
+                            var (_, importIdx) = AddImportChain(asset, classPkg, className, pkgPath, assetName, false);
+                            var pkgIdx = FPackageIndex.FromImport(importIdx - 1);
+                            
+                            var leafName = path.Split('.').Last();
+                            var keyProp = new NamePropertyData(new FName(asset, leafName, 0))
+                            { Value = FName.FromString(asset, keyName) };
+                            var valProp = new ObjectPropertyData(new FName(asset, leafName, 0))
+                            { Value = pkgIdx };
+                            mapProp.Value.Add(keyProp, valProp);
+                        }
+                        Console.WriteLine($"    Set import ref map: {path} ({entries.GetArrayLength()} entries)");
+                    }
+                }
+                break;
+            }
+            
             case "set_or_add_float":
             {
                 var (container, prop) = ResolvePropertyWithContainer(properties, path);

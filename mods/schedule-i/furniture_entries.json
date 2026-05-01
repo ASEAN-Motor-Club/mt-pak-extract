@@ -1,0 +1,9 @@
+{
+  "entries": [
+    {
+      "row_name": "GoldBar",
+      "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_GoldBar_01",
+      "template_row_match": {"BuildingRowType": "Furniture"}
+    }
+  ]
+}
