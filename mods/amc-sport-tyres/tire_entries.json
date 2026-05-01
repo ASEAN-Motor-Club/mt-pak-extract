@@ -7,12 +7,14 @@
         "static_mu": 1.8,
         "sliding_mu": 1.58,
         "offroad_friction": 1.6,
-        "spring_x": 180000,
-        "spring_y": 18000,
+        "spring_x": 150000,
+        "spring_y": 15000,
         "damping_x": 200,
-        "damping_y": 130,
+        "damping_y": 100,
         "max_weight_kg": 1200,
-        "wear_rate": 0.1
+        "wear_rate": 0.1,
+        "patch_length_coefficient": 100000,
+        "rolling_resistance_coeff": 0.01
       },
       "tire_part": {
         "row_name": "AMC_Sport69A",
@@ -29,15 +31,17 @@
       "tire_physics": {
         "name": "AMC_Stupid67",
         "template": "BasicTire_45",
-        "static_mu": 5.0,
-        "sliding_mu": 3.0,
+        "static_mu": 8.0,
+        "sliding_mu": 5.4,
         "offroad_friction": 1.67,
-        "spring_x": 180000,
-        "spring_y": 18000,
+        "spring_x": 150000,
+        "spring_y": 15000,
         "damping_x": 200,
-        "damping_y": 130,
+        "damping_y": 100,
         "max_weight_kg": 6700,
-        "wear_rate": 0.014925
+        "wear_rate": 0.1,
+        "patch_length_coefficient": 100000,
+        "rolling_resistance_coeff": 0.01
       },
       "tire_part": {
         "row_name": "AMC_Stupid67A",
@@ -55,15 +59,16 @@
         "name": "AMC_Truck88",
         "template": "BasicTire_45",
         "static_mu": 2.0,
-        "sliding_mu": 1.76,
+        "sliding_mu": 1.75,
         "offroad_friction": 3.0,
-        "spring_x": 1200000,
-        "spring_y": 400000,
-        "damping_x": 800,
-        "damping_y": 400,
+        "spring_x": 600000,
+        "spring_y": 200000,
+        "damping_x": 600,
+        "damping_y": 200,
         "max_weight_kg": 300000,
         "wear_rate": 0.1,
-        "patch_length_coefficient": 720000
+        "patch_length_coefficient": 10000000,
+        "rolling_resistance_coeff": 0.005
       },
       "tire_part": {
         "row_name": "AMC_Truck88A",
@@ -89,12 +94,13 @@
         "damping_y": 400,
         "max_weight_kg": 300000,
         "wear_rate": 0.1,
-        "patch_length_coefficient": 1200000
+        "patch_length_coefficient": 10000000,
+        "rolling_resistance_coeff": 0.005
       },
       "tire_part": {
         "row_name": "AMC_Truck88DA",
         "display_name": ["AMC Truck 88-DRW"],
-        "cost": 3000,
+        "cost": 6000,
         "mass_kg": 200,
         "vehicle_types": ["Bus", "Motorhome", "SemiTractor", "SemiTrailer", "Truck"],
         "truck_classes": ["HeavyDuty", "MediumDuty"],
