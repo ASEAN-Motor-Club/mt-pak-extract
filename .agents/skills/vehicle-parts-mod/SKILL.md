@@ -120,6 +120,7 @@ python3 scripts/create_tirepack.py \
 | `damping_y` | inherited | Longitudinal damping |
 | `max_weight_kg` | inherited (700) | Max load capacity in kg |
 | `wear_rate` | inherited | Tire wear rate — lower = slower wear (PerformanceTire: 1.3) |
+| `smoke_rate` | inherited | Smoke intensity — only works with `DriftTire` template |
 | `patch_length_coefficient` | inherited (100000) | Patch behavior coefficient |
 | `rolling_resistance_coeff` | inherited | Rolling resistance (PerformanceTire: 0.009) |
 
@@ -416,6 +417,9 @@ python3 scripts/create_intakepack.py \
 > [!CAUTION]
 > Users must install **only one variant**. Both standalone + compat causes double-override on VehicleParts0.
 
+> [!WARNING]
+> **Always use the ORIGINAL mod PAK as the compat base, NOT a previous version's compat PAK.** Using a compat PAK as base (e.g., `v0.3.0_MoreTuningCompat_P.pak`) causes duplicate entries — the old rows from v0.3.0 appear twice (once from the compat base, once from the new build). Instead, use the original upstream PAK (e.g., `qxZap_MoreTuning_P.pak`) and let the build script add ALL your tires fresh.
+
 ### Combining Two VehiclePart Mods Into One PAK
 
 When two mods both override `VehicleParts0`, only one loads (alphabetically last wins). To combine them into a single PAK:
@@ -437,6 +441,9 @@ The `--compat-mod` PAK's `VehicleParts0` is extracted and used as the template. 
 
 > [!WARNING]
 > **Inherited properties carry over from compat template.** See `general-modding` skill → "Row Cloning Behavior" for which properties to clear and how.
+
+> [!WARNING]
+> **When building a compat PAK for a mod update (e.g., v0.5.0), always use the ORIGINAL upstream PAK as the base, NOT the previous version's compat PAK.** Example: To build `zzz_AMCTires_v0.5.0_MoreTuningCompat_P.pak`, use `qxZap_MoreTuning_P.pak` as `--compat-mod`, NOT `zzz_AMCTires_v0.3.0_MoreTuningCompat_P.pak`. The old compat PAK already contains your previous rows — using it as base duplicates them.
 
 ### Display Name (`Name2.Texts`)
 

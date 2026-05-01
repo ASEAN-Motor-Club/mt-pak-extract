@@ -65,7 +65,8 @@ class TireModBuilder(ModBuilder):
         for param in ["static_mu", "sliding_mu", "offroad_friction",
                        "spring_x", "spring_y", "damping_x", "damping_y",
                        "max_weight_kg", "rolling_resistance_coeff",
-                       "wear_rate", "patch_length_coefficient"]:
+                       "wear_rate", "patch_length_coefficient",
+                       "smoke_rate"]:
             if param in physics:
                 pascal = "".join(w.capitalize() for w in param.split("_"))
                 patches.append({
@@ -146,7 +147,7 @@ class TireModBuilder(ModBuilder):
 
         if "level_requirement" in tp:
             patches.append({"path": "LevelRequirementToBuy",
-                            "op": "set_name_int_map",
+                            "op": "set_enum_int_map",
                             "value": tp["level_requirement"]})
         else:
             patches.append({"path": "LevelRequirementToBuy",

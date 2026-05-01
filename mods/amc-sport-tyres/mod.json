@@ -1,0 +1,11 @@
+{
+  "name": "amc-sport-tyres",
+  "display_name": "ASEAN_AMCSportTyres",
+  "version": "0.5.0",
+  "type": "tire",
+  "prefix": "zzz_",
+  "script": "scripts/create_tirepack.py",
+  "configs": ["tire_entries.json"],
+  "compat_suffix": "MoreTuningCompat",
+  "extra_args": {}
+}

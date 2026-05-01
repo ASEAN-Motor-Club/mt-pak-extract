@@ -67,7 +67,7 @@ class IntakeModBuilder(ModBuilder):
 
         if "level_requirement" in entry:
             patches.append({"path": "LevelRequirementToBuy",
-                            "op": "set_name_int_map",
+                            "op": "set_enum_int_map",
                             "value": entry["level_requirement"]})
 
         return {
