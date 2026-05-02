@@ -1,0 +1,36 @@
+{
+  "vehicle_id": "Zydro_Police",
+  "datatable_file": "Vehicles",
+  "patches": [
+    {
+      "path": "Parts",
+      "op": "add_map_entry",
+      "key": "EMTVehiclePartSlot::LSD1",
+      "value": "LSD_Clutch_1.5_50"
+    }
+  ],
+  "blueprint_file": "Zydro_Police",
+  "blueprint_folder": "Zydro",
+  "blueprint_patches": [
+    {
+      "export_name": "Wheel0",
+      "patches": [
+        {
+          "path": "DifferentialComponentName",
+          "op": "set_or_create_name",
+          "value": "Differential"
+        }
+      ]
+    },
+    {
+      "export_name": "Wheel1",
+      "patches": [
+        {
+          "path": "DifferentialComponentName",
+          "op": "set_or_create_name",
+          "value": "Differential"
+        }
+      ]
+    }
+  ]
+}

@@ -1,10 +1,10 @@
 {
   "name": "truck-horn",
   "display_name": "ASEAN_JemusiTruckHorn",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "horn",
   "prefix": "",
   "script": null,
-  "configs": ["horn_patch.json"],
+  "configs": ["horn_patch.json", "horn_patch_Semi.json", "horn_patch_Flatbed.json", "horn_patch_Tanker.json", "horn_patch_Dump.json", "horn_patch_Tronko.json", "horn_patch_Maity.json", "horn_patch_Mixi.json", "horn_patch_Dumpy.json", "horn_patch_Compacty.json", "horn_patch_Brutus_Wrecker.json", "horn_patch_Brutus_Tanker.json", "horn_patch_Brutus_FireEngine.json", "horn_patch_Brutus_Ambulance.json", "horn_patch_SV200.json", "horn_patch_AirCity.json", "horn_patch_Dumbi.json", "horn_patch_Roadmaster.json"],
   "extra_args": {}
 }

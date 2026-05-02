@@ -31,9 +31,10 @@ class Program
         bool patchCdoMode = args.Contains("--patch-cdo-arrays");
         bool patchRowsMode = args.Contains("--patch-rows");
         bool patchExportMode = args.Contains("--patch-export-props");
+        bool patchNamedExportsMode = args.Contains("--patch-named-exports");
         bool dumpMode = args.Contains("--dump");
         
-        Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--dump ...] [path/to/asset.uasset]");
+        Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--patch-export-props ...] [--patch-named-exports ...] [--dump ...] [path/to/asset.uasset]");
         Console.WriteLine();
         
         if (!File.Exists(usmapPath))
@@ -95,6 +96,14 @@ class Program
             var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
             var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
             PatchExportProps(configPath, templatePath, outputDir);
+        }
+        else if (patchNamedExportsMode)
+        {
+            var idx = Array.IndexOf(args, "--patch-named-exports");
+            var configPath = args.ElementAtOrDefault(idx + 1) ?? "config.json";
+            var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
+            var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
+            PatchNamedExports(configPath, templatePath, outputDir);
         }
         else if (dumpMode)
         {
@@ -312,6 +321,17 @@ class Program
                         {
                             foreach (var matchEntry in matchProp.EnumerateObject())
                             {
+                                // Special case: match by DataTable row name
+                                if (matchEntry.Name == "RowName")
+                                {
+                                    var matchValue = matchEntry.Value.GetString()!;
+                                    bool matches = matchValue.Contains("*")
+                                        ? spd.Name.Value.Value.Contains(matchValue.Trim('*'))
+                                        : spd.Name.Value.Value == matchValue;
+                                    if (matches) matched = spd;
+                                    continue;
+                                }
+
                                 if (prop.Name.Value.Value == matchEntry.Name)
                                 {
                                     var matchValue = matchEntry.Value.GetString()!;
@@ -319,6 +339,7 @@ class Program
                                     if (prop is EnumPropertyData ep) propValue = ep.Value?.Value?.Value;
                                     else if (prop is StrPropertyData sp) propValue = sp.Value?.Value;
                                     else if (prop is NamePropertyData np) propValue = np.Value?.Value?.Value;
+                                    else if (prop is TextPropertyData tp) propValue = tp.Value?.Value;
                                     
                                     if (propValue != null)
                                     {
@@ -737,6 +758,104 @@ class Program
     }
     
     // ========================================================================
+    // --patch-named-exports: Patch properties on specific named exports
+    // ========================================================================
+    static void PatchNamedExports(string configPath, string templatePath, string outputDir)
+    {
+        if (!File.Exists(configPath)) { Console.WriteLine($"Error: Config not found: {configPath}"); return; }
+        if (!File.Exists(templatePath)) { Console.WriteLine($"Error: Template not found: {templatePath}"); return; }
+        
+        var configJson = File.ReadAllText(configPath);
+        using var doc = JsonDocument.Parse(configJson);
+        var root = doc.RootElement;
+        
+        if (!root.TryGetProperty("exports", out var exportPatches))
+        {
+            Console.WriteLine("Error: Config must have 'exports' array with {export_name, patches} entries");
+            return;
+        }
+        
+        Console.WriteLine($"Loading: {Path.GetFileName(templatePath)}");
+        var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
+        
+        var outputFileName = root.TryGetProperty("output_filename", out var ofProp)
+            ? ofProp.GetString()!
+            : Path.GetFileNameWithoutExtension(templatePath);
+        
+        int patched = 0;
+        foreach (var exportSpec in exportPatches.EnumerateArray())
+        {
+            var exportName = exportSpec.GetProperty("export_name").GetString()!;
+            
+            Export? targetExport = null;
+            foreach (var export in asset.Exports)
+            {
+                if (export.ObjectName.Value.Value == exportName)
+                {
+                    targetExport = export;
+                    break;
+                }
+            }
+            
+            if (targetExport == null)
+            {
+                Console.WriteLine($"  Warning: Export '{exportName}' not found, skipping");
+                continue;
+            }
+            
+            NormalExport? normalExport = null;
+            if (targetExport is NormalExport ne)
+            {
+                normalExport = ne;
+            }
+            else if (targetExport is RawExport rawExp)
+            {
+                try
+                {
+                    var converted = rawExp.ConvertToChildExport<NormalExport>();
+                    var reader = new AssetBinaryReader(new MemoryStream(rawExp.Data ?? []))
+                    {
+                        Asset = asset
+                    };
+                    converted.Data = new List<PropertyData>();
+                    var nextStarting = rawExp.Data?.Length ?? 0;
+                    converted.Read(reader, nextStarting);
+                    var idx = asset.Exports.IndexOf(rawExp);
+                    asset.Exports[idx] = converted;
+                    normalExport = converted;
+                    Console.WriteLine($"  Reparsed RawExport '{exportName}' as NormalExport ({converted.Data?.Count ?? 0} properties)");
+                }
+                catch (Exception convEx)
+                {
+                    Console.WriteLine($"  Warning: RawExport reparse failed for '{exportName}': {convEx.Message}");
+                    continue;
+                }
+            }
+            
+            if (normalExport == null)
+            {
+                Console.WriteLine($"  Warning: Export '{exportName}' is not a NormalExport, skipping");
+                continue;
+            }
+            
+            if (exportSpec.TryGetProperty("patches", out var patches))
+            {
+                ApplyPatches(normalExport.Data, patches, asset);
+                Console.WriteLine($"  Patched export: {exportName}");
+                patched++;
+            }
+        }
+        
+        Console.WriteLine($"Patched {patched} exports.");
+        
+        asset.ResolveAncestries();
+        Directory.CreateDirectory(outputDir);
+        var outputPath = Path.Combine(outputDir, $"{outputFileName}.uasset");
+        asset.Write(outputPath);
+        Console.WriteLine($"Written: {outputFileName}.uasset + {outputFileName}.uexp to {outputDir}");
+    }
+    
+    // ========================================================================
     // --patch-rows: Patch existing DataTable rows by RowName
     // ========================================================================
     static void PatchRows(string configPath, string templatePath, string outputDir)
@@ -828,6 +947,8 @@ class Program
             : Path.GetFileNameWithoutExtension(templatePath);
         
         Console.WriteLine($"Loading: {Path.GetFileName(templatePath)}");
+        DebugPrintSchema("MTVehicleColorSlot");
+        DebugPrintSchema("MTVehicleColor");
         var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
         
         NormalExport? cdoExport = null;
@@ -862,6 +983,7 @@ class Program
                     catch (Exception convEx)
                     {
                         Console.WriteLine($"  Warning: CDO RawExport reparse failed: {convEx.Message}");
+                        Console.WriteLine(convEx.ToString());
                     }
                 }
             }
@@ -1006,6 +1128,13 @@ class Program
                     case JsonValueKind.String:
                         if (prop is StrPropertyData sp) sp.Value = FString.FromString(val.GetString());
                         else if (prop is NamePropertyData np) np.Value = FName.FromString(asset, val.GetString()!);
+                        else if (prop is TextPropertyData tp)
+                        {
+                            tp.Namespace = FString.FromString("");
+                            tp.Value = FString.FromString(val.GetString()!);
+                            tp.CultureInvariantString = FString.FromString(val.GetString()!);
+                            tp.HistoryType = TextHistoryType.Base;
+                        }
                         break;
                 }
                 break;
@@ -1059,6 +1188,16 @@ class Program
                 if (prop is StructPropertyData vecStruct)
                     SetVector2D(vecStruct, patch.GetProperty("x").GetSingle(),
                         patch.GetProperty("y").GetSingle(), asset, path.Split('.').Last());
+                break;
+            }
+            
+            case "set_vector":
+            {
+                var prop = ResolveProperty(properties, path);
+                if (prop is StructPropertyData vecStruct)
+                    SetVector(vecStruct, patch.GetProperty("x").GetSingle(),
+                        patch.GetProperty("y").GetSingle(), patch.GetProperty("z").GetSingle(),
+                        asset, path.Split('.').Last());
                 break;
             }
             
@@ -1554,10 +1693,33 @@ class Program
         for (int i = 0; i < parts.Length; i++)
         {
             PropertyData? found = null;
-            foreach (var prop in current)
+            var part = parts[i];
+            var bracketIdx = part.IndexOf('[');
+            
+            if (bracketIdx >= 0 && part.EndsWith(']'))
             {
-                if (prop.Name.Value.Value == parts[i])
-                { found = prop; break; }
+                var propName = part.Substring(0, bracketIdx);
+                var indexStr = part.Substring(bracketIdx + 1, part.Length - bracketIdx - 2);
+                if (!int.TryParse(indexStr, out var index))
+                    return (null, null);
+                
+                foreach (var prop in current)
+                {
+                    if (prop.Name.Value.Value == propName && prop is ArrayPropertyData arr)
+                    {
+                        if (index < 0 || index >= arr.Value.Length) return (null, null);
+                        found = arr.Value[index];
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                foreach (var prop in current)
+                {
+                    if (prop.Name.Value.Value == part)
+                    { found = prop; break; }
+                }
             }
             
             if (found == null)
@@ -1615,12 +1777,66 @@ class Program
         }
     }
     
+    static void SetVector(StructPropertyData vecStruct, float x, float y, float z, UAsset asset, string propertyName)
+    {
+        foreach (var sp in vecStruct.Value)
+        {
+            if (sp is StructPropertyData innerStruct && sp.Name.Value.Value == propertyName)
+            {
+                foreach (var inner in innerStruct.Value)
+                {
+                    if (inner.Name.Value.Value == "X") SetNumericProperty(inner, x);
+                    else if (inner.Name.Value.Value == "Y") SetNumericProperty(inner, y);
+                    else if (inner.Name.Value.Value == "Z") SetNumericProperty(inner, z);
+                }
+                return;
+            }
+            else if (sp is VectorPropertyData vec)
+            {
+                vec.Value = new FVector(x, y, z);
+                return;
+            }
+        }
+        foreach (var sp in vecStruct.Value)
+        {
+            if (sp.Name.Value.Value == "X") SetNumericProperty(sp, x);
+            else if (sp.Name.Value.Value == "Y") SetNumericProperty(sp, y);
+            else if (sp.Name.Value.Value == "Z") SetNumericProperty(sp, z);
+        }
+    }
+    
     static DataTableExport? FindDataTable(UAsset asset)
     {
         foreach (var export in asset.Exports)
         {
             if (export is DataTableExport dt) return dt;
         }
+        
+        // Try to convert RawExport DataTables (some cooked DataTables fail initial parse)
+        foreach (var export in asset.Exports)
+        {
+            if (export is RawExport rawExp && export.GetExportClassType()?.Value?.Value?.EndsWith("DataTable") == true)
+            {
+                try
+                {
+                    var converted = rawExp.ConvertToChildExport<DataTableExport>();
+                    var reader = new AssetBinaryReader(new MemoryStream(rawExp.Data ?? []))
+                    {
+                        Asset = asset
+                    };
+                    converted.Read(reader, rawExp.Data?.Length ?? 0);
+                    var idx = asset.Exports.IndexOf(rawExp);
+                    asset.Exports[idx] = converted;
+                    Console.WriteLine($"  Converted RawExport DataTable ({converted.Table.Data.Count} rows)");
+                    return converted;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  Warning: RawExport DataTable conversion failed: {ex.Message}");
+                }
+            }
+        }
+        
         Console.WriteLine("Error: No DataTable found in template");
         return null;
     }
@@ -1631,6 +1847,7 @@ class Program
 
         string[][] schemaPatches = [
             ["MTVehicleColor", "9"],
+            ["MTVehicleColorSlot", "5"],
         ];
 
 
@@ -1646,12 +1863,16 @@ class Program
             var newProps = new ConcurrentDictionary<int, UsmapProperty>(schema.Properties);
             for (int i = schema.PropCount; i < minPropCount; i++)
             {
+                // Use BoolProperty for MTVehicleColorSlot index 5 (likely bUseColorAlpha-like flag)
+                var propType = (schemaName == "MTVehicleColorSlot" && i == 5) 
+                    ? EPropertyType.BoolProperty 
+                    : EPropertyType.ByteProperty;
                 newProps[i] = new UsmapProperty(
                     $"Unknown_{i}",
                     (ushort)i,
                     0,
                     1,
-                    new UsmapPropertyData(EPropertyType.ByteProperty)
+                    new UsmapPropertyData(propType)
                 );
             }
 
@@ -1997,5 +2218,23 @@ class Program
         foreach (var tag in tagProp.Value)
             if (tag?.Value?.Value != null) tags.Add(tag.Value.Value);
         return tags;
+    }
+
+    // DEBUG: Print MTVehicleColorSlot schema info
+    static void DebugPrintSchema(string schemaName)
+    {
+        if (Mappings == null) return;
+        if (Mappings.Schemas.TryGetValue(schemaName, out var schema))
+        {
+            Console.WriteLine($"DEBUG Schema {schemaName}: PropCount={schema.PropCount}, Properties.Count={schema.Properties.Count}");
+        foreach (var kvp in schema.Properties)
+        {
+            Console.WriteLine($"  [{kvp.Key}] {kvp.Value.Name} (SchemaIndex={kvp.Value.SchemaIndex}, Type={kvp.Value.PropertyData?.Type})");
+        }
+        }
+        else
+        {
+            Console.WriteLine($"DEBUG Schema {schemaName}: NOT FOUND");
+        }
     }
 }

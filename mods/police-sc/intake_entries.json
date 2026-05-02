@@ -1,0 +1,73 @@
+{
+  "intakes": [
+    {
+      "row_name": "PD_SC_Standard",
+      "display_name": ["PD SC Standard"],
+      "cost": 5000,
+      "mass_kg": 5.0,
+      "vehicle_types": ["Small"],
+      "vehicle_keys": [
+        "Elisa_Police",
+        "Muhan_Police",
+        "Zydro_Police",
+        "Nuke_Police",
+        "Police_01",
+        "PoliceInterceptor_01"
+      ],
+      "level_requirement": {
+        "CL_Police": 10
+      },
+      "intake": {
+        "Slope": 0.05,
+        "BaseRPMRatio": 0.3,
+        "IntakeSpeedEfficencyMultiplier": 2.0
+      }
+    },
+    {
+      "row_name": "PD_SC_MkII",
+      "display_name": ["PD SC Mk II"],
+      "cost": 10000,
+      "mass_kg": 8.0,
+      "vehicle_types": ["Small"],
+      "vehicle_keys": [
+        "Elisa_Police",
+        "Muhan_Police",
+        "Zydro_Police",
+        "Nuke_Police",
+        "Police_01",
+        "PoliceInterceptor_01"
+      ],
+      "level_requirement": {
+        "CL_Police": 10
+      },
+      "intake": {
+        "Slope": 0.1,
+        "BaseRPMRatio": 0.2,
+        "IntakeSpeedEfficencyMultiplier": 2.2
+      }
+    },
+    {
+      "row_name": "PD_SC_Pursuit",
+      "display_name": ["PD SC Pursuit"],
+      "cost": 18000,
+      "mass_kg": 12.0,
+      "vehicle_types": ["Small"],
+      "vehicle_keys": [
+        "Elisa_Police",
+        "Muhan_Police",
+        "Zydro_Police",
+        "Nuke_Police",
+        "Police_01",
+        "PoliceInterceptor_01"
+      ],
+      "level_requirement": {
+        "CL_Police": 10
+      },
+      "intake": {
+        "Slope": 0.15,
+        "BaseRPMRatio": 0.1,
+        "IntakeSpeedEfficencyMultiplier": 2.5
+      }
+    }
+  ]
+}

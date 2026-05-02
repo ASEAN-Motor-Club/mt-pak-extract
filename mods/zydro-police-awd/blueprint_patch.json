@@ -1,0 +1,25 @@
+{
+  "output_filename": "Zydro_Police",
+  "exports": [
+    {
+      "export_name": "Wheel0",
+      "patches": [
+        {
+          "path": "DifferentialComponentName",
+          "op": "set_or_create_name",
+          "value": "Differential"
+        }
+      ]
+    },
+    {
+      "export_name": "Wheel1",
+      "patches": [
+        {
+          "path": "DifferentialComponentName",
+          "op": "set_or_create_name",
+          "value": "Differential"
+        }
+      ]
+    }
+  ]
+}

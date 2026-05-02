@@ -46,6 +46,59 @@ nix develop --command bash -c 'scripts/new-version.sh v0.7.19 v0.7.19.pak'
   git submodule update --init
   ```
 
+## Intake Pack Creation
+
+Create intake/supercharger mod PAKs from a JSON config:
+
+```bash
+nix develop --command bash -c '
+python3 scripts/create_intakepack.py --config mods/police-sc/intake_entries.json --output MySC_P.pak
+'
+```
+
+Or using the mod management CLI:
+
+```bash
+nix develop --command bash -c 'python3 scripts/mods.py build police-sc'
+```
+
+### How It Works
+
+Unlike tire mods, intake parts have **no separate physics DataAsset** — all tuning (Slope, BaseRPMRatio, IntakeSpeedEfficencyMultiplier) is inline in the VehicleParts row. The build pipeline only modifies `VehicleParts0`.
+
+1. **Clone** an existing Intake row from VehicleParts0 via `--add-rows` with `template_row_match: {"PartType": "*Intake*"}`
+2. **Patch** Intake sub-struct fields via dot-path notation (`Intake.Slope`, `Intake.BaseRPMRatio`, `Intake.IntakeSpeedEfficencyMultiplier`)
+3. **Package** into mod PAK with `mod_pack` binary
+
+### Intake Tuning Fields
+
+| Field | Effect | Supercharger feel |
+|-------|--------|-------------------|
+| `Slope` | Torque curve slope (higher = more torque bias) | 0.05–0.15 (positive for power) |
+| `BaseRPMRatio` | RPM ratio where effect begins (lower = earlier) | 0.1–0.3 (instant response) |
+| `IntakeSpeedEfficencyMultiplier` | Overall HP multiplier | 2.0–2.5+ (high HP) |
+
+### Vanilla Game Values (v0.7.18+1)
+
+| Row | Slope | BaseRPMRatio | EfficiencyMult |
+|-----|-------|-------------|----------------|
+| Intake Row 201 | 0.1 | 0.7 | 1.5 |
+| Intake Row 202 | -0.1 | 0.8 | 0.7 |
+| Turbo Stock (Small) | TorqueMult=1.1, TurbineWeight=30 | — | — |
+| Turbo Stage1 (Small) | TorqueMult=1.2, TurbineWeight=100 | — | — |
+
+### Compat-Mod Support
+
+```bash
+# Build compatible with MoreTuning + AMC Tires
+nix develop --command bash -c '
+python3 scripts/create_intakepack.py \
+  --config mods/police-sc/intake_entries.json \
+  --output zzz_AMC_PDParts_MoreTuningCompat_P.pak \
+  --compat-mod path/to/zzz_ASEAN_PoliceTyres_v0.2.0_MoreTuningCompat_P.pak
+'
+```
+
 ## Decal Pack Creation
 
 Create decal mod PAKs from images in one command:
@@ -365,6 +418,7 @@ scripts/mods.py              # Mod management CLI (build, list, show)
 - **Large output**: Parser output is massive. Redirect to file: `> /tmp/parser-output.log 2>&1`
 - **`Mappings.usmap` permissions**: Must be owned by `opencode`. If copied from submodule, re-copy: `rm Mappings.usmap && cp csharp/UAssetAPI/UAssetAPI.Tests/TestAssets/TestJson/MotorTown.usmap Mappings.usmap`. Mappings.usmap is now versioned — the root symlink points to `versions/<active_version>/Mappings.usmap`.
 - **CDO imports for new blueprint discovery**: When adding new cargo (or any blueprint-based) rows to a DataTable via `set_import_ref`, you **must** set `"add_cdo_import": true` in the patch config. This creates a `Default__*_C` CDO import (with `ClassPkg=packagePath`, `Class=assetName_C`) that forces the engine to load packages at new paths. Without it, new blueprints are silently ignored — only overrides of existing paths work. The base game's Cargos DataTable has 3 imports per blueprint: Package, BlueprintGeneratedClass, and `Default__*_C` CDO.
+- **Blueprint PAK path must match the game's original path exactly**: Variant vehicle blueprints (e.g. `Zydro_Police`) are stored in the **base model's folder** (e.g. `Cars/Models/Zydro/`), NOT in a folder matching the variant name. If you stage `Zydro_Police.uasset` at `Cars/Models/Zydro_Police/Zydro_Police.uasset`, the game won't find it and will load the unmodded original instead. Always verify the original path in the base game's PAK (`MotorTown/Content/Cars/Models/<BaseModel>/<VariantName>.uasset`). Use the `blueprint_folder` field in mod configs to override the staging folder when it differs from the blueprint file name.
 
 ## Authoritative Modding Resources
 
@@ -380,7 +434,7 @@ No lint or typecheck commands defined for this project. Rust is checked by `carg
 
 ```
 src/main.rs                    # Rust PAK extractor (AES decrypt + Oodle decompress)
-csharp/UAssetTool/            # C# generic UAsset SDK (5 operations: --add-rows, --patch-rows, --clone-asset, --patch-cdo-arrays, --dump)
+csharp/UAssetTool/            # C# generic UAsset SDK (6 operations: --add-rows, --patch-rows, --clone-asset, --patch-cdo-arrays, --patch-export-props, --patch-named-exports, --dump)
 csharp/LevelExtractor/         # C# map/level actor extractor
 scripts/aggregate_to_sqlite.py # Python: parsed JSON → normalized SQLite
 scripts/mods.py               # Mod management CLI (build, list, show)
@@ -389,6 +443,7 @@ scripts/create_tirepack.py    # Tire mod builder
 scripts/create_cargopack.py   # Cargo mod builder
 scripts/create_decal_pack.py  # Decal mod builder
 scripts/create_font_mod.py    # Font replacement mod builder
+scripts/create_vehicle_mod.py # Vehicle mod builder (AWD conversion, blueprint patching)
 mods/                         # Mod definitions (mod.json + configs)
 assets.json                    # List of 264 asset paths to extract
 blueprint_assets.json          # Blueprint variant paths for weight aggregation
