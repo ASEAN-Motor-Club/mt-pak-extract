@@ -191,7 +191,7 @@ class ModBuilder:
         if os.path.isfile(prebuilt):
             result = subprocess.run(
                 [prebuilt] + args,
-                cwd=self.repo_root,
+                cwd=self.csharp_dir,
                 capture_output=True, text=True,
                 env=env,
             )

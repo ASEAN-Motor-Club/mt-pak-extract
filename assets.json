@@ -78,7 +78,7 @@
     "MotorTown/Content/Objects/Mission/Delivery/DeliveryPoint/FuelDemand",
     "MotorTown/Content/Objects/Mission/Delivery/DeliveryPoint/GasStation",
     "MotorTown/Content/Objects/Mission/Delivery/DeliveryPoint/GrainExport",
-    "MotorTown/Content/Objects/Mission/Delivery/DeliveryPoint/Harbor_Export",
+    "MotorTown/Content/Objects/Mission/Delivery/DeliveryPoint/Export_Harbor",
     "MotorTown/Content/Objects/Mission/Delivery/DeliveryPoint/IronOreWarehouse",
     "MotorTown/Content/Objects/Mission/Delivery/DeliveryPoint/LimestoneRockDrop",
     "MotorTown/Content/Objects/Mission/Delivery/DeliveryPoint/LiquidSupplier",

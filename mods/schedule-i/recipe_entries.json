@@ -1,8 +1,8 @@
 {
   "sources": [
     {
-      "delivery_point": "Harbor_Export",
-      "template_path": "out/Harbor_Export.uasset",
+      "delivery_point": "Export_Harbor",
+      "template_path": "out/Export_Harbor.uasset",
       "replace_production_configs": false,
       "recipes": [
         {"cargo": "Money", "production_time": 60, "hidden": false},
