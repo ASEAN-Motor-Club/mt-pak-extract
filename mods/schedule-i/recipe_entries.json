@@ -157,8 +157,9 @@
       "entries": [
         {"cargo_key": "CocaLeavesPallet", "max_storage": 20},
         {"cargo_key": "CocaPaste", "max_storage": 20},
-        {"cargo_key": "Fuel", "max_storage": 20},
-        {"cargo_key": "QuicklimePallet", "max_storage": 20},
+        {"cargo_key": "Fuel", "max_storage": 50},
+        {"cargo_key": "QuicklimePallet", "max_storage": 30},
+        {"cargo_key": "SunflowerSeed", "max_storage": 500},
         {"cargo_key": "Money", "max_storage": 5}
       ]
     },
