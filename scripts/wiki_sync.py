@@ -1103,27 +1103,345 @@ def sync_indexes(
 
 
 # ---------------------------------------------------------------------------
+# Annie's Wiki Sync
+# ---------------------------------------------------------------------------
+
+SYSTEM_MARKER_START_RE = re.compile(r'^<!-- SYSTEM:(\w+) -->\s*$')
+SYSTEM_MARKER_END_RE = re.compile(r'^<!-- /SYSTEM:(\w+) -->\s*$')
+USER_MARKER_START_RE = re.compile(r'^<!-- USER:(\w+) -->\s*$')
+USER_MARKER_END_RE = re.compile(r'^<!-- /USER:(\w+) -->\s*$')
+
+
+def _extract_user_sections(text: str) -> dict[str, str]:
+    """Parse existing Annie wiki content and extract user-contributed sections."""
+    sections: dict[str, str] = {}
+    lines = text.split('\n')
+    i = 0
+    while i < len(lines):
+        m = USER_MARKER_START_RE.match(lines[i])
+        if m:
+            section_name = m.group(1)
+            i += 1
+            content_lines = []
+            while i < len(lines):
+                if USER_MARKER_END_RE.match(lines[i]):
+                    i += 1
+                    break
+                content_lines.append(lines[i])
+                i += 1
+            sections[section_name] = '\n'.join(content_lines)
+        else:
+            i += 1
+    return sections
+
+
+def _generate_annie_vehicle_content(v: Vehicle, user_sections: dict[str, str] | None = None) -> str:
+    """Generate vehicle page content with SYSTEM/USER section markers for Annie's wiki."""
+    user_sections = user_sections or {}
+    parts = []
+
+    # System: infobox
+    parts.append("<!-- SYSTEM:infobox -->")
+    parts.append(generate_vehicle_infobox(v))
+    parts.append("<!-- /SYSTEM:infobox -->")
+    parts.append("")
+
+    # Heading
+    parts.append(generate_vehicle_heading(v))
+    parts.append("")
+
+    # User: body (preserved or placeholder)
+    parts.append("<!-- USER:body -->")
+    body = user_sections.get("body", "").strip()
+    if body:
+        parts.append(body)
+    parts.append("<!-- /USER:body -->")
+    parts.append("")
+
+    # System: specs (regenerated)
+    parts.append("<!-- SYSTEM:specs -->")
+    parts.append(generate_vehicle_specs(v))
+    parts.append("<!-- /SYSTEM:specs -->")
+    parts.append("")
+
+    # User: notes (preserved or placeholder)
+    parts.append("<!-- USER:notes -->")
+    notes = user_sections.get("notes", "").strip()
+    if notes:
+        parts.append(notes)
+    parts.append("<!-- /USER:notes -->")
+
+    result = '\n'.join(parts)
+    result = re.sub(r'\n{3,}', '\n\n', result)
+    return result.rstrip() + '\n'
+
+
+def _generate_annie_cargo_content(c: Cargo, user_sections: dict[str, str] | None = None) -> str:
+    """Generate cargo page content with SYSTEM/USER section markers for Annie's wiki."""
+    user_sections = user_sections or {}
+    parts = []
+
+    # System: infobox
+    parts.append("<!-- SYSTEM:infobox -->")
+    infobox_lines = [
+        "{{infobox>",
+        f"name = {c.name}",
+        f"Cargo Type = {c.cargo_type}",
+        f"Volume = {c.volume_size}",
+        f"Weight = {_fmt_weight(c.weight_kg)}",
+    ]
+    if c.payment_per_km:
+        infobox_lines.append(f"Payment = ${c.payment_per_km}/km")
+    infobox_lines.append("}}")
+    parts.append('\n'.join(infobox_lines))
+    parts.append("<!-- /SYSTEM:infobox -->")
+    parts.append("")
+
+    # Heading
+    parts.append(f"====== {c.name} ======")
+    parts.append("")
+
+    # System: specs
+    parts.append("<!-- SYSTEM:specs -->")
+    specs = [
+        "===== Specifications =====",
+        "^ Stat ^ Value ^",
+        f"| Type | {c.cargo_type} |",
+        f"| Weight | {_fmt_weight(c.weight_kg)} |",
+    ]
+    if c.payment_per_km:
+        specs.append(f"| Payment per km | ${c.payment_per_km} |")
+    if c.payment_multiplier and c.payment_multiplier != 1.0:
+        specs.append(f"| Payment multiplier | {c.payment_multiplier} |")
+    if c.base_payment:
+        specs.append(f"| Base payment | ${c.base_payment} |")
+    specs.append(f"| Stackable | {'Yes' if c.allow_stacking else 'No'} |")
+    if c.fragile:
+        specs.append(f"| Fragile | Level {c.fragile} |")
+    if c.space_types:
+        specs.append("")
+        specs.append("===== Compatible Cargo Space Types =====")
+        for st in c.space_types:
+            specs.append(f"  * {st}")
+    parts.append('\n'.join(specs))
+    parts.append("<!-- /SYSTEM:specs -->")
+    parts.append("")
+
+    # User: notes
+    parts.append("<!-- USER:notes -->")
+    notes = user_sections.get("notes", "").strip()
+    if notes:
+        parts.append(notes)
+    parts.append("<!-- /USER:notes -->")
+
+    # System: production
+    if c.produced_at or c.consumed_at:
+        parts.append("")
+        parts.append("<!-- SYSTEM:production -->")
+        prod_lines = ["===== Production ====="]
+        if c.produced_at:
+            prod_lines.append("==== Produced At ====")
+            prod_lines.append("^ Location ^ Inputs ^ Time ^")
+            for loc, inputs, time_s in c.produced_at:
+                input_str = ', '.join(f"{qty}× {cid}" for cid, qty in inputs) if inputs else '(passive)'
+                time_str = f"{time_s}s" if time_s else '—'
+                prod_lines.append(f"| {loc} | {input_str} | {time_str} |")
+        if c.consumed_at:
+            prod_lines.append("==== Consumed At ====")
+            prod_lines.append("^ Location ^ Time ^")
+            for loc, _, time_s in c.consumed_at:
+                time_str = f"{time_s}s" if time_s else '—'
+                prod_lines.append(f"| {loc} | {time_str} |")
+        parts.append('\n'.join(prod_lines))
+        parts.append("<!-- /SYSTEM:production -->")
+
+    result = '\n'.join(parts)
+    result = re.sub(r'\n{3,}', '\n\n', result)
+    return result.rstrip() + '\n'
+
+
+def sync_to_annie_wiki(
+    conn: sqlite3.Connection,
+    annie_wiki_db: str,
+    dry_run: bool = False,
+) -> dict:
+    """Sync vehicle and cargo data to Annie's WikiStorage.
+
+    Uses SYSTEM/USER section markers to preserve user-contributed content
+    while regenerating system sections from game data.
+    """
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'amc-peripheral'))
+
+    from amc_peripheral.wiki.storage import WikiStorage
+    from amc_peripheral.wiki.retrieval import WikiRetrieval
+
+    storage = WikiStorage(db_path=annie_wiki_db)
+    retrieval = None
+    chromadb_path = str(Path(annie_wiki_db).parent / 'annie_wiki_chromadb')
+    if Path(chromadb_path).exists():
+        try:
+            retrieval = WikiRetrieval(path=chromadb_path)
+        except Exception as e:
+            print(f"  Warning: ChromaDB not available for re-indexing: {e}")
+
+    stats = {'created': 0, 'updated': 0, 'unchanged': 0, 'errors': 0}
+
+    # Sync vehicles
+    vehicles = load_vehicles(conn)
+    for v in vehicles:
+        slug = f"vehicle:{v.id}"
+        existing = storage.get_page_by_slug(slug)
+
+        user_sections = None
+        if existing:
+            user_sections = _extract_user_sections(existing.get('content', ''))
+
+        new_content = _generate_annie_vehicle_content(v, user_sections)
+
+        if existing:
+            old_content = existing.get('content', '')
+            if old_content == new_content:
+                stats['unchanged'] += 1
+                continue
+            if not dry_run:
+                storage.update_page(existing['id'], content=new_content)
+                _reindex_page(storage, retrieval, existing['id'])
+            stats['updated'] += 1
+            action = "UPDATE"
+        else:
+            if not dry_run:
+                page_id = storage.create_page(
+                    title=slug,
+                    category='vehicle',
+                    content=new_content,
+                    summary=f"{v.name} — {_fmt_type(v.vehicle_type)} vehicle",
+                )
+                storage.add_source(page_id, 'wiki_sync', f'motortown.db:{v.id}')
+                _reindex_page(storage, retrieval, page_id)
+            stats['created'] += 1
+            action = "CREATE"
+
+        print(f"  {action}: vehicle:{v.id}")
+
+    # Sync cargos
+    cargos = load_cargos(conn)
+    for c in cargos:
+        if c.is_deprecated:
+            continue
+
+        slug = f"cargo:{c.id}"
+        existing = storage.get_page_by_slug(slug)
+
+        user_sections = None
+        if existing:
+            user_sections = _extract_user_sections(existing.get('content', ''))
+
+        new_content = _generate_annie_cargo_content(c, user_sections)
+
+        if existing:
+            old_content = existing.get('content', '')
+            if old_content == new_content:
+                stats['unchanged'] += 1
+                continue
+            if not dry_run:
+                storage.update_page(existing['id'], content=new_content)
+                _reindex_page(storage, retrieval, existing['id'])
+            stats['updated'] += 1
+            action = "UPDATE"
+        else:
+            if not dry_run:
+                page_id = storage.create_page(
+                    title=slug,
+                    category='cargo',
+                    content=new_content,
+                    summary=f"{c.name} — {c.cargo_type} cargo",
+                )
+                storage.add_source(page_id, 'wiki_sync', f'motortown.db:{c.id}')
+                _reindex_page(storage, retrieval, page_id)
+            stats['created'] += 1
+            action = "CREATE"
+
+        print(f"  {action}: cargo:{c.id}")
+
+    # Invalidate wiki index cache so LLM sees updated pages
+    if not dry_run:
+        storage.set_index_cache(None)
+
+    storage.close()
+    return stats
+
+
+def _reindex_page(storage, retrieval, page_id: int):
+    """Re-index a single page in ChromaDB after content update."""
+    if retrieval is None:
+        return
+    try:
+        page = storage.get_page_by_id(page_id)
+        if page:
+            retrieval.index_page(
+                page_id=page_id,
+                title=page['title'],
+                content=page['content'],
+                category=page['category'],
+                updated_at=page['updated_at'],
+            )
+    except Exception as e:
+        print(f"  Warning: ChromaDB re-index failed for page {page_id}: {e}")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description='Sync Motor Town game data to DokuWiki')
+    parser = argparse.ArgumentParser(description='Sync Motor Town game data to wiki targets')
     parser.add_argument('--db', required=True, help='Path to motortown.db')
-    parser.add_argument('--wiki-dir', required=True, help='DokuWiki pages directory')
+    parser.add_argument('--wiki-dir', help='DokuWiki pages directory (required for dokuwiki target)')
+    parser.add_argument('--target', choices=['dokuwiki', 'annie-wiki'], default='dokuwiki',
+                        help='Sync target (default: dokuwiki)')
+    parser.add_argument('--annie-wiki-db', help='Path to Annie wiki SQLite DB (required for annie-wiki target)')
     parser.add_argument('--dry-run', action='store_true', help='Preview changes without writing')
     parser.add_argument('--only', choices=['vehicles', 'cargos', 'indexes'],
-                        help='Only sync specific page type')
+                        help='Only sync specific page type (dokuwiki target only)')
     parser.add_argument('--vehicle', help='Sync single vehicle by ID')
     parser.add_argument('--backup', action='store_true', help='Create backup before writing')
 
     args = parser.parse_args()
 
     db_path = Path(args.db)
-    wiki_dir = Path(args.wiki_dir)
 
     if not db_path.exists():
         print(f"Error: Database not found: {db_path}", file=sys.stderr)
         sys.exit(1)
+
+    conn = sqlite3.connect(str(db_path))
+
+    # --- Annie's Wiki target ---
+    if args.target == 'annie-wiki':
+        if not args.annie_wiki_db:
+            print("Error: --annie-wiki-db is required for annie-wiki target", file=sys.stderr)
+            sys.exit(1)
+        annie_db = Path(args.annie_wiki_db)
+        if not annie_db.exists():
+            print(f"Error: Annie wiki database not found: {annie_db}", file=sys.stderr)
+            sys.exit(1)
+
+        mode = "DRY RUN" if args.dry_run else "LIVE"
+        print(f"\n=== Annie Wiki Sync ({mode}) ===\n")
+        stats = sync_to_annie_wiki(conn, str(annie_db), args.dry_run)
+        print(f"\n  Total: {stats['created']} created, {stats['updated']} updated, "
+              f"{stats['unchanged']} unchanged, {stats.get('errors', 0)} errors")
+        conn.close()
+        print("Done.")
+        return
+
+    # --- DokuWiki target (default) ---
+    if not args.wiki_dir:
+        print("Error: --wiki-dir is required for dokuwiki target", file=sys.stderr)
+        sys.exit(1)
+
+    wiki_dir = Path(args.wiki_dir)
 
     if not wiki_dir.exists():
         print(f"Error: Wiki directory not found: {wiki_dir}", file=sys.stderr)
@@ -1138,7 +1456,6 @@ def main():
             tar.add(wiki_dir, arcname='pages')
         print(f"Backup created: {backup_path}")
 
-    conn = sqlite3.connect(str(db_path))
     mode = "DRY RUN" if args.dry_run else "LIVE"
     print(f"\n=== Wiki Sync ({mode}) ===\n")
 
