@@ -275,11 +275,52 @@ Array of vehicle size classes. Part only appears for vehicles of matching type.
 "vehicle_types": ["Small"]
 ```
 
-Values: `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle`.
+Values: `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle`, `Pickup`, `Bus`, `Truck`, `SemiTractor`, `SemiTrailer`, `Motorhome`.
+
+> [!NOTE]
+> `Pickup` covers pickup trucks that can equip both Small and truck-class parts. `Bus`, `Truck`, `SemiTractor`, `SemiTrailer`, `Motorhome` are for heavy-duty vehicles.
+
+### TruckClasses — Truck Sub-Class Filter
+
+For truck/bus parts, `TruckClasses` filters within truck vehicle types:
+
+```json
+"truck_classes": ["HeavyDuty", "MediumDuty"]
+```
+
+Values: `HeavyDuty`, `MediumDuty`. Used alongside `vehicle_types: ["Bus", "Truck", ...]` to further restrict which truck classes can equip a part.
+
+### bIsDualRearWheel — DRW Tires
+
+Boolean on the `Tire` sub-struct. When `true`, the engine renders two wheels on the rear axle. Use `BasicHeavyDutyRearTire` as the template for DRW truck tires.
 
 ### OverrideAllowedVehicleKeys — Whitelist Override
 
 Lets a part appear on vehicles it normally wouldn't fit (bypasses VehicleType restrictions).
+
+## Row Cloning Behavior
+
+When `--add-rows` clones a template row, **all properties are inherited** — not just the ones you intend to change. This is the #1 source of bugs when building compat mods.
+
+### Inherited Properties That Cause Bugs
+
+| Property | Problem when inherited | Fix |
+|----------|----------------------|-----|
+| `VehicleKeys` | New part restricted to template's vehicles (e.g., police-only) | Clear with `clear_array` if not needed |
+| `LevelRequirementToBuy` | New part locked behind template's career gate (e.g., `CL_Police: 10`) | Clear with `clear_map` if not needed |
+| `GameplayTags` | May add unintended tags | Clear with `clear_tags` if not needed |
+| `VehicleRowGameplayTagQuery` | May filter to wrong vehicles | Clear if not needed |
+
+The tire/intake builders now auto-clear `VehicleKeys` and `LevelRequirementToBuy` when not specified in config. For new mod types or manual `--add-rows` usage, always add explicit clear operations:
+
+```json
+{"path": "VehicleKeys", "op": "clear_array"},
+{"path": "LevelRequirementToBuy", "op": "clear_map"},
+{"path": "GameplayTags", "op": "clear_tags"}
+```
+
+> [!TIP]
+> After building with `--compat-mod`, dump the output and check for stale inherited values: `dotnet run -- --dump output/VehicleParts0.uasset`
 
 ## Vehicle License System
 
@@ -541,6 +582,9 @@ The `--compat-mod` flag works when your mod **only** adds rows to a DataTable th
 ```
 
 **Key rule:** When combining mods that each have `.uasset` assets (not just DataTables), you MUST manually merge the asset directories before repacking.
+
+> [!WARNING]
+> **Inherited properties from compat templates:** When `--compat-mod` extracts a DataTable and your mod clones rows from it, properties like `VehicleKeys` and `LevelRequirementToBuy` are inherited from the template row. See "Row Cloning Behavior" above for the full list and how to clear them. The tire/intake builders auto-clear these, but for manual merges or new mod types, always check for stale inherited restrictions.
 
 ### Analyzing Another Mod's Contents
 

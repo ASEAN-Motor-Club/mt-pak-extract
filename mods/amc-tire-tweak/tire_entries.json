@@ -1,0 +1,96 @@
+{
+  "tires": [
+    {
+      "tire_physics": {
+        "name": "AMC_Street_45",
+        "template": "BasicTire_45",
+        "static_mu": 1.15,
+        "sliding_mu": 1.05,
+        "offroad_friction": 0.75,
+        "spring_x": 180000,
+        "spring_y": 18000,
+        "damping_x": 200,
+        "damping_y": 130,
+        "max_weight_kg": 700
+      },
+      "tire_part": {
+        "row_name": "AMC_Street_45A",
+        "display_name": ["AMC Street 45"],
+        "cost": 1500,
+        "mass_kg": 10,
+        "vehicle_types": ["Small", "Pickup"],
+        "tire_asset_path": "/Game/Cars/Parts/Tire/AMC_Street_45/AMC_Street_45"
+      }
+    },
+    {
+      "tire_physics": {
+        "name": "AMC_Street_65",
+        "template": "BasicTire_65",
+        "static_mu": 1.15,
+        "sliding_mu": 1.05,
+        "offroad_friction": 0.75,
+        "spring_x": 150000,
+        "spring_y": 15000,
+        "damping_x": 200,
+        "damping_y": 100,
+        "max_weight_kg": 700
+      },
+      "tire_part": {
+        "row_name": "AMC_Street_65A",
+        "display_name": ["AMC Street 65"],
+        "cost": 1500,
+        "mass_kg": 10,
+        "vehicle_types": ["Small", "Pickup"],
+        "tire_asset_path": "/Game/Cars/Parts/Tire/AMC_Street_65/AMC_Street_65"
+      }
+    },
+    {
+      "tire_physics": {
+        "name": "AMC_Sport_45",
+        "template": "PerformanceTire_45",
+        "static_mu": 1.2,
+        "sliding_mu": 1.05,
+        "offroad_friction": 0.75,
+        "spring_x": 200000,
+        "spring_y": 19000,
+        "damping_x": 200,
+        "damping_y": 150,
+        "max_weight_kg": 700,
+        "wear_rate": 1.3,
+        "rolling_resistance_coeff": 0.009
+      },
+      "tire_part": {
+        "row_name": "AMC_Sport_45A",
+        "display_name": ["AMC Sport 45"],
+        "cost": 3000,
+        "mass_kg": 10,
+        "vehicle_types": ["Small", "Pickup"],
+        "tire_asset_path": "/Game/Cars/Parts/Tire/AMC_Sport_45/AMC_Sport_45"
+      }
+    },
+    {
+      "tire_physics": {
+        "name": "AMC_Offroad",
+        "template": "OffroadTire",
+        "static_mu": 0.75,
+        "sliding_mu": 0.9,
+        "offroad_friction": 1.45,
+        "spring_x": 150000,
+        "spring_y": 15000,
+        "damping_x": 200,
+        "damping_y": 100,
+        "max_weight_kg": 700,
+        "wear_rate": 2.0,
+        "rolling_resistance_coeff": 0.015
+      },
+      "tire_part": {
+        "row_name": "AMC_OffroadA",
+        "display_name": ["AMC Offroad"],
+        "cost": 2500,
+        "mass_kg": 10,
+        "vehicle_types": ["Small", "Pickup"],
+        "tire_asset_path": "/Game/Cars/Parts/Tire/AMC_Offroad/AMC_Offroad"
+      }
+    }
+  ]
+}

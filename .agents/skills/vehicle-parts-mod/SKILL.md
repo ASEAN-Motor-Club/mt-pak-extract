@@ -118,6 +118,14 @@ python3 scripts/create_tirepack.py \
 | `spring_y` | inherited | Longitudinal stiffness |
 | `damping_x` | inherited | Lateral damping |
 | `damping_y` | inherited | Longitudinal damping |
+| `max_weight_kg` | inherited (700) | Max load capacity in kg |
+| `wear_rate` | inherited | Tire wear rate — lower = slower wear (PerformanceTire: 1.3) |
+| `smoke_rate` | inherited | Smoke intensity — only works with `DriftTire` template |
+| `patch_length_coefficient` | inherited (100000) | Patch behavior coefficient |
+| `rolling_resistance_coeff` | inherited | Rolling resistance (PerformanceTire: 0.009) |
+
+> [!NOTE]
+> `WearRate` and `RollingResistanceCoeff` exist on `PerformanceTire_45` but NOT on `BasicTire_45`. When cloning from BasicTire_45, these are added via `set_or_add_float`. The `PerformanceTire_45` asset must be extracted separately if you want to use it as a template (it's not in `assets.json` — use `--search PerformanceTire` to find its PAK path).
 
 #### Tire Part Fields
 
@@ -127,23 +135,57 @@ python3 scripts/create_tirepack.py \
 | `display_name` | required | Array for in-game display (`Name2.Texts`) |
 | `cost` | required | Purchase price |
 | `mass_kg` | `10` | Tire mass |
-| `vehicle_types` | required | `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle` |
-| `vehicle_keys` | `[]` (all) | Restrict to specific vehicles |
-| `level_requirement` | `{}` (none) | Career level gate |
+| `vehicle_types` | required | `Small`, `Medium`, `Large`, `HeavyMachine`, `MotorCycle`, `Pickup`, `Bus`, `Truck`, `SemiTractor`, `SemiTrailer`, `Motorhome` |
+| `vehicle_keys` | cleared | Restrict to specific vehicles. Auto-cleared when cloning from compat templates (see `general-modding` → Row Cloning Behavior) |
+| `level_requirement` | cleared | Career level gate. Auto-cleared when cloning from compat templates |
+| `truck_classes` | not set | `HeavyDuty`, `MediumDuty` — only needed for truck/bus tires |
+| `bIsDualRearWheel` | `false` | Set `true` for DRW (dual rear wheel) truck tires |
 | `tire_asset_path` | required | UE path: `/Game/Cars/Parts/Tire/{Name}/{Name}` |
 
 ### Base Game Tire Physics Reference
 
-| Tire | StaticMu | SlidingMu | OffroadFriction |
-|------|----------|-----------|-----------------|
-| BasicTire_45 (standard) | 1.1 | 1.0 | — |
-| BasicTire_65 (wider) | 1.1 | 1.0 | — |
-| PerformanceTire | — | ~1.0 | — |
-| DriftTire | — | 0.85 | — |
-| OffroadTire | 0.95 | 0.9 | 1.4 |
-| HeavyDutyFront/Rear | — | 0.9 | — |
-| HeavyDuty_Load1 | 0.97 | 0.87 | — |
-| HeavyMachine_20Ton | 0.95 | 0.88 | 1.2 |
+| Tire | StaticMu | SlidingMu | OffroadFriction | WearRate | MaxWeightKg | PatchCoeff | RollResist |
+|------|----------|-----------|-----------------|----------|-------------|------------|------------|
+| BasicTire_45 (standard) | 1.1 | 1.0 | — | — | 700 | — | — |
+| PerformanceTire_45 | 1.15 | 1.0 | — | 1.3 | 700 | — | — |
+| BasicTire_65 (wider) | 1.1 | 1.0 | — | — | — | — | — |
+| DriftTire | — | 0.85 | — | — | — | — | — |
+| OffroadTire | 0.95 | 0.9 | 1.4 | — | — | — | — |
+| HeavyDutyFront/Rear | — | 0.9 | — | — | — | — | — |
+| HeavyDuty_Load1 | 0.97 | 0.87 | — | — | — | — | — |
+| HeavyMachine_20Ton | 0.95 | 0.88 | 1.2 | — | — | — | — |
+
+### AMC Tire Reference (v0.6.0)
+
+| Tire | StaticMu | SlidingMu | Offroad | SpringX | SpringY | DampX | DampY | MaxLoad | Wear | PatchCoeff | RollResist |
+|------|----------|-----------|---------|---------|---------|-------|-------|---------|------|------------|------------|
+| AMC Sport 69 | 1.8 | 1.58 | 1.6 | 150,000 | 15,000 | 200 | 100 | 1,200 kg | 0.1 | 100,000 | 0.01 |
+| AMC Stupid 67 | 8.0 | 5.4 | 1.67 | 150,000 | 15,000 | 200 | 100 | 6,700 kg | 0.1 | 100,000 | 0.01 |
+| AMC Truck 88 | 2.0 | 1.75 | 3.0 | 600,000 | 200,000 | 600 | 200 | 300,000 kg | 0.1 | 10,000,000 | 0.005 |
+| AMC Truck 88-DRW | 2.0 | 1.76 | 3.0 | 1,200,000 | 400,000 | 800 | 400 | 300,000 kg | 0.1 | 10,000,000 | 0.005 |
+| AMC Sport 65 | 1.6 | 1.3 | 1.6 | 180,000 | 18,000 | 200 | 130 | 1,200 kg | 0.1 | — | — |
+| AMC Street 45 | 1.15 | 1.0 | 1.2 | 180,000 | 18,000 | 200 | 130 | 1,200 kg | 0.1 | — | — |
+| AMC Drift 30 | 1.0 | 0.85 | 1.2 | 180,000 | 18,000 | 200 | 130 | 1,200 kg | 0.1 | — | — |
+| AMC Sport 78 | 1.8 | 1.5 | 1.6 | — | — | — | — | — | — | — | — |
+| AMC Sport 78S | 2.0 | 1.7 | 0.8 | — | — | — | — | — | — | — | — |
+| AMC Sport 78R | 1.4 | 1.2 | 1.9 | — | — | — | — | — | — | — | — |
+| AMC Sport 78T | 1.6 | 0.9 | 1.2 | — | — | — | — | — | — | — | — |
+| AMC Sport 78C | 1.35 | 1.15 | 1.3 | — | — | — | — | — | — | — | — |
+| AMC Sport 79 | 1.6 | 1.3 | 1.4 | 150,000 | 15,000 | — | — | — | — | — | — |
+
+### King Tires Reference
+
+| Tire | StaticMu | SlidingMu | Offroad | SpringX | SpringY | DampX | DampY | MaxLoad | Wear | PatchCoeff | RollResist |
+|------|----------|-----------|---------|---------|---------|-------|-------|---------|------|------------|------------|
+| PerformanceTire_01 | 3.5 | 2.8 | 1.9 | 180,000 | 17,000 | 180 | 150 | 1,300 kg | 0.1 | 100,000 | 0.005 |
+| PerformanceTire_10 | 2.5 | 2.4 | 0.3 | 190,000 | 18,000 | 190 | 140 | 450 kg | 0.1 | 100,000 | 0.005 |
+| PerformanceTire_25 | 1.3 | 1.5 | 1.3 | 200,000 | 19,000 | 200 | 150 | 700 kg | 0.1 | 100,000 | 0.005 |
+| PerformanceTire_30 | 1.1 | 1.3 | 0.85 | 200,000 | 19,000 | 200 | 150 | 700 kg | 0.1 | 100,000 | 0.005 |
+| PoliceTire_21 | 1.5 | 2.0 | 60 | 220,000 | 21,900 | 210 | 160 | 950,000 kg | 0.1 | 100,000 | 0.005 |
+| PoliceTire_25 | 1.5 | 1.75 | 40 | 220,000 | 21,900 | 210 | 160 | 750,000 kg | 0.1 | 100,000 | 0.005 |
+| RallyTire | 1.8 | 1.2 | 3.0 | 150,000 | 15,000 | 200 | 100 | 1,200 kg | 0.1 | 100,000 | 0.01 |
+| HM OffRoad Front | 2.0 | 1.75 | 3.0 | 600,000 | 200,000 | 600 | 200 | 300,000 kg | 0.1 | 10,000,000 | 0.005 |
+| HM OffRoad Rear | 2.0 | 1.75 | 3.0 | 1,200,000 | 400,000 | 800 | 400 | 300,000 kg | 0.1 | 10,000,000 | 0.005 |
 
 ### Recommended Tire Value Ranges
 
@@ -205,6 +247,12 @@ The rear is slightly stiffer and supports more weight. When creating custom bike
 8. **Pure Digit Row Names:** `APF_78` gets parsed as FName(`"APF"`, Number=79), causing save/load mismatches and disappearing tires. Append a letter: `APF_78A`.
 
 9. **Combining mods manually requires merging all assets:** The tire pack builder only stages its own assets. If combining PD Parts (which has 6 car tire physics assets) with bike tires, you must extract BOTH PAKs, merge directories (so all tire physics assets are present), patch VehicleParts0 for any cross-mod changes, then repack. See `general-modding` skill for the manual merge workflow.
+
+10. **Inherited properties from compat templates:** When using `--compat-mod`, the template row's `VehicleKeys` and `LevelRequirementToBuy` carry over. The builder auto-clears these when not in config. See `general-modding` skill → "Row Cloning Behavior" for the full pattern.
+
+11. **Truck/bus vehicle types:** Use `Bus`, `Truck`, `SemiTractor`, `SemiTrailer`, `Motorhome` for truck parts. Also set `truck_classes` to `HeavyDuty` and/or `MediumDuty`. `vehicle_types` controls which vehicle categories can equip the part; `truck_classes` filters within truck-type vehicles.
+
+12. **DRW tires:** Set `bIsDualRearWheel: true` on the tire part to render two wheels on the rear axle. `BasicHeavyDutyRearTire` is the best template for DRW truck tires.
 
 ---
 
@@ -400,6 +448,34 @@ python3 scripts/create_intakepack.py \
 
 > [!CAUTION]
 > Users must install **only one variant**. Both standalone + compat causes double-override on VehicleParts0.
+
+> [!WARNING]
+> **Always use the ORIGINAL mod PAK as the compat base, NOT a previous version's compat PAK.** Using a compat PAK as base (e.g., `v0.3.0_MoreTuningCompat_P.pak`) causes duplicate entries — the old rows from v0.3.0 appear twice (once from the compat base, once from the new build). Instead, use the original upstream PAK (e.g., `qxZap_MoreTuning_P.pak`) and let the build script add ALL your tires fresh.
+
+### Combining Two VehiclePart Mods Into One PAK
+
+When two mods both override `VehicleParts0`, only one loads (alphabetically last wins). To combine them into a single PAK:
+
+```bash
+# 1. Build the "base" mod standalone first
+python3 scripts/mods.py build police-tyres
+
+# 2. Build the "add-on" mod with --compat-mod pointing to the base PAK
+python3 scripts/create_tirepack.py \
+  --config mods/amc-tyres/tire_entries.json \
+  --compat-mod mods/police-tyres/builds/zzz_ASEAN_PoliceTyres_v0.2.0_P.pak \
+  --output mods/amc-tyres/builds/zzz_ASEAN_MCTyres_Combined_P.pak
+```
+
+The `--compat-mod` PAK's `VehicleParts0` is extracted and used as the template. New rows are appended on top of existing rows from the compat mod. The combined PAK contains all add-on physics assets plus the merged `VehicleParts0`.
+
+**Important:** The combined PAK only contains the add-on mod's physics assets. The base mod's assets must also be present — either manually merged into the PAK or as a separate PAK the user installs alongside.
+
+> [!WARNING]
+> **Inherited properties carry over from compat template.** See `general-modding` skill → "Row Cloning Behavior" for which properties to clear and how.
+
+> [!WARNING]
+> **When building a compat PAK for a mod update (e.g., v0.5.0), always use the ORIGINAL upstream PAK as the base, NOT the previous version's compat PAK.** Example: To build `zzz_AMCTires_v0.5.0_MoreTuningCompat_P.pak`, use `qxZap_MoreTuning_P.pak` as `--compat-mod`, NOT `zzz_AMCTires_v0.3.0_MoreTuningCompat_P.pak`. The old compat PAK already contains your previous rows — using it as base duplicates them.
 
 ### Display Name (`Name2.Texts`)
 

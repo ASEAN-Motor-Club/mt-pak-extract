@@ -1421,6 +1421,28 @@ class Program
                 break;
             }
             
+            case "set_enum_int_map":
+            {
+                var prop = ResolveProperty(properties, path);
+                if (prop is MapPropertyData mapProp)
+                {
+                    var leafName = path.Split('.').Last();
+                    mapProp.Value = new TMap<PropertyData, PropertyData>();
+                    if (patch.TryGetProperty("value", out var mapValue))
+                    {
+                        foreach (var entry in mapValue.EnumerateObject())
+                        {
+                            var keyProp = new EnumPropertyData(new FName(asset, leafName, 0))
+                            { Value = FName.FromString(asset, entry.Name) };
+                            var valProp = new IntPropertyData(new FName(asset, leafName, 0))
+                            { Value = entry.Value.GetInt32() };
+                            mapProp.Value.Add(keyProp, valProp);
+                        }
+                    }
+                }
+                break;
+            }
+            
             case "add_map_entry":
             {
                 var prop = ResolveProperty(properties, path);
