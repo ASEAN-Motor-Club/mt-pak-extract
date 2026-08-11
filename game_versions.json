@@ -1,5 +1,5 @@
 {
-  "active": "v0.7.18+1",
+  "active": "v0.7.19",
   "versions": {
     "pre-v0.7.18": {
       "pak_file": "pre-v0.7.18.pak",
@@ -25,6 +25,13 @@
       "notes": "",
       "archived_at": "2026-04-17T22:04:31.760467",
       "has_data": true
+    },
+    "v0.7.19": {
+      "pak_file": "v0.7.19.pak",
+      "pak_size": "2.6G",
+      "pak_date": "2026-07-30",
+      "git_tag": null,
+      "notes": ""
     }
   }
 }
