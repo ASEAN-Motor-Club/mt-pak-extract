@@ -938,35 +938,72 @@ def _group_parts(parts: list[tuple[str, str]]) -> list[tuple[str, str, int]]:
     return result
 
 
-def generate_vehicle_infobox(v: Vehicle, existing_image: Optional[str] = None) -> str:
-    """Generate the infobox section for a vehicle."""
-    lines = ["{{infobox>"]
-    lines.append(f"name = {v.name}")
-    if existing_image:
-        lines.append(existing_image)
-    lines.append(f"Internal key = {v.id}")
+_INFOBOX_GEN_KEYS = {'name', 'internal key', 'type', 'cost', 'weight', 'engine',
+                     'drivetrain', 'cargo space', 'drag coefficient'}
+
+
+def generate_vehicle_infobox(v: Vehicle, existing_image: Optional[str] = None,
+                             existing_infobox: Optional[str] = None) -> str:
+    """Generate the infobox section for a vehicle.
+
+    Auto-generates the known/verifiable fields (name, key, type, cost, weight,
+    engine, drivetrain, cargo space, drag). Any *other* lines present in the
+    existing infobox (user-curated Comfort, Fuel, Seats, Level requirement,
+    Axle lift, etc.) are preserved, so a regeneration doesn't drop them.
+    """
+    generated: list[str] = []
+    emitted = set()
+
+    def add(key: str, val: str):
+        generated.append(f"{key} = {val}")
+        emitted.add(key.lower())
+
+    add('name', v.name)
+    add('Internal key', v.id)
 
     vtype = _fmt_type(v.vehicle_type)
     tclass = _fmt_type(v.truck_class)
     type_str = f"{vtype}, {tclass}" if tclass else vtype
-    lines.append(f"Type = {type_str}")
-
-    lines.append(f"Cost = {_fmt_cost(v.cost)}")
-    lines.append(f"Weight = {_fmt_weight(v.chassis_mass_kg)}")
+    add('Type', type_str)
+    add('Cost', _fmt_cost(v.cost))
+    add('Weight', _fmt_weight(v.chassis_mass_kg))
 
     if v.engine_hp:
-        lines.append(f"Engine = {v.engine_hp} HP")
+        add('Engine', f"{v.engine_hp} HP")
 
     drivetrain = _get_drivetrain(v.default_parts)
     if drivetrain:
-        lines.append(f"Drivetrain = {drivetrain}")
+        add('Drivetrain', drivetrain)
 
     if v.cargo_space_type:
-        lines.append(f"Cargo space = {v.cargo_space_type}")
+        add('Cargo space', v.cargo_space_type)
 
-    if v.air_drag and v.air_drag != 1.0:
-        lines.append(f"Drag coefficient = {v.air_drag}")
+    add('Drag coefficient', f"{v.air_drag}")
 
+    # Preserve user-curated lines from the existing infobox that we do not
+    # regenerate (Comfort, Fuel, Seats, Level requirement, Axle lift, ...).
+    preserved = []
+    if existing_infobox:
+        for line in existing_infobox.split('\n'):
+            stripped = line.strip()
+            if '=' not in stripped:
+                continue
+            key, _, val = stripped.partition('=')
+            canon = key.strip().lower()
+            if canon in _INFOBOX_GEN_KEYS or canon in emitted:
+                continue
+            preserved.append(f"{key.strip()} = {val.strip()}")
+            emitted.add(canon)
+
+    lines = ["{{infobox>"]
+    if existing_image:
+        lines.append(existing_image)  # image = ... replaces name line
+        lines.extend(generated[1:])
+    else:
+        lines.extend(generated)
+    if preserved:
+        lines.append("")
+        lines.extend(preserved)
     lines.append("}}")
     return '\n'.join(lines)
 
@@ -2084,18 +2121,16 @@ def _render_part_stats(p: Part) -> str:
     schema = _build_type_schema(p.part_type) if p.part_type else []
     for struct, head, fields in schema:
         sval = stats.get(struct)
-        lines.append("")
-        lines.append(f"==== {head} ====")
-        lines.append("^ Stat ^ Value ^")
+        rows = []  # data rows only; empty tables are omitted entirely
         for field, label, unit, default, present_all in fields:
             if field == '__scalar__':
                 value = sval if not isinstance(sval, dict) else None
                 if value is None or value == '':
                     if present_all:
-                        lines.append(f"| {label} | - |")
+                        rows.append(f"| {label} | - |")
                     # present-on-some scalar struct: omit silently
                     continue
-                lines.append(f"| {label} | {_fmt_stat_value(field, value, unit)} |")
+                rows.append(f"| {label} | {_fmt_stat_value(field, value, unit)} |")
                 continue
             # Field present on this part -> always show its real value.
             if isinstance(sval, dict) and field in sval and sval[field] is not None and sval[field] != '':
@@ -2107,7 +2142,7 @@ def _render_part_stats(p: Part) -> str:
                         if str(g.get('Name')) == name:
                             value = g['Name']
                             break
-                lines.append(f"| {label} | {_fmt_stat_value(field, value, unit)} |")
+                rows.append(f"| {label} | {_fmt_stat_value(field, value, unit)} |")
             # Field absent -> the part uses the game's default for it.
             elif not present_all:
                 # Only some parts of this type carry the field (e.g. engine
@@ -2115,11 +2150,19 @@ def _render_part_stats(p: Part) -> str:
                 # so omit the row rather than showing a fabricated value.
                 continue
             elif unit == '%':
-                lines.append(f"| {label} | 100% |")
+                rows.append(f"| {label} | 100% |")
             elif unit == '±':
-                lines.append(f"| {label} | ±0% |")
+                rows.append(f"| {label} | ±0% |")
             else:
-                lines.append(f"| {label} | - |")
+                rows.append(f"| {label} | - |")
+        # A schema entry whose every field is dropped (e.g. Wheel = meshes only,
+        # Headlight = light anim) yields zero rows; render no table at all.
+        if not rows:
+            continue
+        lines.append("")
+        lines.append(f"==== {head} ====")
+        lines.append("^ Stat ^ Value ^")
+        lines.extend(rows)
     return '\n'.join(lines)
 
 
@@ -2267,18 +2310,20 @@ def merge_vehicle_page(
 
     sections = parse_page(existing_text)
 
-    # Extract image from existing infobox
+    # Extract image + user-curated lines from existing infobox
     existing_image = None
+    existing_infobox = None
     for sec in sections:
         if sec.name == 'infobox':
             existing_image = extract_infobox_image(sec.content)
+            existing_infobox = sec.content
             break
 
     # Build the merged page
     parts = []
 
     # 1. Infobox
-    parts.append(generate_vehicle_infobox(vehicle, existing_image))
+    parts.append(generate_vehicle_infobox(vehicle, existing_image, existing_infobox))
     parts.append("")
 
     # 2. Heading
