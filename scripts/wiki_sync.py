@@ -42,6 +42,19 @@ class Section:
 
 
 @dataclass
+class Part:
+    """A vehicle part from the DB."""
+    id: str
+    name: str
+    part_type: str
+    cost: int
+    mass_kg: float
+    is_hidden: bool
+    # tuning stats: {struct_type: {field: value}}
+    stats: dict = field(default_factory=dict)
+
+
+@dataclass
 class Vehicle:
     """Vehicle data from DB."""
     id: str
@@ -408,6 +421,109 @@ def load_cargos(conn: sqlite3.Connection) -> list[Cargo]:
     return cargos
 
 
+def _part_display_name(part_id: str) -> str:
+    """Human-readable display name for a part derived from its key.
+
+    The DB stores localization GUIDs for most parts (no locres in our pipeline),
+    so we render the part key, inserting spaces before internal capitals to make
+    e.g. 'HeavyDuty_350HP' read as 'HeavyDuty 350HP'. This matches how the wiki
+    already displays part IDs in vehicle Default Parts tables.
+    """
+    name = part_id.replace('_', ' ')
+    # Insert a space before internal capitals: 'HeavyDuty350HP' -> 'HeavyDuty 350 HP'
+    name = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', name)
+    name = re.sub(r'\s+', ' ', name).strip()
+    return name or part_id
+
+
+def load_parts(conn: sqlite3.Connection) -> list[Part]:
+    """Load all vehicle parts plus their non-default tuning stats."""
+    cursor = conn.cursor()
+    parts = []
+    for row in cursor.execute("""
+        SELECT id, name, part_type, cost, mass_kg, is_hidden
+        FROM vehicle_parts
+        WHERE is_hidden = 0 OR is_hidden IS NULL
+        ORDER BY part_type, id
+    """):
+        p = Part(
+            id=row[0],
+            name=_part_display_name(row[0]),
+            part_type=row[2] or '',
+            cost=row[3] or 0,
+            mass_kg=row[4] or 0.0,
+            is_hidden=bool(row[5]),
+        )
+        p.stats = load_part_stats(conn, p.id)
+        parts.append(p)
+    return parts
+
+
+def load_part_stats(conn: sqlite3.Connection, part_id: str) -> dict:
+    """Load a part's tuning stats as {struct_type: {field: value}}.
+
+    Values equal to the per-struct-field 'default' (the mode across all parts)
+    are dropped, mirroring the game's own editor-default convention so pages
+    show the meaningful tuning rather than a wall of 1.0/0.0 defaults.
+    """
+    cursor = conn.cursor()
+    rows = cursor.execute(
+        "SELECT struct_type, field_name, field_value FROM part_tuning WHERE part_id = ?",
+        (part_id,),
+    ).fetchall()
+    if not rows:
+        return {}
+    return _filter_default_stats(conn, rows)
+
+
+_default_stats_cache: dict = {}
+
+
+def _filter_default_stats(conn, rows) -> dict:
+    """Drop values that match the per-struct-field mode across all parts.
+
+    The mode default for every (struct_type, field_name) is computed once over
+    all of part_tuning and cached. A part's field is only emitted when its value
+    differs from that default. Scalar-boolean-ish toggle fields ('bIsValid') are
+    kept as-is (0/1) since the mode would swallow real differences.
+    """
+    cursor = conn.cursor()
+
+    # Compute per-(struct,field) default = most common value — once.
+    if not _default_stats_cache:
+        mode: dict[tuple[str, str], dict] = {}
+        for st, fn, fv in cursor.execute(
+            "SELECT struct_type, field_name, field_value FROM part_tuning"
+        ):
+            key = (st, fn)
+            v = _norm_stat(fv)
+            bucket = mode.setdefault(key, {})
+            bucket[v] = bucket.get(v, 0) + 1
+        _default_stats_cache.update(
+            {k: max(v.items(), key=lambda kv: kv[1])[0] for k, v in mode.items()}
+        )
+
+    stats: dict[str, dict] = {}
+    for struct_type, field_name, field_value in rows:
+        # Skip boolean-toggle fields (bIsValid, bIsDualRearWheel...) — they mean
+        # "this optional sub-struct is present" and are noise as 0/1 rows.
+        if str(field_name).startswith('bIs'):
+            continue
+        key = (struct_type, field_name)
+        val = _norm_stat(field_value)
+        if val == _default_stats_cache.get(key):
+            continue
+        stats.setdefault(struct_type, {})[field_name] = val
+    return stats
+
+
+def _norm_stat(value):
+    """Normalize a stat value for comparison (floats as float, strings as-is)."""
+    if isinstance(value, float) and value == int(value):
+        return int(value)
+    return value
+
+
 # ---------------------------------------------------------------------------
 # Content Generators
 # ---------------------------------------------------------------------------
@@ -688,7 +804,7 @@ def generate_vehicle_specs(v: Vehicle) -> str:
         lines.append("^ Slot ^ Part ^")
         for base, part_id, count in grouped:
             count_str = f" (×{count})" if count > 1 else ""
-            lines.append(f"| {base} | {part_id}{count_str} |")
+            lines.append(f"| {base} | [[parts:{_part_slug(part_id)}|{part_id}]]{count_str} |")
 
     return '\n'.join(lines)
 
@@ -772,6 +888,139 @@ def generate_cargo_page(c: Cargo) -> str:
         parts.append('\n'.join(prod_lines))
 
     return '\n'.join(parts) + '\n'
+
+
+_PART_TYPE_ENGLISH = {
+    'AeroParts': 'Aero', 'AngleKit': 'Angle Kit', 'AntiRollBar': 'Anti-Roll Bar',
+    'Body': 'Body', 'BrakeBalance': 'Brake Balance', 'BrakePad': 'Brake Pad',
+    'BrakePower': 'Brake Power', 'CargoBed': 'Cargo Bed', 'CargoBedAttachment': 'Cargo Bed Attachment',
+    'CoolantRadiator': 'Coolant Radiator', 'Engine': 'Engine', 'FinalDriveRatio': 'Final Drive Ratio',
+    'Fender': 'Fender', 'FrontBumper': 'Front Bumper', 'FrontSpoiler': 'Front Spoiler',
+    'FrontWindowSticker': 'Front Window Sticker', 'FrontWindowSunVisor': 'Sun Visor',
+    'Headlight': 'Headlight', 'Intake': 'Intake', 'LSD': 'Limited Slip Differential',
+    'RearBumper': 'Rear Bumper', 'RearSpoiler': 'Rear Spoiler', 'RearWindowLouvers': 'Rear Window Louvers',
+    'RearWing': 'Rear Wing', 'Roof': 'Roof', 'RoofRack': 'Roof Rack',
+    'SideSkirt': 'Side Skirt', 'Suspension_Damper': 'Suspension Damper',
+    'Suspension_Spring': 'Suspension Spring', 'Suspension_RideHeight': 'Suspension Ride Height',
+    'TaxiLicense': 'Taxi License', 'BusLicense': 'Bus License', 'EscortLicense': 'Escort License',
+    'Tire': 'Tire', 'TrailerHitch': 'Trailer Hitch', 'Transmission': 'Transmission',
+    'Trunk': 'Trunk', 'Turbocharger': 'Turbocharger', 'Utility': 'Utility',
+    'Wheel': 'Wheel', 'WheelSpacer': 'Wheel Spacer', 'Winch': 'Winch',
+    'Attachment': 'Attachment', 'Bullbar': 'Bullbar',
+}
+
+
+def _part_type_name(part_type: str) -> str:
+    """Human-readable part type name (English)."""
+    if part_type in _PART_TYPE_ENGLISH:
+        return _PART_TYPE_ENGLISH[part_type]
+    if not part_type:
+        return 'Unknown'
+    return part_type.replace('_', ' ')
+
+
+def _part_slug(part_id: str) -> str:
+    """Kebab/underscore slug for a part page URL."""
+    return re.sub(r'[^a-z0-9]+', '_', part_id.lower()).strip('_')
+
+
+def generate_part_page(p: Part) -> str:
+    """Generate a full part wiki page."""
+    parts = []
+
+    # Infobox
+    infobox = [
+        "{{infobox>",
+        f"name = {p.name}",
+        f"Part Type = {_part_type_name(p.part_type)}",
+        f"Cost = {_fmt_cost(p.cost)}",
+    ]
+    if p.mass_kg:
+        infobox.append(f"Mass = {_fmt_weight(p.mass_kg)}")
+    infobox.append("}}")
+    parts.append('\n'.join(infobox))
+    parts.append("")
+
+    # Heading
+    parts.append(f"====== {p.name} ======")
+    parts.append("")
+    type_lower = _part_type_name(p.part_type).lower()
+    article = 'an' if type_lower[:1] in ('a', 'e', 'i', 'o', 'u') else 'a'
+    parts.append(f"**{p.name}** is {article} {type_lower} part for vehicles in [[:motor_town|Motor Town]].")
+    parts.append("")
+
+    # Specs
+    specs = [
+        "===== Specifications =====",
+        "^ Stat ^ Value ^",
+        f"| Type | {_part_type_name(p.part_type)} |",
+        f"| Cost | {_fmt_cost(p.cost)} |",
+    ]
+    if p.mass_kg:
+        specs.append(f"| Mass | {_fmt_weight(p.mass_kg)} |")
+    parts.append('\n'.join(specs))
+    parts.append("")
+
+    # Stats (tuning)
+    if p.stats:
+        stat_lines = ["===== Stats ====="]
+        for struct in sorted(p.stats.keys()):
+            head = _part_type_name(struct)
+            if head == 'Unknown':
+                head = struct
+            stat_lines.append(f"==== {head} ====")
+            stat_lines.append("^ Parameter ^ Value ^")
+            for field, value in sorted(p.stats[struct].items()):
+                stat_lines.append(f"| {_display_field(field)} | {_display_value(value)} |")
+        parts.append('\n'.join(stat_lines))
+        parts.append("")
+
+    # User placeholder
+    parts.append("===== Notes =====")
+    parts.append("")
+
+    return '\n'.join(parts) + '\n'
+
+
+def _display_field(field: str) -> str:
+    """Humanize a stat field name: 'MaxTorque' -> 'Max Torque'."""
+    return re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', field).replace('_', ' ').strip() or field
+
+
+def _display_value(value) -> str:
+    """Format a stat value for the wiki."""
+    if isinstance(value, float):
+        if value == int(value):
+            return str(int(value))
+        return f"{value:.2f}".rstrip('0').rstrip('.')
+    return str(value)
+
+
+def generate_parts_index(parts: list[Part]) -> str:
+    """Generate a part index page grouped by part type."""
+    lines = [
+        "====== List of Vehicle Parts (Auto-Generated) ======",
+        "",
+        f"There are {len(parts)} vehicle parts in [[:motor_town|Motor Town]].",
+        "",
+    ]
+
+    by_type: dict[str, list[Part]] = {}
+    for p in parts:
+        pt = p.part_type or 'Other'
+        by_type.setdefault(pt, []).append(p)
+
+    for pt in sorted(by_type.keys()):
+        type_name = _part_type_name(pt)
+        lines.append(f"===== {type_name} =====")
+        lines.append("^ Part ^ Cost ^ Mass ^")
+        for p in sorted(by_type[pt], key=lambda x: x.name):
+            slug = _part_slug(p.id)
+            mass = _fmt_weight(p.mass_kg) if p.mass_kg else '—'
+            lines.append(f"| [[parts:{slug}|{p.name}]] | {_fmt_cost(p.cost)} | {mass} |")
+        lines.append("")
+
+    return '\n'.join(lines) + '\n'
 
 
 def generate_vehicle_index(vehicles: list[Vehicle], slug_map: dict[str, str]) -> str:
@@ -1102,6 +1351,92 @@ def sync_indexes(
     return stats
 
 
+def sync_parts(
+    conn: sqlite3.Connection,
+    wiki_dir: Path,
+    dry_run: bool = False,
+    part_filter: str | None = None,
+) -> dict:
+    """Sync all vehicle-part pages. Returns stats dict."""
+    parts = load_parts(conn)
+    parts_dir = wiki_dir / 'parts'
+
+    stats = {'created': 0, 'updated': 0, 'unchanged': 0, 'errors': 0}
+
+    if not dry_run:
+        parts_dir.mkdir(parents=True, exist_ok=True)
+
+    for p in parts:
+        if part_filter and p.id != part_filter:
+            continue
+
+        slug = _part_slug(p.id)
+        page_path = parts_dir / f"{slug}.txt"
+
+        existing_text = None
+        if page_path.exists():
+            existing_text = page_path.read_text(encoding='utf-8')
+
+        try:
+            new_text = generate_part_page(p)
+        except Exception as e:
+            print(f"  ERROR: {p.id}: {e}")
+            stats['errors'] += 1
+            continue
+
+        if existing_text == new_text:
+            stats['unchanged'] += 1
+            continue
+
+        if existing_text is None:
+            action = "CREATE"
+            stats['created'] += 1
+        else:
+            action = "UPDATE"
+            stats['updated'] += 1
+
+        if dry_run:
+            print(f"  {action}: parts/{slug}.txt")
+        else:
+            page_path.write_text(new_text, encoding='utf-8')
+            print(f"  {action}: parts/{slug}.txt")
+
+    return stats
+
+
+def sync_parts_index(
+    conn: sqlite3.Connection,
+    wiki_dir: Path,
+    dry_run: bool = False,
+) -> dict:
+    """Sync the list_of_parts index page."""
+    parts = load_parts(conn)
+    stats = {'created': 0, 'updated': 0, 'unchanged': 0}
+
+    content = generate_parts_index(parts)
+    filename = 'list_of_parts.txt'
+    page_path = wiki_dir / filename
+    existing = page_path.read_text(encoding='utf-8') if page_path.exists() else None
+
+    if existing == content:
+        stats['unchanged'] += 1
+        return stats
+    elif existing is None:
+        action = "CREATE"
+        stats['created'] += 1
+    else:
+        action = "UPDATE"
+        stats['updated'] += 1
+
+    if dry_run:
+        print(f"  {action}: {filename}")
+    else:
+        page_path.write_text(content, encoding='utf-8')
+        print(f"  {action}: {filename}")
+
+    return stats
+
+
 # ---------------------------------------------------------------------------
 # Annie's Wiki Sync
 # ---------------------------------------------------------------------------
@@ -1402,7 +1737,7 @@ def main():
                         help='Sync target (default: dokuwiki)')
     parser.add_argument('--annie-wiki-db', help='Path to Annie wiki SQLite DB (required for annie-wiki target)')
     parser.add_argument('--dry-run', action='store_true', help='Preview changes without writing')
-    parser.add_argument('--only', choices=['vehicles', 'cargos', 'indexes'],
+    parser.add_argument('--only', choices=['vehicles', 'cargos', 'indexes', 'parts'],
                         help='Only sync specific page type (dokuwiki target only)')
     parser.add_argument('--vehicle', help='Sync single vehicle by ID')
     parser.add_argument('--backup', action='store_true', help='Create backup before writing')
@@ -1477,6 +1812,16 @@ def main():
         stats = sync_cargos(conn, wiki_dir, args.dry_run)
         print(f"  Cargos: {stats['created']} created, {stats['updated']} updated, "
               f"{stats['unchanged']} unchanged, {stats.get('errors', 0)} errors\n")
+
+    # Parts
+    if args.only is None or args.only == 'parts':
+        print("Syncing parts...")
+        stats = sync_parts(conn, wiki_dir, args.dry_run)
+        print(f"  Parts: {stats['created']} created, {stats['updated']} updated, "
+              f"{stats['unchanged']} unchanged, {stats.get('errors', 0)} errors\n")
+        pstats = sync_parts_index(conn, wiki_dir, args.dry_run)
+        print(f"  Parts Index: {pstats['created']} created, {pstats['updated']} updated, "
+              f"{pstats['unchanged']} unchanged\n")
 
     # Indexes
     if args.only is None or args.only == 'indexes':
