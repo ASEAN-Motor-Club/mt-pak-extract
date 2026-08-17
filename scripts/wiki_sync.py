@@ -1486,6 +1486,18 @@ def _display_field(field: str) -> str:
 # ---------------------------------------------------------------------------
 
 # (field) -> (label, unit). Fields not listed: label = humanized name, no unit.
+#
+# unit kinds:
+#   ''              plain number (no unit)
+#   '%'             ABSOLUTE percentage  -> value * 100 %   (1.0 = the whole)
+#   '±'             MULTIPLIER from 100  -> (value-1)*100 % (1.0 = stock)
+#   'cur'           a value followed by % when it is a stock multiplier of 1.0
+#   'G'             tire grip coefficient (mu), relabelled as G, never %
+#   <literals>      value + " " + unit (rpm, s, kg, cm, mm, L, °C, ...)
+#   'vec'/'vecmm'   XYZ dict -> "X cm × Y cm × Z cm"
+#
+# Aero fields are treated separately by the renderer; only the drag fields that
+# live on the Tire/structural rows are listed here.
 _STAT_LABEL_UNIT = {
     # Engine
     'MaxRPM': ('Max RPM', 'rpm'),
@@ -1493,52 +1505,75 @@ _STAT_LABEL_UNIT = {
     'StarterTorque': ('Starter Torque', 'N·m'),
     'Inertia': ('Rotational Inertia', 'kg·m²'),
     'FrictionViscosityCoeff': ('Friction Viscosity', ''),
+    'FrictionCoulombCoeff': ('Friction Coulomb Coefficient', ''),
     'IdleThrottle': ('Idle Throttle', '%'),
     'BlipThrottle': ('Blip Throttle', ''),
     'AfterFireProbability': ('After-Fire Probability', '%'),
-    'CoolingEfficiency': ('Cooling Efficiency', '%'),
+    'CoolingEfficiency': ('Cooling Efficiency', '±'),
+    'HeatingPower': ('Heating Power', '±'),
+    'IntakeSpeedEfficencyMultiplier': ('Intake Speed Efficiency', '±'),
+    'BlipDurationSeconds': ('Blip Duration', 's'),
     'FuelConsumption': ('Fuel Consumption', ''),
+    'FuelType': ('Fuel Type', ''),
+    'EngineType': ('Engine Type', ''),
+    'MaxJakeBrakeStep': ('Max Jake Brake Step', ''),
+    'StarterRPM': ('Starter RPM', 'rpm'),
+    'MaxRegenTorqueRatio': ('Max Regen Torque Ratio', '%'),
+    'MotorMaxPower': ('Motor Max Power', 'W'),
+    'MotorMaxVoltage': ('Motor Max Voltage', 'V'),
     # Transmission
     'TorqueConvertorStallRPM': ('Torque Converter Stall RPM', 'rpm'),
     'TorqueConvertorStallRatioPower': ('Torque Converter Stall Ratio Power', ''),
     'DefaultGearIndex': ('Default Gear', ''),
     'ShiftTimeSeconds': ('Shift Time', 's'),
     'TorqueConvertorTorqueRate': ('Torque Converter Torque Rate', ''),
+    'ClutchType': ('Clutch Type', ''),
+    'AutoShiftComportRPM': ('Comfort Autoshift RPM', 'rpm'),
+    'DevComment': ('Inspiration', ''),
+    'CVT_InputRPMRange': ('CVT Input RPM Range', 'rm'),
+    'CVT_GearRatios': ('CVT Gear Ratios', 'rm'),
+    'CVT_ClutchCurvePow': ('CVT Clutch Curve Power', ''),
     # Tire physics
-    'SlidingMu': ('Sliding Grip (μ)', ''),
-    'StaticMu': ('Static Grip (μ)', ''),
-    'SpringX': ('Spring Rate X', ''),
-    'SpringY': ('Spring Rate Y', ''),
-    'DampingX': ('Damping X', ''),
-    'DampingY': ('Damping Y', ''),
+    'SlidingMu': ('Sliding Grip', 'G'),
+    'StaticMu': ('Static Grip', 'G'),
+    'OffroadFriction': ('Offroad Grip', '±'),
+    'SpringX': ('Spring Rate X', 'N/m'),
+    'SpringY': ('Spring Rate Y', 'N/m'),
+    'DampingX': ('Damping X', 'N·s/m'),
+    'DampingY': ('Damping Y', 'N·s/m'),
+    'WearRate': ('Wear Rate', '%'),
+    'RollingResistanceCoeff': ('Rolling Resistance Coefficient', ''),
+    'CoolDownSpeed': ('Cool Down Speed', ''),
+    'WarmUpSpeed': ('Warm Up Speed', ''),
+    'SmokeRate': ('Smoke Rate', ''),
+    'bIsDualRearWheel': ('Dual Rear', ''),
     'MaxWeightKg': ('Max Load', 'kg'),
     'PatchLengthCoefficient': ('Patch Length Coefficient', ''),
     # Suspension
     'RideHeightChange': ('Ride Height Change', 'cm'),
-    'BoundDampingRateMultiplier': ('Bound Damping Rate', '%'),
-    'ReboundDampingRateMultiplier': ('Rebound Damping Rate', '%'),
-    'SpringRateMultiplier': ('Spring Rate', '%'),
-    'AntiRollBarRateMultiplier': ('Anti-Roll Bar Rate', '%'),
+    'BoundDampingRateMultiplier': ('Bound Damping Rate', '±'),
+    'ReboundDampingRateMultiplier': ('Rebound Damping Rate', '±'),
+    'SpringRateMultiplier': ('Spring Rate', '±'),
+    'AntiRollBarRateMultiplier': ('Anti-Roll Bar Rate', '±'),
     # Brakes
-    'FrontMultiplier': ('Front Brake Bias', ''),
-    'RearMultiplier': ('Rear Brake Bias', ''),
-    'BrakePowerMultiplier': ('Brake Power', '%'),
+    'FrontMultiplier': ('Front Brake Bias', '±'),
+    'RearMultiplier': ('Rear Brake Bias', '±'),
+    'BrakePowerMultiplier': ('Brake Power', '±'),
     'FadeTemperature': ('Fade Temperature', '°C'),
-    'CoolingMultiplier': ('Brake Cooling', '%'),
-    'HeatingMultiplier': ('Heating', '%'),
-    'WearMultiplier': ('Wear Rate', '%'),
+    'CoolingMultiplier': ('Brake Cooling', '±'),
+    'HeatingMultiplier': ('Heating', '±'),
+    'WearMultiplier': ('Wear Rate', '±'),
     # Coolant
-    'CoolingPower': ('Cooling Power', '%'),
+    'CoolingPower': ('Cooling Power', '±'),
     'CoolantWaterInLiter': ('Coolant Capacity', 'L'),
     # Intake / Turbo
     'Slope': ('Intake Torque Slope', ''),
     'BaseRPMRatio': ('Base RPM Ratio', ''),
-    'IntakeSpeedEfficencyMultiplier': ('Intake Speed Efficiency', '%'),
-    'BaseTorqueMultiplier': ('Base Torque', '%'),
-    'TorqueMultiplier': ('Torque', '%'),
+    'BaseTorqueMultiplier': ('Base Torque', '±'),
+    'TorqueMultiplier': ('Torque', '±'),
     'TurbineAspectRatio': ('Turbine Aspect Ratio', ''),
-    'IntakePressureMultiplier': ('Intake Pressure', '%'),
-    'FuelConsumptionMultiplier': ('Fuel Consumption', '%'),
+    'IntakePressureMultiplier': ('Intake Pressure', '±'),
+    'FuelConsumptionMultiplier': ('Fuel Consumption', '±'),
     'TurbineWeight': ('Turbine Weight', 'kg'),
     # Wheels / spacers
     'Space': ('Width', 'mm'),
@@ -1546,23 +1581,31 @@ _STAT_LABEL_UNIT = {
     # Fuel / cargo
     'FuelLiter': ('Fuel Capacity', 'L'),
     'DumpVolume': ('Dump Volume', 'kL'),
+    'CargoSpaceLocation': ('Cargo Space Location', 'vec'),
+    'CargoSpaceSize': ('Cargo Space Size', 'vec'),
+    'CargoSpaceType': ('Cargo Space Type', ''),
     # Misc tuning
     'AngleIncreaseInDegree': ('Angle Increase', 'deg'),
     'MaxForceKg': ('Max Force', 'kg'),
-    'MaxLength': ('Cable Length', 'cm'),
+    'MaxLength': ('Cable Length', 'm'),
     'LSDType': ('LSD Type', ''),
+    'ClutchPackAccel': ('Clutch Pack Acceleration', ''),
+    'ClutchPackBrake': ('Clutch Pack Brake', ''),
     'TaxiType': ('Type', ''),
     'ConnectionType': ('Connection', ''),
-    'CargoSpaceType': ('Cargo Space Type', ''),
-    'CargoSpaceLocation': ('Cargo Space Location', 'cm'),
-    'CargoSpaceSize': ('Cargo Space Size', 'cm'),
-    'FinalDriveRatio': ('Final Drive Ratio', ''),
+    # Scalar stats structs where the field name IS the value (fallback label)
+    'Winch': ('Winch', ''),
+    'ItemInventory': ('Slots', ''),
+    'CoolantRadiator': ('Coolant', ''),
+    'BrakePad': ('Fade Temperature', '°C'),
+    'CargoBed': ('Cargo Space', ''),
 }
 
 # Extra unit multipliers for fields whose raw unit differs from the display
-# unit (e.g. Space is stored in cm but displayed in mm).
+# unit (e.g. Space is stored in cm but displayed in mm; winch length cm->m).
 _STAT_MULT = {
     'Space': 10,
+    'MaxLength': 0.01,
 }
 
 # Whole-vehicle aero fields: (label, force-multiplier-in-kg-per-coef at 200km/h)
@@ -1590,12 +1633,43 @@ _STAT_DROP_FIELDS = {
     'ReleaseSound', 'MotorInSound', 'MotorOutSound', 'RopeCrackingSound',
     'RopeSnapSound', 'TaxiRoofSignClass', 'AttachParentComponentName',
     'ComponentTags', 'CustomSocketName', 'bUseCustomSocket', 'SkelealMesh',
-    'bIsValid', 'bIsDualRearWheel', 'bFixCargo', 'bUnlimitedHeight',
+    'bIsValid', 'bFixCargo', 'bUnlimitedHeight',
     'TirePhysicsDataAsset',
 }
 
-# bool/toggle fields that mean "this optional sub-struct/flag is present".
+# Enum fields whose tail should be humanized for display (e.g.
+# 'EMTLSDType::ClutchPackLSD' -> 'Clutch Pack LSD'). Includes booleans that
+# read as "Yes/No" via _fmt_simple_value.
 _STAT_BOOL_FIELDS = {'LSDType', 'TaxiType', 'ConnectionType', 'CargoSpaceType'}
+
+# Enum field -> humanized tail mapping. Falls back to camel-case splitting
+# (e.g. 'MultiPlateClutch' -> 'Multi Plate Clutch'), then the raw tail.
+_ENUM_HUMANIZE_OVERRIDE = {
+    'EMTLSDType::ClutchPackLSD': 'Clutch Pack LSD',
+    'EMTLSDType::Lockable': 'Lockable',
+    'EMTLSDType::LimitedSlip': 'Limited Slip',
+    'EMTTaxiType::Normal': 'Normal',
+    'EMTTaxiType::Limo': 'Limo',
+    'EMTTrailerConnectionType::Hitch': 'Hitch',
+    'EMTTrailerConnectionType::Ring': 'Ring',
+    'EMTCargoSpaceType::Flatbed': 'Flatbed',
+    'EMTCargoSpaceType::Box': 'Box',
+    'EMTCargoSpaceType::Tanker': 'Tanker',
+    'EMTTransmissionClutchType::MultiPlateClutch': 'Multi Plate Clutch',
+    'EMTTransmissionType::EatonFuller13': 'Eaton Fuller 13',
+    'EMTTransmissionType::EatonFuller18': 'Eaton Fuller 18',
+    'EMTTransmissionType::CVT': 'CVT',
+    'EMTFuelType::Diesel': 'Diesel',
+    'EMTFuelType::Petrol': 'Petrol',
+    'EMTFuelType::Electric': 'Electric',
+    'EMTEngineType::Large': 'Large',
+    'EMTEngineType::Medium': 'Medium',
+    'EMTEngineType::Small': 'Small',
+    'EMTEngineType::Bike': 'Bike',
+    'EMTEngineType::Moped': 'Moped',
+    'EMTEngineType::Scooter': 'Scooter',
+    'EMTEngineType::EV': 'EV',
+}
 
 
 def _trim_number(v) -> str:
@@ -1616,15 +1690,77 @@ def _fmt_vec(value) -> str:
     return f"{_trim_number(x)}, {_trim_number(y)}, {_trim_number(z)}"
 
 
+def _fmt_vec_dims(value) -> str:
+    """Cargo-space vector: {'X':..,'Y':..,'Z':..} -> 'X cm × Y cm × Z cm'."""
+    if not isinstance(value, dict):
+        return _display_value(value)
+    x = value.get('X', 0)
+    y = value.get('Y', 0)
+    z = value.get('Z', 0)
+    def _d(v):
+        if isinstance(v, (int, float)) and abs(v) < 0.5:
+            return '0'
+        return _trim_number(v)
+    return f"{_d(x)} cm × {_d(y)} cm × {_d(z)} cm"
+
+
+def _fmt_rng(value, unit: str = '') -> str:
+    """CVT range {'X':..,'Y':..} -> '1000 – 7000 rpm'."""
+    if not isinstance(value, dict):
+        return _display_value(value)
+    x = value.get('X', 0)
+    y = value.get('Y', 0)
+    s = f"{_trim_number(x)} – {_trim_number(y)}"
+    return f"{s} {unit}".strip() if unit else s
+
+
+def _fmt_number(value) -> str:
+    """Number with thousands separators for large engine/torque magnitudes."""
+    if isinstance(value, float) and value == int(value):
+        value = int(value)
+    if isinstance(value, int) and abs(value) >= 10000:
+        return f"{value:,}"
+    return _trim_number(value)
+
+
+def _fmt_delta_from_100(value) -> str:
+    """Multiplier from 100: (value-1)*100%, signed. 1.0 -> ±0%."""
+    d = (value - 1.0) * 100
+    if abs(d) < 1e-9:
+        return "±0%"
+    return _fmt_signed(d) + '%'
+
+
+def _humanize_enum(value: str) -> str:
+    """'EMTxxx::ClutchPackLSD' -> 'Clutch Pack LSD' (override) / camel split."""
+    key = value
+    if '::' in value:
+        key = value.rsplit('::', 1)[-1]
+    if value in _ENUM_HUMANIZE_OVERRIDE:
+        return _ENUM_HUMANIZE_OVERRIDE[value]
+    # camel-case split fallback: 'MultiPlateClutch' -> 'Multi Plate Clutch'
+    s = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', key)
+    return s or key
+
+
 def _fmt_simple_value(value, unit: str = '') -> str:
-    """Format a scalar stat value. Units: '' = none; '%' = *100; '×' = prefix."""
+    """Format a scalar stat value.
+
+    Units: '' = none; '%' = absolute ×100; '±' = multiplier ±% from 100;
+    'G' = grip coefficient (relabelled, never %); ''/literal = number + unit
+    with thousands separators for large engine/torque magnitudes.
+    """
     if isinstance(value, bool):
         return 'Yes' if value else 'No'
     if isinstance(value, (int, float)):
         if unit == '%':
             return f"{_trim_number(value * 100)}%"
-        if unit == '×':
-            return f"{_trim_number(value)}×"
+        if unit == '±':
+            return _fmt_delta_from_100(value)
+        if unit == 'G':
+            return f"{_trim_number(value)} G"
+        if unit in ('N·m', 'W', 'V'):
+            return f"{_fmt_number(value)} {unit}".strip()
         s = _trim_number(value)
         return f"{s} {unit}".strip() if unit else s
     return str(value)
@@ -1746,12 +1882,18 @@ def _build_type_schema(part_type: str) -> list:
     _load_ref_data()
 
     # Collect every (struct, field) -> list of the values seen for parts of
-    # this type, preserving field encounter order per struct.
+    # this type, preserving field encounter order per struct. Also count how
+    # many parts actually carry each field, so "present on some only" fields
+    # (e.g. engine CoolingEfficiency/StarterRPM) can be omitted when a given
+    # part lacks them rather than shown with a fabricated default.
     struct_values: dict[str, dict[str, list]] = {}
+    struct_counts: dict[str, dict[str, int]] = {}
     struct_order: list[str] = []
+    total_parts = 0
     for rd in _REF_PARTS.values():
         if rd.get('type') != part_type:
             continue
+        total_parts += 1
         for st, sval in (rd.get('stats') or {}).items():
             if st in _STAT_DROP_STRUCTS or st in _AERO_LIFT_FIELDS or st in _AERO_DRAG_FIELDS:
                 continue  # aero/drop handled elsewhere
@@ -1760,29 +1902,35 @@ def _build_type_schema(part_type: str) -> list:
                 if st not in struct_order:
                     struct_order.append(st)
                 struct_values.setdefault(st, {}).setdefault('__scalar__', []).append(sval)
+                struct_counts.setdefault(st, {})['__scalar__'] = struct_counts.setdefault(st, {}).get('__scalar__', 0) + 1
                 continue
             if st not in struct_order:
                 struct_order.append(st)
             sv = struct_values.setdefault(st, {})
+            sc = struct_counts.setdefault(st, {})
             for f, v in sval.items():
                 if f in _STAT_DROP_FIELDS:
                     continue
                 sv.setdefault(f, []).append(v)
+                sc[f] = sc.get(f, 0) + 1
 
     schema = []
     for st in struct_order:
         fields = []
         sv = struct_values[st]
+        sc = struct_counts[st]
         if '__scalar__' in sv:
             vals = sv['__scalar__']
             default = _mode(vals)
-            fields.append(('__scalar__', _stat_struct_name(st), _STAT_LABEL_UNIT.get(st, ('', ''))[1], default))
+            present_all = sc.get('__scalar__', 0) >= total_parts
+            fields.append(('__scalar__', _stat_struct_name(st), _STAT_LABEL_UNIT.get(st, ('', ''))[1], default, present_all))
         for f in sv:
             if f == '__scalar__':
                 continue
             label, unit = _STAT_LABEL_UNIT.get(f, (_display_field(f), ''))
             default = _mode(sv[f])
-            fields.append((f, label, unit, default))
+            present_all = sc.get(f, 0) >= total_parts
+            fields.append((f, label, unit, default, present_all))
         schema.append((st, _stat_struct_name(st), fields))
 
     _TYPE_SCHEMA_CACHE[part_type] = schema
@@ -1832,6 +1980,14 @@ def _mode(vals: list):
     return vals[0]
 
 
+def _fmt_signed(v) -> str:
+    """Signed display for a ±% delta: -40 -> '-40', 22.5 -> '+22.5'."""
+    if abs(v) < 1e-9:
+        return '0'
+    s = _fmt_number(v)
+    return f"+{s}" if v > 0 else s
+
+
 def _render_part_stats(p: Part) -> str:
     """Render a part's tuning stats as reader-friendly DokuWiki tables.
 
@@ -1839,8 +1995,10 @@ def _render_part_stats(p: Part) -> str:
       (force formula applied at 200 km/h).
     - Every other stat struct of the part's type is rendered with a
       'Stat | Value' table showing ALL fields of the type; fields whose value
-      equals the type's default are shown as '-' (or '100%' for percentage
-      fields), per the reference convention.
+      equals the type's default are shown as '-' (or their % default), per the
+      reference convention. Fields that only *some* parts of the type carry
+      (e.g. engine CoolingEfficiency/StarterRPM) are omitted entirely when a
+      given part lacks them.
     """
     lines = ["===== Stats ====="]
     stats = p.stats or {}
@@ -1861,15 +2019,13 @@ def _render_part_stats(p: Part) -> str:
             if val is None or val == '':
                 lines.append(f"| {label} | - |")
                 continue
-            if f == 'FrontDamageMultiplier':
-                lines.append(f"| {label} | {_fmt_simple_value(val, '%')} |")
-            else:
-                # Drag display: (mult - 1) * 100 % of base; ×1.5 when the part
-                # has any lift coefficient (as in the in-game head-up display).
-                drag_pct = (val - 1.0) * 100
-                if aero_lift or any(stats.get(k) for k in lift_keys):
-                    drag_pct *= 1.5
-                lines.append(f"| {label} | +{drag_pct:.1f}% |")
+            # (mult - 1) * 100 % of base; ×1.5 only for Air Drag when the part
+            # has any lift coefficient (in-game head-up display). Trailer
+            # Air Drag / Front Damage are plain ±% from 100.
+            drag_pct = (val - 1.0) * 100
+            if f == 'AirDragMultiplier' and (aero_lift or any(stats.get(k) for k in lift_keys)):
+                drag_pct *= 1.5
+            lines.append(f"| {label} | {_fmt_signed(drag_pct)}% |")
         for f in lift_keys:
             label, _ = _AERO_LIFT_FIELDS[f]
             val = aero_lift.get(f)
@@ -1878,8 +2034,12 @@ def _render_part_stats(p: Part) -> str:
                 continue
             coef = float(val)
             force = 7.098e-7 * (200 ** 2) * coef  # force_kg at 200 km/h
-            kind = 'downforce' if coef < 0 else 'lift'
-            lines.append(f"| {label} | {_trim_number(coef)} ({abs(force):.1f} kg {kind} @ 200 km/h) |")
+            if f == 'AeroLift':
+                kind = 'downforce' if coef < 0 else 'lift'
+                lines.append(f"| {label} | {_trim_number(coef)} ({abs(force):.1f} kg {kind} @ 200 km/h) |")
+            else:
+                # Front/Rear Aero Lift: coefficient + kg force, no direction word.
+                lines.append(f"| {label} | {_trim_number(coef)} ({abs(force):.1f} kg @ 200 km/h) |")
         lines.append("")
 
     # --- Other stat structs: all fields of the type, '-' for missing ---
@@ -1889,23 +2049,37 @@ def _render_part_stats(p: Part) -> str:
         lines.append("")
         lines.append(f"==== {head} ====")
         lines.append("^ Stat ^ Value ^")
-        for field, label, unit, default in fields:
+        for field, label, unit, default, present_all in fields:
             if field == '__scalar__':
                 value = sval if not isinstance(sval, dict) else None
                 if value is None or value == '':
-                    lines.append(f"| {label} | - |")
-                elif unit == '%':
-                    lines.append(f"| {label} | {_fmt_simple_value(value, '%')} |")
-                else:
-                    lines.append(f"| {label} | {_fmt_stat_value(field, value, unit)} |")
+                    if present_all:
+                        lines.append(f"| {label} | - |")
+                    # present-on-some scalar struct: omit silently
+                    continue
+                lines.append(f"| {label} | {_fmt_stat_value(field, value, unit)} |")
                 continue
             # Field present on this part -> always show its real value.
             if isinstance(sval, dict) and field in sval and sval[field] is not None and sval[field] != '':
                 value = sval[field]
+                if field == 'DefaultGearIndex' and isinstance(sval.get('Gears'), list):
+                    # The "default gear" is the gear whose name equals the index.
+                    name = str(value)
+                    for g in sval['Gears']:
+                        if str(g.get('Name')) == name:
+                            value = g['Name']
+                            break
                 lines.append(f"| {label} | {_fmt_stat_value(field, value, unit)} |")
             # Field absent -> the part uses the game's default for it.
+            elif not present_all:
+                # Only some parts of this type carry the field (e.g. engine
+                # CoolingEfficiency); a part without it uses the editor default,
+                # so omit the row rather than showing a fabricated value.
+                continue
             elif unit == '%':
                 lines.append(f"| {label} | 100% |")
+            elif unit == '±':
+                lines.append(f"| {label} | ±0% |")
             else:
                 lines.append(f"| {label} | - |")
     return '\n'.join(lines)
@@ -1915,13 +2089,20 @@ def _fmt_stat_value(field: str, value, unit: str) -> str:
     """Format a single stat value based on its type (vector/list/scalar)."""
     mult = _STAT_MULT.get(field, 1)
     if isinstance(value, dict):
+        if unit == 'vec':
+            return _fmt_vec_dims(value)
+        if unit == 'rm':
+            return _fmt_rng(value)
         body = _fmt_vec(value)
+        if body == '0, 0, 0':
+            return '—'
         return f"{body} {unit}".rstrip() if unit else body
     if isinstance(value, list):
         return _fmt_list(value)
-    if isinstance(value, str) and (field in _STAT_BOOL_FIELDS or '::' in value):
-        # Strip enum prefix, e.g. 'EMTLSDType::ClutchPackLSD' -> 'ClutchPackLSD'
-        return value.rsplit('::', 1)[-1]
+    if isinstance(value, str):
+        if value in _ENUM_HUMANIZE_OVERRIDE or '::' in value or field in _STAT_BOOL_FIELDS:
+            return _humanize_enum(value)
+        return value
     if isinstance(value, (int, float)) and mult != 1:
         value = value * mult
     return _fmt_simple_value(value, unit)
