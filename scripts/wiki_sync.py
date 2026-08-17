@@ -63,6 +63,9 @@ class Part:
     slots: list = field(default_factory=list)
     # tuning stats: {struct_type: {field: value}}
     stats: dict = field(default_factory=dict)
+    # Reference-extractor name dict: {locale_tag: translated_name}. When present
+    # (from ref_parts.json) it is authoritative over DB name/locres data.
+    names: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -254,13 +257,19 @@ def _parse_hp_from_id(engine_id: str) -> int:
     return int(m.group(1)) if m else 0
 
 
-def load_vehicles(conn: sqlite3.Connection) -> list[Vehicle]:
-    """Load all vehicles from DB."""
+def load_vehicles(conn: sqlite3.Connection, include_hidden: bool = False) -> list[Vehicle]:
+    """Load vehicles from DB. Hidden vehicles are skipped unless include_hidden.
+
+    The installable-parts sub-page should exist for every vehicle that has a
+    wiki page, including hidden ones (trailers, karts, etc.), so sync uses
+    include_hidden=True when generating those sub-pages.
+    """
     cursor = conn.cursor()
     inner = conn.cursor()  # Separate cursor for sub-queries
     vehicles = []
 
-    for row in cursor.execute("""
+    hidden_clause = "WHERE 1=1" if include_hidden else "WHERE v.is_hidden = 0 OR v.is_hidden IS NULL"
+    for row in cursor.execute(f"""
         SELECT v.id, v.name, v.vehicle_type, v.truck_class, v.cost, v.comport,
                v.is_hidden, v.is_disabled,
                COALESCE(vw.chassis_mass_kg, 0) as chassis_mass_kg,
@@ -269,9 +278,9 @@ def load_vehicles(conn: sqlite3.Connection) -> list[Vehicle]:
                v.delivery_payment_multiplier, v.delivery_base_payment
         FROM vehicles v
         LEFT JOIN vehicle_weights vw ON v.id = vw.vehicle_id
-        WHERE v.is_hidden = 0 OR v.is_hidden IS NULL
+        {hidden_clause}
         ORDER BY v.vehicle_type, v.name
-    """):
+""",):
         v = Vehicle(
             id=row[0], name=row[1] or row[0], vehicle_type=row[2] or '',
             truck_class=row[3] or '', cost=row[4] or 0, comport=row[5] or 0,
@@ -292,6 +301,24 @@ def load_vehicles(conn: sqlite3.Connection) -> list[Vehicle]:
             ORDER BY dp.slot
         """, (v.id,)):
             v.default_parts.append((part_row[0], part_row[1]))
+
+        # Overlay reference-extractor default parts when available: out_vehicle.json
+        # gives the correct granular part key per slot (e.g. BasicTire_65 rather
+        # than the DB's merged BasicTire). This fixes broken links and the DB's
+        # duplicated-row bug. Only applied for vehicles matched by internal key.
+        _load_ref_data()
+        ref_vparts = _REF_VEHICLES.get(v.id, {}).get('parts')
+        if ref_vparts:
+            v.default_parts = list(ref_vparts.items())
+        else:
+            # Deduplicate the DB's doubled rows for non-matched vehicles.
+            seen = set()
+            dedup = []
+            for slot, pid in v.default_parts:
+                if (slot, pid) not in seen:
+                    seen.add((slot, pid))
+                    dedup.append((slot, pid))
+            v.default_parts = dedup
 
         # Calculate total weight from parts
         parts_mass = inner.execute("""
@@ -508,9 +535,83 @@ def _part_localized_langs(locres_key: Optional[str]) -> list[tuple[str, str]]:
 
 
 def _part_show_name(part_id: str, locres_key: Optional[str]) -> str:
-    """Best display name: real localized English name when available, else humanized key."""
+    """Display name: real localized English name when the game has one, else the
+    raw row key. NEVER invents/humanizes a name — parts without a locres entry
+    are shown by their internal key (matching the reference extractor), because
+    we cannot know what the game displays for them and must not fabricate it.
+    """
     localized = _part_localized(locres_key)
-    return localized if localized else _part_display_name(part_id)
+    return localized if localized else part_id
+
+
+# --- Reference extractor data (authoritative) ---
+_REF_DIR = Path(__file__).resolve().parent.parent
+_REF_PARTS: dict = {}     # part key -> {type,name,cost,massKg,restrict,stats}
+_REF_VEHICLES: dict = {}  # vehicle key -> {name,type,...,parts:{slot:key}}
+
+_ref_loaded = False
+
+
+def _load_ref_data() -> None:
+    """Load the reference extractor's ref_parts.json + out_vehicle.json once.
+
+    When present, these are the authoritative source for part names (real,
+    translated display names), costs, masses, per-part stats and vehicle
+    default-part mappings. DB-derived names/locres are only a fallback.
+    """
+    global _ref_loaded, _REF_PARTS, _REF_VEHICLES
+    if _ref_loaded:
+        return
+    _ref_loaded = True
+    for fname, store in (("ref_parts.json", _REF_PARTS),
+                         ("out_vehicle.json", _REF_VEHICLES)):
+        store.clear()
+        p = _REF_DIR / fname
+        if not p.exists():
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except Exception as e:
+            print(f"  WARN: could not load {fname}: {e}")
+            continue
+        if fname == "ref_parts.json":
+            store.update(data.get("parts", {}))
+        else:
+            store.update(data)
+
+
+def _ref_part_names(part_key: str) -> dict:
+    """The reference name dict {locale: name} for a part key, or {} if absent."""
+    _load_ref_data()
+    return _REF_PARTS.get(part_key, {}).get("name", {}) or {}
+
+
+def _ref_part_en(part_key: str) -> Optional[str]:
+    """Real English display name from the reference catalog, else None."""
+    names = _ref_part_names(part_key)
+    en = names.get("en")
+    return en if en else None
+
+
+def _part_ref_localized_langs(part_key: str) -> list[tuple[str, str]]:
+    """[(language_label, name)] for all languages with a real translation,
+    from the reference catalog. English first. Empty if the reference has no
+    data for this part.
+    """
+    names = _ref_part_names(part_key)
+    if not names:
+        return []
+    en = names.get("en")
+    if not en:
+        return []
+    out = [("English", en)]
+    for tag in _LOCALE_ORDER:
+        if tag == "en":
+            continue
+        v = names.get(tag)
+        if v and v != en:
+            out.append((_LOCALE_NAME.get(tag, tag), v))
+    return out
 
 
 def _json_load(s) -> list:
@@ -524,14 +625,51 @@ def _json_load(s) -> list:
 
 
 def load_parts(conn: sqlite3.Connection) -> list[Part]:
-    """Load all vehicle parts plus their non-default tuning stats and install restrictions.
+    """Load all vehicle parts.
 
-    Also populates the module-global _PART_INDEX (part_id -> Part) so vehicle
-    pages can resolve part display names / slugs and compute installable parts.
+    When the reference extractor catalog (ref_parts.json) is present it is the
+    authoritative source: it carries the game's real display names (per
+    language), true costs/masses, resolved per-part stats and vehicle
+    restriction data. DB-derived parts are only used as a fallback for any key
+    the reference does not cover, so vehicle pages can still resolve links.
+
+    Also populates the module-global _PART_INDEX (part_id -> Part).
     """
     global _PART_INDEX
+    _load_ref_data()
+    parts: list[Part] = []
+
+    if _REF_PARTS:
+        for pid, rd in _REF_PARTS.items():
+            names = rd.get('name') or {}
+            restrict = rd.get('restrict') or {}
+            vehicle_types = [
+                t.split('::')[-1] for t in (restrict.get('types') or [])
+            ]
+            truck_classes = [
+                t.split('::')[-1] for t in (restrict.get('truckClasses') or [])
+            ]
+            p = Part(
+                id=pid,
+                name=names.get('en') or pid,
+                part_type=rd.get('type') or '',
+                cost=rd.get('cost') or 0,
+                mass_kg=rd.get('massKg') or 0.0,
+                is_hidden=False,
+                names=names,
+                vehicle_types=vehicle_types,
+                truck_classes=truck_classes,
+                truck_class_include_none=bool(restrict.get('truckClassIncludeNone')),
+                override_vehicle_keys=restrict.get('overrideKeys') or [],
+            )
+            p.stats = rd.get('stats') or {}
+            parts.append(p)
+        by_id = {p.id: p for p in parts}
+        _PART_INDEX = by_id
+        return parts
+
+    # --- Fallback: DB-driven parts (no reference catalog present) ---
     cursor = conn.cursor()
-    parts = []
     for row in cursor.execute("""
         SELECT id, name, part_type, cost, mass_kg, is_hidden,
                truck_classes, truck_class_include_none, vehicle_keys,
@@ -819,8 +957,13 @@ def generate_vehicle_heading(v: Vehicle) -> str:
     return f"====== {v.name} ======\n**{v.name}** is a {type_desc} vehicle in [[:motor_town|Motor Town]]"
 
 
-def generate_vehicle_specs(v: Vehicle) -> str:
-    """Generate the specifications section."""
+def generate_vehicle_specs(v: Vehicle, slug: str = '') -> str:
+    """Generate the specifications section.
+
+    slug: the vehicle's wiki page slug. When provided, an "Installable Parts"
+    section links to the per-vehicle sub-page (Wikipedia style — the main page
+    holds only the link, the full list lives on `vehicles:<slug>:installable_parts`).
+    """
     lines = ["===== Specifications ====="]
 
     # Key stats table
@@ -830,14 +973,14 @@ def generate_vehicle_specs(v: Vehicle) -> str:
     if v.engine_id:
         hp_str = f" ({v.engine_hp} HP)" if v.engine_hp else ""
         ep = _PART_INDEX.get(v.engine_id)
-        edisp = ep.name if ep else _part_display_name(v.engine_id)
+        edisp = ep.name if ep else v.engine_id
         lines.append(f"| Engine | [[parts:{_part_slug(v.engine_id)}|{edisp}]]{hp_str} |")
 
     # Transmission
     transmission = next((pid for slot, pid in v.default_parts if slot == 'Transmission'), None)
     if transmission:
         tp = _PART_INDEX.get(transmission)
-        tdisp = tp.name if tp else _part_display_name(transmission)
+        tdisp = tp.name if tp else transmission
         lines.append(f"| Transmission | [[parts:{_part_slug(transmission)}|{tdisp}]] |")
 
     # Drivetrain
@@ -917,24 +1060,22 @@ def generate_vehicle_specs(v: Vehicle) -> str:
         for base, part_id, count in grouped:
             count_str = f" (×{count})" if count > 1 else ""
             pp = _PART_INDEX.get(part_id)
-            disp = pp.name if pp else _part_display_name(part_id)
+            disp = pp.name if pp else part_id
             mass = _fmt_weight(pp.mass_kg) if (pp and pp.mass_kg) else "—"
             lines.append(f"| {base} | [[parts:{_part_slug(part_id)}|{disp}]]{count_str} | {mass} |")
 
-    # Installable Parts (aggregate computed from part-side vehicle restrictions)
-    installable = _installable_for_vehicle(v)
-    if installable:
+    # Installable Parts — Wikipedia style: the main page holds only a link to
+    # the per-vehicle sub-page which lists every compatible part grouped by
+    # type. Requires the slug to build the link; without it (e.g. a bare
+    # spec-only render) we emit a plain heading.
+    if slug:
         lines.append("")
-        lines.append(f"===== Installable Parts ({sum(len(x) for x in installable.values())}) =====")
-        for type_name in sorted(installable.keys()):
-            plist = installable[type_name]
-            lines.append(f"==== {type_name} ({len(plist)}) ====")
-            cap = 40
-            for pp in plist[:cap]:
-                lines.append(f"  * [[parts:{_part_slug(pp.id)}|{pp.name}]]")
-            if len(plist) > cap:
-                lines.append(f"  * … and {len(plist) - cap} more")
+        lines.append("===== Installable Parts =====")
         lines.append("")
+        lines.append(f"See [[vehicles:{slug}:installable_parts|Installable parts for {v.name}]].")
+    else:
+        lines.append("")
+        lines.append("===== Installable Parts =====")
 
     return '\n'.join(lines)
 
@@ -981,6 +1122,47 @@ def _installable_for_vehicle(v) -> dict[str, list]:
     for tn in result:
         result[tn].sort(key=lambda x: _natural_part_key(x.id))
     return result
+
+
+def generate_installable_parts_page(v: Vehicle, slug: str = '') -> str:
+    """Generate the per-vehicle "Installable Parts" sub-page.
+
+    This is a full standalone page at `vehicles:<slug>:installable_parts`
+    listing every part compatible with vehicle v, grouped by part type, with a
+    link back to the parent vehicle page (Wikipedia style).
+    """
+    installable = _installable_for_vehicle(v)
+    total = sum(len(x) for x in installable.values())
+
+    lines = [
+        f"====== Installable Parts for {v.name} ======",
+        "",
+        f"All vehicle parts that can be installed on the **{v.name}** "
+        f"({len(installable)} part types, {total} parts in total).",
+        "",
+        f"Return to [[vehicles:{slug}|{v.name}]].",
+        "",
+    ]
+
+    for type_name in sorted(installable.keys()):
+        plist = installable[type_name]
+        lines.append(f"===== {type_name} ({len(plist)}) =====")
+        lines.append("")
+        lines.append("^ Part ^ Cost ^ Mass ^")
+        for pp in plist:
+            mass = _fmt_weight(pp.mass_kg) if pp.mass_kg else '—'
+            lines.append(f"| [[parts:{_part_slug(pp.id)}|{pp.name}]] | {_fmt_cost(pp.cost)} | {mass} |")
+        lines.append("")
+
+    if not installable:
+        lines.append("No installable parts found for this vehicle.")
+        lines.append("")
+
+    # User placeholder consistent with other pages
+    lines.append("===== Notes =====")
+    lines.append("")
+
+    return '\n'.join(lines).rstrip() + '\n'
 
 
 def generate_cargo_page(c: Cargo) -> str:
@@ -1142,16 +1324,19 @@ def generate_part_page(p: Part) -> str:
     parts.append(f"**{p.name}** is {article} {type_lower} part for vehicles in [[:motor_town|Motor Town]].")
     parts.append("")
 
-    # In other languages (real localized names from Game.locres; only when a
-    # translation exists — parts without a locres entry show the same
-    # auto-generated English name in every language).
-    i18n = _part_localized_langs(p.locres_key)
-    if i18n:
-        i18n_lines = ["===== In other languages =====", "^ Language ^ Name ^"]
-        for label, name in i18n:
+    # In other languages (real translations from the reference catalog).
+    # Always rendered: the reference gives us the game's actual per-language
+    # names, so we can state truthfully when a part has none.
+    i18n_lines = ["===== In other languages =====", "^ Language ^ Name ^"]
+    i18n_rows = _part_ref_localized_langs(p.id)
+    if i18n_rows:
+        for label, name in i18n_rows:
             i18n_lines.append(f"| {label} | {name} |")
-        parts.append('\n'.join(i18n_lines))
-        parts.append("")
+    else:
+        i18n_lines.append(f"| English | {p.name} |")
+        i18n_lines.append("| _(no other translations available)_ | _— n/a_ |")
+    parts.append('\n'.join(i18n_lines))
+    parts.append("")
 
     # Specs
     specs = [
@@ -1165,17 +1350,19 @@ def generate_part_page(p: Part) -> str:
     parts.append('\n'.join(specs))
     parts.append("")
 
-    # Stats (tuning)
+    # Stats (real tuning values from the reference catalog)
     if p.stats:
         stat_lines = ["===== Stats ====="]
         for struct in sorted(p.stats.keys()):
-            head = _part_type_name(struct)
-            if head == 'Unknown':
-                head = struct
+            head = _stat_struct_name(struct)
             stat_lines.append(f"==== {head} ====")
             stat_lines.append("^ Parameter ^ Value ^")
-            for field, value in sorted(p.stats[struct].items()):
-                stat_lines.append(f"| {_display_field(field)} | {_display_value(value)} |")
+            sval = p.stats[struct]
+            if isinstance(sval, dict):
+                for field, value in sorted(sval.items()):
+                    stat_lines.append(f"| {_display_field(field)} | {_display_value(value)} |")
+            else:
+                stat_lines.append(f"| — | {_display_value(sval)} |")
         parts.append('\n'.join(stat_lines))
         parts.append("")
 
@@ -1191,12 +1378,41 @@ def _display_field(field: str) -> str:
     return re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', field).replace('_', ' ').strip() or field
 
 
+# Stat struct (physics data) display names from the reference catalog.
+_STAT_STRUCT_NAME = {
+    'engine': 'Engine Physics', 'tire': 'Tire Physics', 'lsd': 'LSD',
+    'transmission': 'Transmission Physics', 'Aero': 'Aero', 'AeroLift': 'Aero Lift',
+    'AirDragMultiplier': 'Air Drag', 'AngleKit': 'Angle Kit',
+    'AntiRollBar': 'Anti-Roll Bar', 'BrakeBalance': 'Brake Balance',
+    'BrakePad': 'Brake Pad', 'BrakePower': 'Brake Power', 'CargoBed': 'Cargo Bed',
+    'CoolantRadiator': 'Coolant Radiator', 'FinalDriveRatio': 'Final Drive Ratio',
+    'FrontAeroLift': 'Front Aero Lift', 'FrontDamageMultiplier': 'Front Damage',
+    'FuelTank': 'Fuel Tank', 'Headlight': 'Headlight', 'Intake': 'Intake',
+    'ItemInventory': 'Inventory', 'RearAeroLift': 'Rear Aero Lift',
+    'RoofRack': 'Roof Rack', 'SuspensionDamper': 'Suspension Damper',
+    'SuspensionRideHeight': 'Suspension Ride Height', 'SuspensionSpring': 'Suspension Spring',
+    'Taxi': 'Taxi', 'Tire': 'Tire', 'TrailerAirDragMultiplier': 'Trailer Air Drag',
+    'TrailerHitch': 'Trailer Hitch', 'Turbocharger': 'Turbocharger',
+    'Wheel': 'Wheel', 'WheelSpacer': 'Wheel Spacer', 'Winch': 'Winch',
+}
+
+
+def _stat_struct_name(struct: str) -> str:
+    """Human-readable name for a stats struct key from the reference catalog."""
+    if struct in _STAT_STRUCT_NAME:
+        return _STAT_STRUCT_NAME[struct]
+    return _display_field(struct) or struct
+
+
 def _display_value(value) -> str:
-    """Format a stat value for the wiki."""
+    """Format a stat value for the wiki. Handles the reference catalog's
+    nested structures (dicts, lists/dicts of objects) as JSON."""
     if isinstance(value, float):
         if value == int(value):
             return str(int(value))
         return f"{value:.2f}".rstrip('0').rstrip('.')
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
     return str(value)
 
 
@@ -1311,12 +1527,13 @@ def generate_cargo_index(cargos: list[Cargo]) -> str:
 def merge_vehicle_page(
     existing_text: str | None,
     vehicle: Vehicle,
+    slug: str = '',
 ) -> str:
     """Merge system-generated content with existing user content for a vehicle page."""
 
     if existing_text is None:
         # Brand new page — generate with placeholders
-        return _build_fresh_vehicle_page(vehicle)
+        return _build_fresh_vehicle_page(vehicle, slug)
 
     sections = parse_page(existing_text)
 
@@ -1345,7 +1562,7 @@ def merge_vehicle_page(
             parts.append("")
 
     # 4. Specs (regenerated)
-    parts.append(generate_vehicle_specs(vehicle))
+    parts.append(generate_vehicle_specs(vehicle, slug))
     parts.append("")
 
     # 5. Axle section (preserved from existing)
@@ -1367,7 +1584,7 @@ def merge_vehicle_page(
     return result.rstrip() + '\n'
 
 
-def _build_fresh_vehicle_page(vehicle: Vehicle) -> str:
+def _build_fresh_vehicle_page(vehicle: Vehicle, slug: str = '') -> str:
     """Build a brand new vehicle page with placeholders."""
     parts = []
 
@@ -1375,7 +1592,7 @@ def _build_fresh_vehicle_page(vehicle: Vehicle) -> str:
     parts.append("")
     parts.append(generate_vehicle_heading(vehicle))
     parts.append("")
-    parts.append(generate_vehicle_specs(vehicle))
+    parts.append(generate_vehicle_specs(vehicle, slug))
     parts.append("")
     parts.append("===== Overview =====")
     parts.append("")
@@ -1398,7 +1615,7 @@ def sync_vehicles(
     vehicle_filter: str | None = None,
 ) -> dict:
     """Sync all vehicle pages. Returns stats dict."""
-    vehicles = load_vehicles(conn)
+    vehicles = load_vehicles(conn, include_hidden=True)
     vehicles_dir = wiki_dir / 'vehicles'
 
     # Resolve display names from wiki for vehicles with bad DB names
@@ -1417,6 +1634,25 @@ def sync_vehicles(
             continue
 
         slug = slug_map.get(v.id, _name_to_slug(v.name))
+
+        # The Wikipedia-style Installable Parts sub-page exists for every vehicle,
+        # including hidden ones (trailers, karts, etc.).
+        sub_slug = "installable_parts"
+        sub_path = vehicles_dir / slug / f"{sub_slug}.txt"
+        sub_text = generate_installable_parts_page(v, slug)
+        sub_existing = sub_path.read_text(encoding='utf-8') if sub_path.exists() else None
+        if sub_existing != sub_text:
+            if dry_run:
+                print(f"  {'CREATE' if sub_existing is None else 'UPDATE'}: vehicles/{slug}/{sub_slug}.txt")
+            else:
+                sub_path.parent.mkdir(parents=True, exist_ok=True)
+                sub_path.write_text(sub_text, encoding='utf-8')
+                print(f"  {'CREATE' if sub_existing is None else 'UPDATE'}: vehicles/{slug}/{sub_slug}.txt")
+
+        # Hidden vehicles don't get their main page rewritten (only the sub-page).
+        if v.is_hidden:
+            continue
+
         page_path = vehicles_dir / f"{slug}.txt"
 
         existing_text = None
@@ -1424,7 +1660,7 @@ def sync_vehicles(
             existing_text = page_path.read_text(encoding='utf-8')
 
         try:
-            new_text = merge_vehicle_page(existing_text, v)
+            new_text = merge_vehicle_page(existing_text, v, slug)
         except Exception as e:
             print(f"  ERROR: {v.id}: {e}")
             stats['errors'] += 1
@@ -1604,6 +1840,21 @@ def sync_parts(
         else:
             page_path.write_text(new_text, encoding='utf-8')
             print(f"  {action}: parts/{slug}.txt")
+
+    # Remove orphaned part pages: pages in parts/ whose slug no longer maps to a
+    # part in the authoritative catalog. When a part_filter is set we skip
+    # cleanup (single-part inspection runs shouldn't delete siblings).
+    if not part_filter and parts_dir.exists():
+        valid_slugs = {_part_slug(p.id) for p in parts if not part_filter or p.id == part_filter}
+        for page in parts_dir.glob('*.txt'):
+            slug = page.stem
+            if slug not in valid_slugs:
+                stats['removed'] = stats.get('removed', 0) + 1
+                if dry_run:
+                    print(f"  REMOVE: parts/{page.name}")
+                else:
+                    page.unlink()
+                    print(f"  REMOVE: parts/{page.name}")
 
     return stats
 
