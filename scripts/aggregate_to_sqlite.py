@@ -91,7 +91,12 @@ def create_schema(conn: sqlite3.Connection):
             lsd_asset_path TEXT,
             final_drive_ratio REAL,
             is_hidden BOOLEAN,
-            source_file TEXT
+            source_file TEXT,
+            truck_classes TEXT,
+            truck_class_include_none INTEGER,
+            vehicle_keys TEXT,
+            override_vehicle_keys TEXT,
+            slots TEXT
         )
     """)
     
@@ -423,10 +428,16 @@ def process_vehicle_parts(conn: sqlite3.Connection, json_files: List[Path]):
         
         for row in data["Data"]["Rows"]:
             part_id = row["RowName"]
-            
+
+            # JSON-encode list restrictions (strip enum prefixes, drop empties)
+            def _json_list(keys: list) -> Optional[str]:
+                if not keys:
+                    return None
+                return json.dumps([strip_enum(k) for k in keys])
+
             # Extract basic fields
             cursor.execute("""
-                INSERT OR REPLACE INTO vehicle_parts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO vehicle_parts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 part_id,
                 row.get("Name"),
@@ -439,7 +450,13 @@ def process_vehicle_parts(conn: sqlite3.Connection, json_files: List[Path]):
                 get_object_path(row.get("LSDAsset")),
                 row.get("FinalDriveRatio"),
                 row.get("bIsHidden"),
-                json_file.name
+                json_file.name,
+                # Vehicle-side installation restrictions
+                _json_list(row.get("TruckClasses") or []),
+                1 if row.get("bTruckClassIncludeNone") else 0,
+                _json_list(row.get("VehicleKeys") or []),
+                _json_list(row.get("OverrideAllowedVehicleKeys") or []),
+                _json_list(row.get("Slots") or []),
             ))
             
             # Extract compatible vehicle types
