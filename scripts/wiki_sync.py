@@ -1360,7 +1360,8 @@ def generate_part_page(p: Part) -> str:
             sval = p.stats[struct]
             if isinstance(sval, dict):
                 for field, value in sorted(sval.items()):
-                    stat_lines.append(f"| {_display_field(field)} | {_display_value(value)} |")
+                    dlabel, dvalue = _display_stat(field, value)
+                    stat_lines.append(f"| {dlabel} | {dvalue} |")
             else:
                 stat_lines.append(f"| — | {_display_value(sval)} |")
         parts.append('\n'.join(stat_lines))
@@ -1376,6 +1377,41 @@ def generate_part_page(p: Part) -> str:
 def _display_field(field: str) -> str:
     """Humanize a stat field name: 'MaxTorque' -> 'Max Torque'."""
     return re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', field).replace('_', ' ').strip() or field
+
+
+# Stat-field units from the reference catalog. Each entry maps a field name to
+# (display_label, multiplier, unit). The multiplier converts the raw numeric
+# value to the displayed unit; the label is the humanized parameter name.
+# Only fields whose unit is unambiguous from the game data are listed — others
+# render without a unit rather than guess.
+_STAT_UNIT = {
+    # (stat_field) : (label, multiplier, unit)
+    'AngleIncreaseInDegree': ('Angle Increase', 1, 'deg'),
+    'RideHeightChange': ('Ride Height Change', 1, 'cm'),
+    'CoolantWaterInLiter': ('Coolant Water', 1, 'L'),
+    'FuelLiter': ('Fuel Capacity', 1, 'L'),
+    'MaxForceKg': ('Max Force', 1, 'kg'),
+    'MaxWeightKg': ('Max Weight', 1, 'kg'),
+    'TurbineWeight': ('Turbine Weight', 1, 'kg'),
+    'MaxLength': ('Max Length', 1, 'cm'),
+    'ShiftTimeSeconds': ('Shift Time', 1, 's'),
+    'TorqueConvertorStallRPM': ('Torque Converter Stall RPM', 1, 'rpm'),
+    'MaxRPM': ('Max RPM', 1, 'rpm'),
+    'Space': ('Spacer Width', 10, 'mm'),  # raw in cm, displayed in mm
+    'DumpVolume': ('Dump Volume', 1, 'kL'),
+}
+
+
+def _display_stat(field: str, value):
+    """Return (display_label, display_value) for a stat field, applying the
+    field's unit when known (e.g. AngleIncreaseInDegree -> 'Angle Increase',
+    '10 deg'). Non-numeric values fall back to no-unit rendering."""
+    info = _STAT_UNIT.get(field)
+    if info is not None and isinstance(value, (int, float)):
+        label, mult, unit = info
+        scaled = value * mult
+        return label, f"{_display_value(scaled)} {unit}"
+    return _display_field(field), _display_value(value)
 
 
 # Stat struct (physics data) display names from the reference catalog.
