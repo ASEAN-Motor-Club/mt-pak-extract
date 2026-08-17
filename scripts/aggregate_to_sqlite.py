@@ -19,9 +19,18 @@ def strip_enum(value: str) -> str:
 
 
 def get_object_path(obj: Any) -> Optional[str]:
-    """Extract path from object reference."""
+    """Extract path from object reference.
+
+    Handles two parse output formats:
+    - dict form (pre-0.7.19): {"Type": "Import"/"Export", "Path": "/Game/.../X_C"}
+    - bare string form (0.7.19+): "X_C"  (UAssetTool emits the class name only)
+    Both are used downstream via split("/")[-1] to derive the blueprint name,
+    so returning the string as-is is sufficient.
+    """
     if isinstance(obj, dict) and obj.get("Type") in ("Import", "Export"):
         return obj.get("Path") or obj.get("ObjectName")
+    if isinstance(obj, str) and obj:
+        return obj
     return None
 
 
@@ -793,8 +802,9 @@ def process_cargo_weights(conn: sqlite3.Connection, json_files: List[Path]):
         if actor_path:
             # Extract blueprint name from path
             # e.g., /Game/Objects/Mission/Delivery/BottleBox/BottleBox_C -> BottleBox
+            # (0.7.19+ parse emits bare class name "BottleBox_C", split gives 1 part)
             parts = actor_path.split("/")
-            if len(parts) >= 2:
+            if parts:
                 blueprint_name = parts[-1].replace("_C", "")
                 cargo_blueprint_map[cargo_id] = blueprint_name
     
@@ -939,8 +949,9 @@ def process_vehicle_cargo_space(conn: sqlite3.Connection, json_files: List[Path]
     for row in cursor.execute("SELECT id, blueprint_path FROM vehicles WHERE blueprint_path IS NOT NULL"):
         vehicle_id, blueprint_path = row
         if blueprint_path:
+            # (0.7.19+ parse emits bare class name "Bongo_C", split gives 1 part)
             parts = blueprint_path.split("/")
-            if len(parts) >= 2:
+            if parts:
                 blueprint_name = parts[-1].replace("_C", "")
                 vehicle_blueprint_map[vehicle_id] = blueprint_name
     
@@ -1043,8 +1054,9 @@ def process_vehicle_weights(conn: sqlite3.Connection, json_files: List[Path]):
         if blueprint_path:
             # Extract blueprint name from path
             # e.g., /Game/Cars/Models/Tuscan/Tuscan/Tuscan_C -> Tuscan
+            # (0.7.19+ parse emits bare class name "Tuscan_C", split gives 1 part)
             parts = blueprint_path.split("/")
-            if len(parts) >= 2:
+            if parts:
                 # Last part before _C is the blueprint name
                 blueprint_name = parts[-1].replace("_C", "")
                 vehicle_blueprint_map[vehicle_id] = blueprint_name
