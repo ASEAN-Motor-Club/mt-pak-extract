@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -50,6 +51,16 @@ class Part:
     cost: int
     mass_kg: float
     is_hidden: bool
+    # Localization: the raw `name` column value (a locres key GUID, or a short
+    # key like 'Stock'/'Stage1'/`X_Name`, or None for parts with no locres entry).
+    locres_key: Optional[str] = None
+    # Vehicle-side install restrictions (part fits these vehicles).
+    vehicle_types: list = field(default_factory=list)   # stripped enum values
+    truck_classes: list = field(default_factory=list)
+    truck_class_include_none: bool = False
+    vehicle_keys: list = field(default_factory=list)
+    override_vehicle_keys: list = field(default_factory=list)
+    slots: list = field(default_factory=list)
     # tuning stats: {struct_type: {field: value}}
     stats: dict = field(default_factory=dict)
 
@@ -436,26 +447,123 @@ def _part_display_name(part_id: str) -> str:
     return name or part_id
 
 
+# --- Localization (Game.locres) ---
+_LOCRES_CACHE: Optional[dict] = None
+_PART_INDEX: dict = {}  # part_id -> Part, populated by load_parts()
+
+
+def _load_locres() -> dict:
+    global _LOCRES_CACHE
+    if _LOCRES_CACHE is None:
+        p = Path(__file__).resolve().parent.parent / "locres_map.json"
+        try:
+            _LOCRES_CACHE = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        except Exception:
+            _LOCRES_CACHE = {}
+    return _LOCRES_CACHE
+
+
+_LOCALE_NAME = {
+    "en": "English", "de": "Deutsch", "fr": "Français", "es-ES": "Español",
+    "it": "Italiano", "ja": "日本語", "ko": "한국어", "pt-BR": "Português (BR)",
+    "ru": "Русский", "zh-Hans": "简体中文", "zh-Hant": "繁體中文", "pl": "Polski",
+    "tr": "Türkçe", "cs": "Čeština", "vi": "Tiếng Việt", "nl": "Nederlands",
+    "sv": "Svenska", "no": "Norsk", "fi": "Suomi", "hu": "Magyar",
+    "lt": "Lietuvių", "uk": "Українська", "es-419": "Español (LATAM)",
+}
+_LOCALE_ORDER = ["en", "de", "fr", "es-ES", "it", "ja", "ko", "pt-BR", "ru",
+                 "zh-Hans", "zh-Hant", "pl", "tr", "cs", "vi", "nl", "sv",
+                 "no", "fi", "hu", "lt", "uk", "es-419"]
+
+
+def _part_localized(locres_key: Optional[str]) -> Optional[str]:
+    """English localized name for a part's locres key, or None if absent."""
+    if not locres_key:
+        return None
+    vp = _load_locres().get("en", {}).get("VehicleParts", {})
+    return vp.get(locres_key)
+
+
+def _part_localized_langs(locres_key: Optional[str]) -> list[tuple[str, str]]:
+    """[(language_label, localized_name)] for languages differing from English.
+
+    English is always first. Empty if the part has no locres entry (those parts
+    show the same auto-generated English name in every language).
+    """
+    if not locres_key:
+        return []
+    data = _load_locres()
+    en_vp = data.get("en", {}).get("VehicleParts", {})
+    base = en_vp.get(locres_key)
+    if not base:
+        return []
+    out = [("English", base)]
+    for tag in _LOCALE_ORDER:
+        if tag == "en":
+            continue
+        v = data.get(tag, {}).get("VehicleParts", {}).get(locres_key)
+        if v and v != base:
+            out.append((_LOCALE_NAME.get(tag, tag), v))
+    return out
+
+
+def _part_show_name(part_id: str, locres_key: Optional[str]) -> str:
+    """Best display name: real localized English name when available, else humanized key."""
+    localized = _part_localized(locres_key)
+    return localized if localized else _part_display_name(part_id)
+
+
+def _json_load(s) -> list:
+    if not s:
+        return []
+    try:
+        v = json.loads(s)
+        return v if isinstance(v, list) else []
+    except Exception:
+        return []
+
+
 def load_parts(conn: sqlite3.Connection) -> list[Part]:
-    """Load all vehicle parts plus their non-default tuning stats."""
+    """Load all vehicle parts plus their non-default tuning stats and install restrictions.
+
+    Also populates the module-global _PART_INDEX (part_id -> Part) so vehicle
+    pages can resolve part display names / slugs and compute installable parts.
+    """
+    global _PART_INDEX
     cursor = conn.cursor()
     parts = []
     for row in cursor.execute("""
-        SELECT id, name, part_type, cost, mass_kg, is_hidden
+        SELECT id, name, part_type, cost, mass_kg, is_hidden,
+               truck_classes, truck_class_include_none, vehicle_keys,
+               override_vehicle_keys, slots
         FROM vehicle_parts
         WHERE is_hidden = 0 OR is_hidden IS NULL
         ORDER BY part_type, id
     """):
+        pid = row[0]
+        locres_key = row[1] or None
         p = Part(
-            id=row[0],
-            name=_part_display_name(row[0]),
+            id=pid,
+            name=_part_show_name(pid, locres_key),
+            locres_key=locres_key,
             part_type=row[2] or '',
             cost=row[3] or 0,
             mass_kg=row[4] or 0.0,
             is_hidden=bool(row[5]),
+            truck_classes=_json_load(row[6]),
+            truck_class_include_none=bool(row[7]),
+            vehicle_keys=_json_load(row[8]),
+            override_vehicle_keys=_json_load(row[9]),
+            slots=_json_load(row[10]),
         )
-        p.stats = load_part_stats(conn, p.id)
+        p.stats = load_part_stats(conn, pid)
         parts.append(p)
+
+    by_id = {p.id: p for p in parts}
+    for pid, vtype in cursor.execute("SELECT part_id, vehicle_type FROM part_compatible_types"):
+        if pid in by_id:
+            by_id[pid].vehicle_types.append(vtype)
+    _PART_INDEX = by_id
     return parts
 
 
@@ -721,12 +829,16 @@ def generate_vehicle_specs(v: Vehicle) -> str:
     # Engine
     if v.engine_id:
         hp_str = f" ({v.engine_hp} HP)" if v.engine_hp else ""
-        lines.append(f"| Engine | {v.engine_id}{hp_str} |")
+        ep = _PART_INDEX.get(v.engine_id)
+        edisp = ep.name if ep else _part_display_name(v.engine_id)
+        lines.append(f"| Engine | [[parts:{_part_slug(v.engine_id)}|{edisp}]]{hp_str} |")
 
     # Transmission
     transmission = next((pid for slot, pid in v.default_parts if slot == 'Transmission'), None)
     if transmission:
-        lines.append(f"| Transmission | {transmission} |")
+        tp = _PART_INDEX.get(transmission)
+        tdisp = tp.name if tp else _part_display_name(transmission)
+        lines.append(f"| Transmission | [[parts:{_part_slug(transmission)}|{tdisp}]] |")
 
     # Drivetrain
     drivetrain = _get_drivetrain(v.default_parts)
@@ -801,12 +913,74 @@ def generate_vehicle_specs(v: Vehicle) -> str:
     if grouped:
         lines.append("")
         lines.append("===== Default Parts =====")
-        lines.append("^ Slot ^ Part ^")
+        lines.append("^ Slot ^ Part ^ Mass ^")
         for base, part_id, count in grouped:
             count_str = f" (×{count})" if count > 1 else ""
-            lines.append(f"| {base} | [[parts:{_part_slug(part_id)}|{part_id}]]{count_str} |")
+            pp = _PART_INDEX.get(part_id)
+            disp = pp.name if pp else _part_display_name(part_id)
+            mass = _fmt_weight(pp.mass_kg) if (pp and pp.mass_kg) else "—"
+            lines.append(f"| {base} | [[parts:{_part_slug(part_id)}|{disp}]]{count_str} | {mass} |")
+
+    # Installable Parts (aggregate computed from part-side vehicle restrictions)
+    installable = _installable_for_vehicle(v)
+    if installable:
+        lines.append("")
+        lines.append(f"===== Installable Parts ({sum(len(x) for x in installable.values())}) =====")
+        for type_name in sorted(installable.keys()):
+            plist = installable[type_name]
+            lines.append(f"==== {type_name} ({len(plist)}) ====")
+            cap = 40
+            for pp in plist[:cap]:
+                lines.append(f"  * [[parts:{_part_slug(pp.id)}|{pp.name}]]")
+            if len(plist) > cap:
+                lines.append(f"  * … and {len(plist) - cap} more")
+        lines.append("")
 
     return '\n'.join(lines)
+
+
+def _part_fits(v, p: Part, veh_truck: str) -> bool:
+    """Whether part p can be installed on vehicle v (part-side restriction model)."""
+    if p.is_hidden:
+        return False
+    # OverrideAllowedVehicleKeys is an escape hatch that wins over every rule.
+    if v.id in p.override_vehicle_keys:
+        return True
+    # VehicleTypes: empty = no filter; else the vehicle's type must be present.
+    if p.vehicle_types and (v.vehicle_type or '') not in p.vehicle_types:
+        return False
+    # TruckClasses: empty = no filter; else truck_class must match (None also ok if include-none).
+    if p.truck_classes:
+        ok = veh_truck in p.truck_classes
+        if not ok and p.truck_class_include_none and veh_truck in ('', 'None'):
+            ok = True
+        if not ok:
+            return False
+    # VehicleKeys: empty = no filter; else vehicle id must be listed.
+    if p.vehicle_keys and v.id not in p.vehicle_keys:
+        return False
+    return True
+
+
+def _installable_for_vehicle(v) -> dict[str, list]:
+    """All parts installable on vehicle v, grouped by part-type display name.
+
+    Empty when _PART_INDEX is not populated (e.g. a vehicles-only sync run).
+    """
+    if not _PART_INDEX:
+        return {}
+    veh_truck = (v.truck_class or '').strip()
+    result: dict[str, list] = {}
+    for p in _PART_INDEX.values():
+        if not _part_fits(v, p, veh_truck):
+            continue
+        tn = _part_type_name(p.part_type)
+        if tn == 'Unknown':
+            tn = p.part_type or 'Other'
+        result.setdefault(tn, []).append(p)
+    for tn in result:
+        result[tn].sort(key=lambda x: x.name)
+    return result
 
 
 def generate_cargo_page(c: Cargo) -> str:
@@ -956,6 +1130,17 @@ def generate_part_page(p: Part) -> str:
     article = 'an' if type_lower[:1] in ('a', 'e', 'i', 'o', 'u') else 'a'
     parts.append(f"**{p.name}** is {article} {type_lower} part for vehicles in [[:motor_town|Motor Town]].")
     parts.append("")
+
+    # In other languages (real localized names from Game.locres; only when a
+    # translation exists — parts without a locres entry show the same
+    # auto-generated English name in every language).
+    i18n = _part_localized_langs(p.locres_key)
+    if i18n:
+        i18n_lines = ["===== In other languages =====", "^ Language ^ Name ^"]
+        for label, name in i18n:
+            i18n_lines.append(f"| {label} | {name} |")
+        parts.append('\n'.join(i18n_lines))
+        parts.append("")
 
     # Specs
     specs = [
@@ -1806,6 +1991,13 @@ def main():
     print("Building slug map from existing wiki pages...")
     slug_map, name_map = build_slug_map(wiki_dir)
     print(f"  Found {len(slug_map)} existing vehicle pages with Internal key mappings\n")
+
+    # Load the part index (localized display names + install restrictions) so
+    # vehicle pages can link parts, show Default Parts mass, and render the
+    # Installable Parts aggregate section.
+    global _PART_INDEX
+    if not _PART_INDEX:
+        _PART_INDEX = {p.id: p for p in load_parts(conn)}
 
     # Vehicles
     if args.only is None or args.only == 'vehicles':
