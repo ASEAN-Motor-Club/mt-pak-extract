@@ -61,6 +61,9 @@ class Part:
     vehicle_keys: list = field(default_factory=list)
     override_vehicle_keys: list = field(default_factory=list)
     slots: list = field(default_factory=list)
+    # Raw gameplay-tag query string from the reference catalog (e.g.
+    # 'NONE( Vehicle.EV )'). Evaluated against the vehicle's tags when set.
+    tag_query: Optional[str] = None
     # tuning stats: {struct_type: {field: value}}
     stats: dict = field(default_factory=dict)
     # Reference-extractor name dict: {locale_tag: translated_name}. When present
@@ -103,9 +106,11 @@ class Vehicle:
     # Delivery
     delivery_payment_multiplier: float = 1.0
     delivery_base_payment: int = 0
+    # Gameplay tags from the reference vehicle catalog (for tag-query eval).
+    ref_tags: list = field(default_factory=list)
+    engine_id: str = ''
     # Engine info (parsed from part name)
     engine_hp: int = 0
-    engine_id: str = ''
     # Fuel tank
     fuel_capacity_liters: float = 0.0
     # Final drive ratio
@@ -319,6 +324,10 @@ def load_vehicles(conn: sqlite3.Connection, include_hidden: bool = False) -> lis
                     seen.add((slot, pid))
                     dedup.append((slot, pid))
             v.default_parts = dedup
+
+        # Reference gameplay tags (used to evaluate parts' tag-query restrictions).
+        ref_tags = _REF_VEHICLES.get(v.id, {}).get('tags') or []
+        v.ref_tags = list(ref_tags)
 
         # Calculate total weight from parts
         parts_mass = inner.execute("""
@@ -660,7 +669,10 @@ def load_parts(conn: sqlite3.Connection) -> list[Part]:
                 vehicle_types=vehicle_types,
                 truck_classes=truck_classes,
                 truck_class_include_none=bool(restrict.get('truckClassIncludeNone')),
+                vehicle_keys=[k for k in (restrict.get('keys') or []) if k != 'None'],
                 override_vehicle_keys=restrict.get('overrideKeys') or [],
+                slots=restrict.get('slots') or [],
+                tag_query=restrict.get('tagQuery'),
             )
             p.stats = rd.get('stats') or {}
             parts.append(p)
@@ -1051,17 +1063,22 @@ def generate_vehicle_specs(v: Vehicle, slug: str = '') -> str:
         if v.delivery_base_payment:
             lines.append(f"| Base Payment | ${v.delivery_base_payment} |")
 
-    # Default Parts table
+    # Default Parts table. Mass shown is the TOTAL fitted on the vehicle
+    # (per-part mass × how many copies of that part the vehicle carries), e.g.
+    # 4 tires at 80 kg each display as "320 kg".
     grouped = _group_parts(v.default_parts)
     if grouped:
         lines.append("")
         lines.append("===== Default Parts =====")
-        lines.append("^ Slot ^ Part ^ Mass ^")
+        lines.append("^ Slot ^ Part ^ Total Mass ^")
         for base, part_id, count in grouped:
             count_str = f" (×{count})" if count > 1 else ""
             pp = _PART_INDEX.get(part_id)
-            disp = pp.name if pp else part_id
-            mass = _fmt_weight(pp.mass_kg) if (pp and pp.mass_kg) else "—"
+            disp = _part_display_name(pp) if pp else part_id
+            if pp and pp.mass_kg:
+                mass = _fmt_weight(pp.mass_kg * count)
+            else:
+                mass = "—"
             lines.append(f"| {base} | [[parts:{_part_slug(part_id)}|{disp}]]{count_str} | {mass} |")
 
     # Installable Parts — Wikipedia style: the main page holds only a link to
@@ -1078,6 +1095,67 @@ def generate_vehicle_specs(v: Vehicle, slug: str = '') -> str:
         lines.append("===== Installable Parts =====")
 
     return '\n'.join(lines)
+
+
+def _eval_tag_query(query: str, veh_tags: list[str]) -> bool:
+    """Evaluate a gameplay-tag query expression against a vehicle's tags.
+
+    The query language (from the reference extractor) is a small lisp-like
+    tree: ALL(...), ANY(...), NONE(...) with tag operands (e.g. 'Vehicle.EV',
+    'Vehicle.Key.Atlas', 'VehiclePart.VehicleKeySpecific.AtlasRoof1') and
+    nested expressions. An ALL with a single operand is the common case.
+    """
+    q = (query or '').strip()
+    if not q:
+        return True
+
+    def _has(tag: str) -> bool:
+        tag = tag.strip()
+        return tag in veh_tags or tag == 'Vehicle.Key.' or tag == 'Vehicle'
+
+    def _eval(expr: str) -> bool:
+        expr = expr.strip()
+        if not expr:
+            return True
+        # Empty ALL/NONE/ANY collapsed to just the inner expr.
+        if expr.startswith('ALL('):
+            inner = expr[4:].rstrip(')').strip()
+            parts = _split_args(inner)
+            if not parts:
+                return True
+            return all(_eval(p) for p in parts if p.strip())
+        if expr.startswith('ANY('):
+            inner = expr[4:].rstrip(')').strip()
+            parts = _split_args(inner)
+            if not parts:
+                return True
+            return any(_eval(p) for p in parts if p.strip())
+        if expr.startswith('NONE('):
+            inner = expr[5:].rstrip(')').strip()
+            return not _eval(inner)
+        return _has(expr)
+
+    return _eval(q)
+
+
+def _split_args(s: str) -> list[str]:
+    """Split a comma-separated arg list, respecting nested parentheses."""
+    parts, depth, cur = [], 0, []
+    for ch in s:
+        if ch == '(':
+            depth += 1
+            cur.append(ch)
+        elif ch == ')':
+            depth -= 1
+            cur.append(ch)
+        elif ch == ',' and depth == 0:
+            parts.append(''.join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+    if cur:
+        parts.append(''.join(cur))
+    return parts
 
 
 def _part_fits(v, p: Part, veh_truck: str) -> bool:
@@ -1100,6 +1178,10 @@ def _part_fits(v, p: Part, veh_truck: str) -> bool:
     # VehicleKeys: empty = no filter; else vehicle id must be listed.
     if p.vehicle_keys and v.id not in p.vehicle_keys:
         return False
+    # Gameplay tag query: empty = no filter; else the vehicle's tags must satisfy it.
+    if p.tag_query:
+        if not _eval_tag_query(p.tag_query, list(getattr(v, 'ref_tags', None) or [])):
+            return False
     return True
 
 
@@ -1151,7 +1233,7 @@ def generate_installable_parts_page(v: Vehicle, slug: str = '') -> str:
         lines.append("^ Part ^ Cost ^ Mass ^")
         for pp in plist:
             mass = _fmt_weight(pp.mass_kg) if pp.mass_kg else '—'
-            lines.append(f"| [[parts:{_part_slug(pp.id)}|{pp.name}]] | {_fmt_cost(pp.cost)} | {mass} |")
+            lines.append(f"| [[parts:{_part_slug(pp.id)}|{_part_display_name(pp)}]] | {_fmt_cost(pp.cost)} | {mass} |")
         lines.append("")
 
     if not installable:
@@ -1302,11 +1384,12 @@ def _natural_part_key(pid: str):
 def generate_part_page(p: Part) -> str:
     """Generate a full part wiki page."""
     parts = []
+    dname = _part_display_name(p)
 
     # Infobox
     infobox = [
         "{{infobox>",
-        f"name = {p.name}",
+        f"name = {dname}",
         f"Part Type = {_part_type_name(p.part_type)}",
         f"Cost = {_fmt_cost(p.cost)}",
     ]
@@ -1317,25 +1400,11 @@ def generate_part_page(p: Part) -> str:
     parts.append("")
 
     # Heading
-    parts.append(f"====== {p.name} ======")
+    parts.append(f"====== {dname} ======")
     parts.append("")
     type_lower = _part_type_name(p.part_type).lower()
     article = 'an' if type_lower[:1] in ('a', 'e', 'i', 'o', 'u') else 'a'
-    parts.append(f"**{p.name}** is {article} {type_lower} part for vehicles in [[:motor_town|Motor Town]].")
-    parts.append("")
-
-    # In other languages (real translations from the reference catalog).
-    # Always rendered: the reference gives us the game's actual per-language
-    # names, so we can state truthfully when a part has none.
-    i18n_lines = ["===== In other languages =====", "^ Language ^ Name ^"]
-    i18n_rows = _part_ref_localized_langs(p.id)
-    if i18n_rows:
-        for label, name in i18n_rows:
-            i18n_lines.append(f"| {label} | {name} |")
-    else:
-        i18n_lines.append(f"| English | {p.name} |")
-        i18n_lines.append("| _(no other translations available)_ | _— n/a_ |")
-    parts.append('\n'.join(i18n_lines))
+    parts.append(f"**{dname}** is {article} {type_lower} part for vehicles in [[:motor_town|Motor Town]].")
     parts.append("")
 
     # Specs
@@ -1350,26 +1419,21 @@ def generate_part_page(p: Part) -> str:
     parts.append('\n'.join(specs))
     parts.append("")
 
-    # Stats (real tuning values from the reference catalog)
+    # Stats (tuning values from the reference catalog)
     if p.stats:
-        stat_lines = ["===== Stats ====="]
-        for struct in sorted(p.stats.keys()):
-            head = _stat_struct_name(struct)
-            stat_lines.append(f"==== {head} ====")
-            stat_lines.append("^ Parameter ^ Value ^")
-            sval = p.stats[struct]
-            if isinstance(sval, dict):
-                for field, value in sorted(sval.items()):
-                    dlabel, dvalue = _display_stat(field, value)
-                    stat_lines.append(f"| {dlabel} | {dvalue} |")
-            else:
-                stat_lines.append(f"| — | {_display_value(sval)} |")
-        parts.append('\n'.join(stat_lines))
+        parts.append(_render_part_stats(p))
         parts.append("")
 
-    # User placeholder
-    parts.append("===== Notes =====")
-    parts.append("")
+    # In other languages — at the bottom of the page.
+    i18n_lines = ["===== In other languages =====", "^ Language ^ Name ^"]
+    i18n_rows = _part_ref_localized_langs(p.id)
+    if i18n_rows:
+        for label, name in i18n_rows:
+            i18n_lines.append(f"| {label} | {name} |")
+    else:
+        i18n_lines.append(f"| English | {p.name} |")
+        i18n_lines.append("| _(no other translations available)_ | _— n/a_ |")
+    parts.append('\n'.join(i18n_lines))
 
     return '\n'.join(parts) + '\n'
 
@@ -1379,57 +1443,221 @@ def _display_field(field: str) -> str:
     return re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', field).replace('_', ' ').strip() or field
 
 
-# Stat-field units from the reference catalog. Each entry maps a field name to
-# (display_label, multiplier, unit). The multiplier converts the raw numeric
-# value to the displayed unit; the label is the humanized parameter name.
-# Only fields whose unit is unambiguous from the game data are listed — others
-# render without a unit rather than guess.
-_STAT_UNIT = {
-    # (stat_field) : (label, multiplier, unit)
-    'AngleIncreaseInDegree': ('Angle Increase', 1, 'deg'),
-    'RideHeightChange': ('Ride Height Change', 1, 'cm'),
-    'CoolantWaterInLiter': ('Coolant Water', 1, 'L'),
-    'FuelLiter': ('Fuel Capacity', 1, 'L'),
-    'MaxForceKg': ('Max Force', 1, 'kg'),
-    'MaxWeightKg': ('Max Weight', 1, 'kg'),
-    'TurbineWeight': ('Turbine Weight', 1, 'kg'),
-    'MaxLength': ('Max Length', 1, 'cm'),
-    'ShiftTimeSeconds': ('Shift Time', 1, 's'),
-    'TorqueConvertorStallRPM': ('Torque Converter Stall RPM', 1, 'rpm'),
-    'MaxRPM': ('Max RPM', 1, 'rpm'),
-    'Space': ('Spacer Width', 10, 'mm'),  # raw in cm, displayed in mm
-    'DumpVolume': ('Dump Volume', 1, 'kL'),
+# ---------------------------------------------------------------------------
+# Reader-friendly stat rendering
+#
+# The stats come from the reference catalog as nested dicts. We render them as
+# "Stat | Value" DokuWiki rows (consistent with Specifications), turning raw
+# JSON/asset drops into human-friendly text. Per-field metadata gives a stable
+# display label + unit; anything not in the table falls back to a humanized
+# field name with no unit (rather than guessing).
+#
+# Junk fields (mesh/sound/anim asset refs, attach plumbing) are omitted
+# outright — they add no tuning information.
+# ---------------------------------------------------------------------------
+
+# (field) -> (label, unit). Fields not listed: label = humanized name, no unit.
+_STAT_LABEL_UNIT = {
+    # Engine
+    'MaxRPM': ('Max RPM', 'rpm'),
+    'MaxTorque': ('Max Torque', 'N·m'),
+    'StarterTorque': ('Starter Torque', 'N·m'),
+    'Inertia': ('Rotational Inertia', 'kg·m²'),
+    'FrictionViscosityCoeff': ('Friction Viscosity', ''),
+    'IdleThrottle': ('Idle Throttle', '%'),
+    'BlipThrottle': ('Blip Throttle', ''),
+    'AfterFireProbability': ('After-Fire Probability', '%'),
+    'CoolingEfficiency': ('Cooling Efficiency', '%'),
+    'FuelConsumption': ('Fuel Consumption', ''),
+    # Transmission
+    'TorqueConvertorStallRPM': ('Torque Converter Stall RPM', 'rpm'),
+    'TorqueConvertorStallRatioPower': ('Torque Converter Stall Ratio Power', ''),
+    'DefaultGearIndex': ('Default Gear', ''),
+    'ShiftTimeSeconds': ('Shift Time', 's'),
+    'TorqueConvertorTorqueRate': ('Torque Converter Torque Rate', ''),
+    # Tire physics
+    'SlidingMu': ('Sliding Grip (μ)', ''),
+    'StaticMu': ('Static Grip (μ)', ''),
+    'SpringX': ('Spring Rate X', ''),
+    'SpringY': ('Spring Rate Y', ''),
+    'DampingX': ('Damping X', ''),
+    'DampingY': ('Damping Y', ''),
+    'MaxWeightKg': ('Max Load', 'kg'),
+    'PatchLengthCoefficient': ('Patch Length Coefficient', ''),
+    # Suspension
+    'RideHeightChange': ('Ride Height Change', 'cm'),
+    'BoundDampingRateMultiplier': ('Bound Damping Rate', '×'),
+    'ReboundDampingRateMultiplier': ('Rebound Damping Rate', '×'),
+    'SpringRateMultiplier': ('Spring Rate', '×'),
+    'AntiRollBarRateMultiplier': ('Anti-Roll Bar Rate', '×'),
+    # Brakes
+    'FrontMultiplier': ('Front Brake Bias', ''),
+    'RearMultiplier': ('Rear Brake Bias', ''),
+    'BrakePowerMultiplier': ('Brake Power', '×'),
+    'FadeTemperature': ('Fade Temperature', '°C'),
+    'CoolingMultiplier': ('Brake Cooling', '×'),
+    'HeatingMultiplier': ('Heating', '×'),
+    'WearMultiplier': ('Wear Rate', '×'),
+    # Coolant
+    'CoolingPower': ('Cooling Power', '%'),
+    'CoolantWaterInLiter': ('Coolant Capacity', 'L'),
+    # Intake / Turbo
+    'Slope': ('Intake Torque Slope', ''),
+    'BaseRPMRatio': ('Base RPM Ratio', ''),
+    'IntakeSpeedEfficencyMultiplier': ('Intake Speed Efficiency', '×'),
+    'BaseTorqueMultiplier': ('Base Torque', '×'),
+    'TorqueMultiplier': ('Torque', '×'),
+    'TurbineAspectRatio': ('Turbine Aspect Ratio', ''),
+    'IntakePressureMultiplier': ('Intake Pressure', '×'),
+    'FuelConsumptionMultiplier': ('Fuel Consumption', '×'),
+    'TurbineWeight': ('Turbine Weight', 'kg'),
+    # Wheels / spacers
+    'Space': ('Width', 'mm'),
+    'NumSlots': ('Slots', ''),
+    # Fuel / cargo
+    'FuelLiter': ('Fuel Capacity', 'L'),
+    'DumpVolume': ('Dump Volume', 'kL'),
+    # Misc tuning
+    'AngleIncreaseInDegree': ('Angle Increase', 'deg'),
+    'MaxForceKg': ('Max Force', 'kg'),
+    'MaxLength': ('Cable Length', 'cm'),
+    'LSDType': ('LSD Type', ''),
+    'TaxiType': ('Type', ''),
+    'ConnectionType': ('Connection', ''),
+    'CargoSpaceType': ('Cargo Space Type', ''),
+    'CargoSpaceLocation': ('Cargo Space Location', 'cm'),
+    'CargoSpaceSize': ('Cargo Space Size', 'cm'),
+    'FinalDriveRatio': ('Final Drive Ratio', ''),
 }
 
+# Extra unit multipliers for fields whose raw unit differs from the display
+# unit (e.g. Space is stored in cm but displayed in mm).
+_STAT_MULT = {
+    'Space': 10,
+}
 
-def _display_stat(field: str, value):
-    """Return (display_label, display_value) for a stat field, applying the
-    field's unit when known (e.g. AngleIncreaseInDegree -> 'Angle Increase',
-    '10 deg'). Non-numeric values fall back to no-unit rendering."""
-    info = _STAT_UNIT.get(field)
-    if info is not None and isinstance(value, (int, float)):
-        label, mult, unit = info
-        scaled = value * mult
-        return label, f"{_display_value(scaled)} {unit}"
-    return _display_field(field), _display_value(value)
+# Whole-vehicle aero fields: (label, force-multiplier-in-kg-per-coef at 200km/h)
+_AERO_LIFT_FIELDS = {
+    'AeroLift': ('Aero Lift', 1),
+    'FrontAeroLift': ('Front Aero Lift', 0.5),
+    'RearAeroLift': ('Rear Aero Lift', 0.5),
+}
+
+_AERO_DRAG_FIELDS = {
+    'AirDragMultiplier': 'Air Drag',
+    'TrailerAirDragMultiplier': 'Trailer Air Drag',
+    'FrontDamageMultiplier': 'Front Damage',
+}
+
+# Stat "struct" keys that are pure asset/attach plumbing — omit entirely.
+_STAT_DROP_STRUCTS = {'Aero'}
+
+# Field names that are asset/mesh/sound references and add no tuning info.
+_STAT_DROP_FIELDS = {
+    'Mesh', 'LeftWheelMesh', 'RightWheelMesh', 'DRWLeftWheelMesh',
+    'DRWRightWheelMesh', 'RearLeftWheelMesh', 'RearRightWheelMesh',
+    'QuadWheelMesh', 'TirePhysicsDataAsset', 'TirePhysicsDataAsset_BikeRear',
+    'LightOnAnim', 'BodyMesh', 'AxleMesh', 'HookMesh', 'StartSound',
+    'ReleaseSound', 'MotorInSound', 'MotorOutSound', 'RopeCrackingSound',
+    'RopeSnapSound', 'TaxiRoofSignClass', 'AttachParentComponentName',
+    'ComponentTags', 'CustomSocketName', 'bUseCustomSocket', 'SkelealMesh',
+    'bIsValid', 'bIsDualRearWheel', 'bFixCargo', 'bUnlimitedHeight',
+    'TirePhysicsDataAsset',
+}
+
+# bool/toggle fields that mean "this optional sub-struct/flag is present".
+_STAT_BOOL_FIELDS = {'LSDType', 'TaxiType', 'ConnectionType', 'CargoSpaceType'}
 
 
-# Stat struct (physics data) display names from the reference catalog.
+def _trim_number(v) -> str:
+    if isinstance(v, float):
+        if v == int(v):
+            return str(int(v))
+        return f"{v:.2f}".rstrip('0').rstrip('.')
+    return str(v)
+
+
+def _fmt_vec(value) -> str:
+    """Reader-friendly vector: {'X':..,'Y':..,'Z':..} -> 'x, y, z'."""
+    if not isinstance(value, dict):
+        return _display_value(value)
+    x = value.get('X', 0)
+    y = value.get('Y', 0)
+    z = value.get('Z', 0)
+    return f"{_trim_number(x)}, {_trim_number(y)}, {_trim_number(z)}"
+
+
+def _fmt_simple_value(value, unit: str = '') -> str:
+    """Format a scalar stat value. Units: '' = none; '%' = *100; '×' = prefix."""
+    if isinstance(value, bool):
+        return 'Yes' if value else 'No'
+    if isinstance(value, (int, float)):
+        if unit == '%':
+            return f"{_trim_number(value * 100)}%"
+        if unit == '×':
+            return f"{_trim_number(value)}×"
+        s = _trim_number(value)
+        return f"{s} {unit}".strip() if unit else s
+    return str(value)
+
+
+def _display_value(value) -> str:
+    """Format a stat value for the wiki without raw JSON drops."""
+    if isinstance(value, float):
+        if value == int(value):
+            return str(int(value))
+        return f"{value:.2f}".rstrip('0').rstrip('.')
+    if isinstance(value, dict):
+        # Object refs / asset paths -> short name only.
+        obj = value.get('ObjectName') or value.get('AssetPathName')
+        if obj:
+            return str(obj)
+        # Vector
+        if 'X' in value and 'Y' in value and 'Z' in value:
+            return _fmt_vec(value)
+        # Single-key asset path
+        return json.dumps(value)
+    if isinstance(value, list):
+        return _fmt_list(value)
+    return str(value)
+
+
+def _fmt_list(value) -> str:
+    """Reader-friendly list rendering (avoid JSON drops)."""
+    out = []
+    for item in value:
+        if isinstance(item, dict):
+            # Torque curve point {Time, Value} / gear {Name, GearRatio, Inertia}
+            if 'Value' in item and 'Time' in item:
+                out.append(f"{_fmt_simple_value(item['Value'])} @ {_trim_number(item['Time'])}")
+            elif 'Name' in item and 'GearRatio' in item:
+                out.append(f"{item['Name']}:{_trim_number(item['GearRatio'])}")
+            else:
+                out.append(_display_value(item))
+        elif isinstance(item, (dict, list)):
+            out.append(_display_value(item))
+        else:
+            out.append(_display_value(item))
+    if not out:
+        return '—'
+    return ', '.join(out)
+
+
 _STAT_STRUCT_NAME = {
     'engine': 'Engine Physics', 'tire': 'Tire Physics', 'lsd': 'LSD',
-    'transmission': 'Transmission Physics', 'Aero': 'Aero', 'AeroLift': 'Aero Lift',
-    'AirDragMultiplier': 'Air Drag', 'AngleKit': 'Angle Kit',
-    'AntiRollBar': 'Anti-Roll Bar', 'BrakeBalance': 'Brake Balance',
-    'BrakePad': 'Brake Pad', 'BrakePower': 'Brake Power', 'CargoBed': 'Cargo Bed',
+    'transmission': 'Transmission Physics', 'Aero': 'Aero',
+    'AngleKit': 'Angle Kit', 'AntiRollBar': 'Anti-Roll Bar',
+    'BrakeBalance': 'Brake Balance', 'BrakePad': 'Brake Pad',
+    'BrakePower': 'Brake Power', 'CargoBed': 'Cargo Bed',
     'CoolantRadiator': 'Coolant Radiator', 'FinalDriveRatio': 'Final Drive Ratio',
-    'FrontAeroLift': 'Front Aero Lift', 'FrontDamageMultiplier': 'Front Damage',
     'FuelTank': 'Fuel Tank', 'Headlight': 'Headlight', 'Intake': 'Intake',
-    'ItemInventory': 'Inventory', 'RearAeroLift': 'Rear Aero Lift',
-    'RoofRack': 'Roof Rack', 'SuspensionDamper': 'Suspension Damper',
-    'SuspensionRideHeight': 'Suspension Ride Height', 'SuspensionSpring': 'Suspension Spring',
-    'Taxi': 'Taxi', 'Tire': 'Tire', 'TrailerAirDragMultiplier': 'Trailer Air Drag',
+    'ItemInventory': 'Inventory', 'RoofRack': 'Roof Rack',
+    'SuspensionDamper': 'Suspension Damper',
+    'SuspensionRideHeight': 'Suspension Ride Height',
+    'SuspensionSpring': 'Suspension Spring', 'Taxi': 'Taxi', 'Tire': 'Tire',
     'TrailerHitch': 'Trailer Hitch', 'Turbocharger': 'Turbocharger',
     'Wheel': 'Wheel', 'WheelSpacer': 'Wheel Spacer', 'Winch': 'Winch',
+    'Utility': 'Utility', 'Headlight': 'Headlight',
 }
 
 
@@ -1440,16 +1668,199 @@ def _stat_struct_name(struct: str) -> str:
     return _display_field(struct) or struct
 
 
-def _display_value(value) -> str:
-    """Format a stat value for the wiki. Handles the reference catalog's
-    nested structures (dicts, lists/dicts of objects) as JSON."""
-    if isinstance(value, float):
-        if value == int(value):
-            return str(int(value))
-        return f"{value:.2f}".rstrip('0').rstrip('.')
-    if isinstance(value, (dict, list)):
-        return json.dumps(value)
-    return str(value)
+def _part_display_name(p: Part) -> str:
+    """Display name for a part.
+
+    Numbered parts (display name is a bare number like '#1') that are
+    restricted to one or more specific vehicles get that vehicle's name(s)
+    appended in parentheses: '#1 (Vista)' or '#2 (Koma #1 via link)'.
+    Multi-vehicle restrictions join the names: '#1 (Nuke / Nuke Taxi)'.
+    """
+    _load_ref_data()
+    keys = [k for k in (p.vehicle_keys or []) if k]
+    if keys:
+        name = p.name or ''
+        if re.fullmatch(r'#?\d+', name):
+            names = []
+            for k in keys:
+                veh = _REF_VEHICLES.get(k, {}).get('name', {}).get('en')
+                names.append(veh or k)
+            return f"{name} ({' / '.join(names)})"
+    return p.name or p.id
+
+
+_TYPE_SCHEMA_CACHE: dict = {}
+
+
+def _norm_val(v):
+    """Normalize a value for default comparison."""
+    if isinstance(v, float) and v == int(v):
+        return int(v)
+    if isinstance(v, dict):
+        return json.dumps(v, sort_keys=True)
+    if isinstance(v, list):
+        return json.dumps(v)
+    return v
+
+
+def _build_type_schema(part_type: str) -> list:
+    """Build the stat schema for a part type.
+
+    Returns an ordered list of dict-struct groups. Each group is
+    ``(struct_key, display_name, [(field, label, unit, default)])`` where
+    ``default`` is the mode (most common) value for that (struct, field)
+    across all parts of the type. Aero scalar fields are grouped separately
+    by the renderer, so they are omitted here.
+    """
+    if part_type in _TYPE_SCHEMA_CACHE:
+        return _TYPE_SCHEMA_CACHE[part_type]
+    _load_ref_data()
+
+    # Collect every (struct, field) -> list of the values seen for parts of
+    # this type, preserving field encounter order per struct.
+    struct_values: dict[str, dict[str, list]] = {}
+    struct_order: list[str] = []
+    for rd in _REF_PARTS.values():
+        if rd.get('type') != part_type:
+            continue
+        for st, sval in (rd.get('stats') or {}).items():
+            if st in _STAT_DROP_STRUCTS or st in _AERO_LIFT_FIELDS or st in _AERO_DRAG_FIELDS:
+                continue  # aero/drop handled elsewhere
+            if not isinstance(sval, dict):
+                # Scalar non-aero struct (e.g. FinalDriveRatio) handled as a row.
+                if st not in struct_order:
+                    struct_order.append(st)
+                struct_values.setdefault(st, {}).setdefault('__scalar__', []).append(sval)
+                continue
+            if st not in struct_order:
+                struct_order.append(st)
+            sv = struct_values.setdefault(st, {})
+            for f, v in sval.items():
+                if f in _STAT_DROP_FIELDS:
+                    continue
+                sv.setdefault(f, []).append(v)
+
+    schema = []
+    for st in struct_order:
+        fields = []
+        sv = struct_values[st]
+        if '__scalar__' in sv:
+            vals = sv['__scalar__']
+            default = _mode(vals)
+            fields.append(('__scalar__', _stat_struct_name(st), _STAT_LABEL_UNIT.get(st, ('', ''))[1], default))
+        for f in sv:
+            if f == '__scalar__':
+                continue
+            label, unit = _STAT_LABEL_UNIT.get(f, (_display_field(f), ''))
+            default = _mode(sv[f])
+            fields.append((f, label, unit, default))
+        schema.append((st, _stat_struct_name(st), fields))
+
+    _TYPE_SCHEMA_CACHE[part_type] = schema
+    return schema
+
+
+def _mode(vals: list):
+    """Mode (most common) value, stable on tie."""
+    if not vals:
+        return None
+    counts: dict = {}
+    for v in vals:
+        k = _norm_val(v)
+        counts[k] = counts.get(k, 0) + 1
+    best = max(counts.items(), key=lambda kv: kv[1])[0]
+    # best is a normalized key; return a real value matching it
+    for v in vals:
+        if _norm_val(v) == best:
+            return v
+    return vals[0]
+
+
+def _render_part_stats(p: Part) -> str:
+    """Render a part's tuning stats as reader-friendly DokuWiki tables.
+
+    - An Aero section shows whole-vehicle drag % / lift+downforce coefficients
+      (force formula applied at 200 km/h).
+    - Every other stat struct of the part's type is rendered with a
+      'Stat | Value' table showing ALL fields of the type; fields whose value
+      equals the type's default are shown as '-' (or '100%' for percentage
+      fields), per the reference convention.
+    """
+    lines = ["===== Stats ====="]
+    stats = p.stats or {}
+
+    # --- Aero section (whole-vehicle aero physics) ---
+    aero_lift = {f: s for f, s in stats.items() if f in _AERO_LIFT_FIELDS and s is not None}
+    aero_drag = {f: s for f, s in stats.items() if f in _AERO_DRAG_FIELDS and s is not None}
+
+    if aero_lift or aero_drag:
+        lines.append("")
+        lines.append("==== Aero ====")
+        lines.append("^ Stat ^ Value ^")
+        for f, val in aero_drag.items():
+            label = _AERO_DRAG_FIELDS[f]
+            if f == 'FrontDamageMultiplier':
+                lines.append(f"| {label} | {_fmt_simple_value(val, '%')} |")
+            else:
+                # Drag display: (mult - 1) * 100 % of base; ×1.5 when the part
+                # has any lift coefficient (as in the in-game head-up display).
+                drag_pct = (val - 1.0) * 100
+                if aero_lift:
+                    drag_pct *= 1.5
+                lines.append(f"| {label} | +{drag_pct:.1f}% |")
+        for f, val in aero_lift.items():
+            label, _ = _AERO_LIFT_FIELDS[f]
+            coef = float(val)
+            force = 7.098e-7 * (200 ** 2) * coef  # force_kg at 200 km/h
+            kind = 'downforce' if coef < 0 else 'lift'
+            lines.append(f"| {label} | {_trim_number(coef)} ({abs(force):.1f} kg {kind} @ 200 km/h) |")
+        lines.append("")
+        lines.append("_Force at speed: force = 7.098 × 10⁻⁷ × v² × coefficient, with v measured in km/h (shown at 200 km/h). Negative coefficient = downforce, positive = lift. Shift (+Z): downforce._")
+        lines.append("")
+
+    # --- Other stat structs: all fields of the type, '-' for missing ---
+    schema = _build_type_schema(p.part_type) if p.part_type else []
+    for struct, head, fields in schema:
+        sval = stats.get(struct)
+        lines.append("")
+        lines.append(f"==== {head} ====")
+        lines.append("^ Stat ^ Value ^")
+        for field, label, unit, default in fields:
+            if field == '__scalar__':
+                value = sval if not isinstance(sval, dict) else None
+                if value is None or value == '':
+                    lines.append(f"| {label} | - |")
+                elif unit == '%':
+                    lines.append(f"| {label} | {_fmt_simple_value(value, '%')} |")
+                else:
+                    lines.append(f"| {label} | {_fmt_stat_value(field, value, unit)} |")
+                continue
+            # Field present on this part -> always show its real value.
+            if isinstance(sval, dict) and field in sval and sval[field] is not None and sval[field] != '':
+                value = sval[field]
+                lines.append(f"| {label} | {_fmt_stat_value(field, value, unit)} |")
+            # Field absent -> the part uses the game's default for it.
+            elif unit == '%':
+                lines.append(f"| {label} | 100% |")
+            else:
+                lines.append(f"| {label} | - |")
+    return '\n'.join(lines)
+
+
+def _fmt_stat_value(field: str, value, unit: str) -> str:
+    """Format a single stat value based on its type (vector/list/scalar)."""
+    mult = _STAT_MULT.get(field, 1)
+    if isinstance(value, dict):
+        body = _fmt_vec(value)
+        return f"{body} {unit}".rstrip() if unit else body
+    if isinstance(value, list):
+        return _fmt_list(value)
+    if isinstance(value, str) and (field in _STAT_BOOL_FIELDS or '::' in value):
+        # Strip enum prefix, e.g. 'EMTLSDType::ClutchPackLSD' -> 'ClutchPackLSD'
+        return value.rsplit('::', 1)[-1]
+    if isinstance(value, (int, float)) and mult != 1:
+        value = value * mult
+    return _fmt_simple_value(value, unit)
 
 
 def generate_parts_index(parts: list[Part]) -> str:
@@ -1473,7 +1884,7 @@ def generate_parts_index(parts: list[Part]) -> str:
         for p in sorted(by_type[pt], key=lambda x: _natural_part_key(x.id)):
             slug = _part_slug(p.id)
             mass = _fmt_weight(p.mass_kg) if p.mass_kg else '—'
-            lines.append(f"| [[parts:{slug}|{p.name}]] | {_fmt_cost(p.cost)} | {mass} |")
+            lines.append(f"| [[parts:{slug}|{_part_display_name(p)}]] | {_fmt_cost(p.cost)} | {mass} |")
         lines.append("")
 
     return '\n'.join(lines) + '\n'
