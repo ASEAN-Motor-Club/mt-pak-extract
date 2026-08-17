@@ -273,6 +273,11 @@ def load_vehicles(conn: sqlite3.Connection, include_hidden: bool = False) -> lis
     inner = conn.cursor()  # Separate cursor for sub-queries
     vehicles = []
 
+    # Reference-extractor vehicle catalog (out_vehicle.json): authoritative
+    # for English display names + vehicle type, so rows whose DB name is null
+    # or a GUID fall back to the pak's real name instead of the internal id.
+    _load_ref_data()
+
     hidden_clause = "WHERE 1=1" if include_hidden else "WHERE v.is_hidden = 0 OR v.is_hidden IS NULL"
     for row in cursor.execute(f"""
         SELECT v.id, v.name, v.vehicle_type, v.truck_class, v.cost, v.comport,
@@ -286,8 +291,14 @@ def load_vehicles(conn: sqlite3.Connection, include_hidden: bool = False) -> lis
         {hidden_clause}
         ORDER BY v.vehicle_type, v.name
 """,):
+        # Prefer the reference-extractor English name + type (pak) over the DB.
+        _ref_v = _REF_VEHICLES.get(row[0], {})
+        _ref_name = (_ref_v.get('name') or {}).get('en')
+        _db_name = row[1]
         v = Vehicle(
-            id=row[0], name=row[1] or row[0], vehicle_type=row[2] or '',
+            id=row[0],
+            name=_ref_name or _db_name or row[0],
+            vehicle_type=(_ref_v.get('type') or row[2] or '').rsplit('::', 1)[-1],
             truck_class=row[3] or '', cost=row[4] or 0, comport=row[5] or 0,
             is_hidden=bool(row[6]), is_disabled=bool(row[7]),
             chassis_mass_kg=row[8] or 0.0,
@@ -1357,6 +1368,33 @@ def _part_type_name(part_type: str) -> str:
     return part_type.replace('_', ' ')
 
 
+# Vehicle type enum tails -> user-facing grouping label. Mirrors how the
+# curated list_(of)_vehicles splits camel-cased enum tails into words (e.g.
+# 'SemiTrailer' -> 'Semi Trailer', 'SemiTractor' -> 'Semi Tractor').
+_VEHICLE_TYPE_LABEL = {
+    'SemiTrailer': 'Semi Trailer',
+    'SemiTractor': 'Semi Tractor',
+    'Kart': 'Kart',
+    'Small': 'Small',
+    'Truck': 'Truck',
+    'Bus': 'Bus',
+}
+
+
+def _humanize_vehicle_type(vtype: str) -> str:
+    """User-facing vehicle-type group label for list/comparison tables."""
+    if not vtype:
+        return 'Other'
+    if vtype in _VEHICLE_TYPE_LABEL:
+        return _VEHICLE_TYPE_LABEL[vtype]
+    if vtype in ('SemiTrailer', 'SemiTractor'):
+        return 'Semi Trailer' if vtype == 'SemiTrailer' else 'Semi Tractor'
+    # Split remaining camel/underscore tails into words.
+    s = vtype.replace('_', ' ')
+    s = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', s)
+    return s or 'Other'
+
+
 def _part_slug(part_id: str) -> str:
     """Slug for a part page URL (must be a valid DokuWiki page ID).
 
@@ -2138,16 +2176,16 @@ def generate_parts_index(parts: list[Part]) -> str:
 def generate_vehicle_index(vehicles: list[Vehicle], slug_map: dict[str, str]) -> str:
     """Generate a vehicle index page grouped by type."""
     lines = [
-        "====== List of Vehicles (Auto-Generated) ======",
+        "====== List of Vehicles ======",
         "",
-        f"There are {len(vehicles)} vehicles in [[:motor_town|Motor Town]].",
+        f"There are {len(vehicles)} vehicles in [[:motor_town|Motor Town]]. For the full data see [[:vehicle_comparison|vehicle comparison table]].",
         "",
     ]
 
     # Group by type
     by_type: dict[str, list[Vehicle]] = {}
     for v in vehicles:
-        vtype = v.vehicle_type or 'Other'
+        vtype = _humanize_vehicle_type(v.vehicle_type)
         if vtype not in by_type:
             by_type[vtype] = []
         by_type[vtype].append(v)
@@ -2166,17 +2204,17 @@ def generate_vehicle_index(vehicles: list[Vehicle], slug_map: dict[str, str]) ->
 def generate_vehicle_comparison(vehicles: list[Vehicle], slug_map: dict[str, str]) -> str:
     """Generate a full vehicle comparison table."""
     lines = [
-        "====== Vehicle Comparison Table (Auto-Generated) ======",
+        "====== Vehicle Comparison Table ======",
         "",
         "^ Name ^ Type ^ Cost ^ Drivetrain ^ Chassis Weight ^ Total Weight ^ Drag ^",
     ]
 
-    for v in sorted(vehicles, key=lambda x: (x.vehicle_type, x.name)):
+    for v in sorted(vehicles, key=lambda x: (_humanize_vehicle_type(x.vehicle_type), x.name)):
         slug = slug_map.get(v.id, _name_to_slug(v.name))
         drivetrain = _get_drivetrain(v.default_parts)
         lines.append(
             f"| [[vehicles:{slug}|{v.name}]] "
-            f"| {v.vehicle_type} "
+            f"| {_humanize_vehicle_type(v.vehicle_type)} "
             f"| {_fmt_cost(v.cost)} "
             f"| {drivetrain} "
             f"| {_fmt_weight(v.chassis_mass_kg)} "
@@ -2448,14 +2486,13 @@ def sync_indexes(
     cargos = load_cargos(conn)
     stats = {'created': 0, 'updated': 0, 'unchanged': 0}
 
-    # Apply wiki display names
-    for v in vehicles:
-        if v.id in name_map:
-            v.name = name_map[v.id]
+    # Vehicle display names come from the reference catalog (pak) inside
+    # load_vehicles, which is authoritative. Do NOT re-override with stale
+    # wiki page names (that reverted 'Jemusi Logger' back to 'Jemusi').
 
     index_pages = {
-        'list_of_vehicles_data.txt': generate_vehicle_index(vehicles, slug_map),
-        'vehicle_comparison_data.txt': generate_vehicle_comparison(vehicles, slug_map),
+        'list_of_vehicles.txt': generate_vehicle_index(vehicles, slug_map),
+        'vehicle_comparison.txt': generate_vehicle_comparison(vehicles, slug_map),
         'list_of_cargos.txt': generate_cargo_index(cargos),
     }
 
