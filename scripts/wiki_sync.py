@@ -2527,7 +2527,10 @@ def sync_indexes(
     dry_run: bool = False,
 ) -> dict:
     """Sync index/comparison pages. Returns stats dict."""
-    vehicles = load_vehicles(conn)
+    # Include hidden vehicles (kart, trophy_air, 30-ft trailers, etc.): they are
+    # real driveable vehicles and the wiki lists them (matching the pre-regen
+    # curated list), even though the game hides them from the garage.
+    vehicles = load_vehicles(conn, include_hidden=True)
     cargos = load_cargos(conn)
     stats = {'created': 0, 'updated': 0, 'unchanged': 0}
 
