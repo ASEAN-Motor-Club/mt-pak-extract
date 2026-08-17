@@ -1202,7 +1202,7 @@ def _installable_for_vehicle(v) -> dict[str, list]:
             tn = p.part_type or 'Other'
         result.setdefault(tn, []).append(p)
     for tn in result:
-        result[tn].sort(key=lambda x: _natural_part_key(x.id))
+        result[tn].sort(key=_natural_part_key)
     return result
 
 
@@ -1370,15 +1370,44 @@ def _part_slug(part_id: str) -> str:
     return slug.strip('_')
 
 
-def _natural_part_key(pid: str):
-    """Sort key giving numeric ordering (small -> large) where parts are named
-    by magnitude (e.g. Damper 50, 80, 120; Ride Height -1 .. +20), and plain
-    alphabetical order for everything else.
+def _display_name_key(name: str):
+    """Natural sort key for a DISPLAYED part name.
+
+    - Pure numeric names (including a trailing unit like %, cm, km): compared
+      numerically (`50%` < `120%`, `1.33` < `1.8` < `14`).
+    - Otherwise: split into text / digit runs, comparing text runs
+      case-insensitively and digit runs numerically (`F50` < `F60` < `F110`,
+      `KM1-65` < `KM2-45`, `#1 (Koma)` < `#2 (Zydro)`).
     """
-    nums = [int(m) for m in re.findall(r'([+-]?\d+)', pid)]
-    if nums:
-        return (0, nums, pid.lower())
-    return (1, [], pid.lower())
+    name = (name or '').strip()
+
+    def _num_tokens(s):
+        return re.findall(r'\d+(?:\.\d+)?|.', s)
+
+    # Pure numeric with optional trailing unit/sign -> (0, float, unit-lower)
+    m = re.fullmatch(r'([+-]?\d+(?:\.\d+)?)\s*([a-zA-Z%°\u00b2\u00b3]*)', name)
+    if m:
+        try:
+            return (0, float(m.group(1)), m.group(2).lower())
+        except ValueError:
+            pass
+
+    # Split into alternating text/digit runs.
+    tokens = re.findall(r'\d+(?:\.\d+)?|[^0-9]+', name)
+    key = []
+    for t in tokens:
+        if re.fullmatch(r'\d+(?:\.\d+)?', t):
+            key.append((0, float(t)))          # (kind=number, value)
+        else:
+            key.append((1, t.lower()))          # (kind=text, lowercase text)
+    return (1, key, name.lower())
+
+
+def _natural_part_key(obj):
+    """Sort key for a part (by displayed name, numeric-aware)."""
+    if hasattr(obj, 'id'):
+        return _display_name_key(_part_display_name(obj))
+    return _display_name_key(obj)
 
 
 def generate_part_page(p: Part) -> str:
@@ -1486,30 +1515,30 @@ _STAT_LABEL_UNIT = {
     'PatchLengthCoefficient': ('Patch Length Coefficient', ''),
     # Suspension
     'RideHeightChange': ('Ride Height Change', 'cm'),
-    'BoundDampingRateMultiplier': ('Bound Damping Rate', '×'),
-    'ReboundDampingRateMultiplier': ('Rebound Damping Rate', '×'),
-    'SpringRateMultiplier': ('Spring Rate', '×'),
-    'AntiRollBarRateMultiplier': ('Anti-Roll Bar Rate', '×'),
+    'BoundDampingRateMultiplier': ('Bound Damping Rate', '%'),
+    'ReboundDampingRateMultiplier': ('Rebound Damping Rate', '%'),
+    'SpringRateMultiplier': ('Spring Rate', '%'),
+    'AntiRollBarRateMultiplier': ('Anti-Roll Bar Rate', '%'),
     # Brakes
     'FrontMultiplier': ('Front Brake Bias', ''),
     'RearMultiplier': ('Rear Brake Bias', ''),
-    'BrakePowerMultiplier': ('Brake Power', '×'),
+    'BrakePowerMultiplier': ('Brake Power', '%'),
     'FadeTemperature': ('Fade Temperature', '°C'),
-    'CoolingMultiplier': ('Brake Cooling', '×'),
-    'HeatingMultiplier': ('Heating', '×'),
-    'WearMultiplier': ('Wear Rate', '×'),
+    'CoolingMultiplier': ('Brake Cooling', '%'),
+    'HeatingMultiplier': ('Heating', '%'),
+    'WearMultiplier': ('Wear Rate', '%'),
     # Coolant
     'CoolingPower': ('Cooling Power', '%'),
     'CoolantWaterInLiter': ('Coolant Capacity', 'L'),
     # Intake / Turbo
     'Slope': ('Intake Torque Slope', ''),
     'BaseRPMRatio': ('Base RPM Ratio', ''),
-    'IntakeSpeedEfficencyMultiplier': ('Intake Speed Efficiency', '×'),
-    'BaseTorqueMultiplier': ('Base Torque', '×'),
-    'TorqueMultiplier': ('Torque', '×'),
+    'IntakeSpeedEfficencyMultiplier': ('Intake Speed Efficiency', '%'),
+    'BaseTorqueMultiplier': ('Base Torque', '%'),
+    'TorqueMultiplier': ('Torque', '%'),
     'TurbineAspectRatio': ('Turbine Aspect Ratio', ''),
-    'IntakePressureMultiplier': ('Intake Pressure', '×'),
-    'FuelConsumptionMultiplier': ('Fuel Consumption', '×'),
+    'IntakePressureMultiplier': ('Intake Pressure', '%'),
+    'FuelConsumptionMultiplier': ('Fuel Consumption', '%'),
     'TurbineWeight': ('Turbine Weight', 'kg'),
     # Wheels / spacers
     'Space': ('Width', 'mm'),
@@ -1760,6 +1789,33 @@ def _build_type_schema(part_type: str) -> list:
     return schema
 
 
+_TYPE_AERO_CACHE: dict = {}
+
+
+def _type_aero_fields(part_type: str) -> tuple[list, list]:
+    """Return (lift_field_names, drag_field_names) that a part TYPE can carry.
+
+    Union across all parts of the type, in a stable order. Used so every part
+    of a type renders the same Aero rows (with '-' where that specific part
+    has no value), instead of only parts that happen to carry aero data.
+    """
+    if part_type in _TYPE_AERO_CACHE:
+        return _TYPE_AERO_CACHE[part_type]
+    _load_ref_data()
+    lift: list = []
+    drag: list = []
+    for rd in _REF_PARTS.values():
+        if rd.get('type') != part_type:
+            continue
+        for f in (rd.get('stats') or {}):
+            if f in _AERO_LIFT_FIELDS and f not in lift:
+                lift.append(f)
+            elif f in _AERO_DRAG_FIELDS and f not in drag:
+                drag.append(f)
+    _TYPE_AERO_CACHE[part_type] = (lift, drag)
+    return lift, drag
+
+
 def _mode(vals: list):
     """Mode (most common) value, stable on tie."""
     if not vals:
@@ -1789,33 +1845,41 @@ def _render_part_stats(p: Part) -> str:
     lines = ["===== Stats ====="]
     stats = p.stats or {}
 
-    # --- Aero section (whole-vehicle aero physics) ---
-    aero_lift = {f: s for f, s in stats.items() if f in _AERO_LIFT_FIELDS and s is not None}
-    aero_drag = {f: s for f, s in stats.items() if f in _AERO_DRAG_FIELDS and s is not None}
+    # --- Aero section (type-driven: every aero field the type can have) ---
+    lift_keys, drag_keys = _type_aero_fields(p.part_type)
+    aero_lift = {f: stats.get(f) for f in lift_keys if f in stats and stats[f] is not None}
+    aero_drag = {f: stats.get(f) for f in drag_keys if f in stats and stats[f] is not None}
 
-    if aero_lift or aero_drag:
+    # Only emit the Aero section if this part type can carry aero data at all.
+    if lift_keys or drag_keys:
         lines.append("")
         lines.append("==== Aero ====")
         lines.append("^ Stat ^ Value ^")
-        for f, val in aero_drag.items():
+        for f in drag_keys:
             label = _AERO_DRAG_FIELDS[f]
+            val = aero_drag.get(f)
+            if val is None or val == '':
+                lines.append(f"| {label} | - |")
+                continue
             if f == 'FrontDamageMultiplier':
                 lines.append(f"| {label} | {_fmt_simple_value(val, '%')} |")
             else:
                 # Drag display: (mult - 1) * 100 % of base; ×1.5 when the part
                 # has any lift coefficient (as in the in-game head-up display).
                 drag_pct = (val - 1.0) * 100
-                if aero_lift:
+                if aero_lift or any(stats.get(k) for k in lift_keys):
                     drag_pct *= 1.5
                 lines.append(f"| {label} | +{drag_pct:.1f}% |")
-        for f, val in aero_lift.items():
+        for f in lift_keys:
             label, _ = _AERO_LIFT_FIELDS[f]
+            val = aero_lift.get(f)
+            if val is None or val == '':
+                lines.append(f"| {label} | - |")
+                continue
             coef = float(val)
             force = 7.098e-7 * (200 ** 2) * coef  # force_kg at 200 km/h
             kind = 'downforce' if coef < 0 else 'lift'
             lines.append(f"| {label} | {_trim_number(coef)} ({abs(force):.1f} kg {kind} @ 200 km/h) |")
-        lines.append("")
-        lines.append("_Force at speed: force = 7.098 × 10⁻⁷ × v² × coefficient, with v measured in km/h (shown at 200 km/h). Negative coefficient = downforce, positive = lift. Shift (+Z): downforce._")
         lines.append("")
 
     # --- Other stat structs: all fields of the type, '-' for missing ---
@@ -1866,7 +1930,7 @@ def _fmt_stat_value(field: str, value, unit: str) -> str:
 def generate_parts_index(parts: list[Part]) -> str:
     """Generate a part index page grouped by part type."""
     lines = [
-        "====== List of Vehicle Parts (Auto-Generated) ======",
+        "====== List of Vehicle Parts ======",
         "",
         f"There are {len(parts)} vehicle parts in [[:motor_town|Motor Town]].",
         "",
@@ -1881,7 +1945,7 @@ def generate_parts_index(parts: list[Part]) -> str:
         type_name = _part_type_name(pt)
         lines.append(f"===== {type_name} =====")
         lines.append("^ Part ^ Cost ^ Mass ^")
-        for p in sorted(by_type[pt], key=lambda x: _natural_part_key(x.id)):
+        for p in sorted(by_type[pt], key=_natural_part_key):
             slug = _part_slug(p.id)
             mass = _fmt_weight(p.mass_kg) if p.mass_kg else '—'
             lines.append(f"| [[parts:{slug}|{_part_display_name(p)}]] | {_fmt_cost(p.cost)} | {mass} |")
