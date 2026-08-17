@@ -979,7 +979,7 @@ def _installable_for_vehicle(v) -> dict[str, list]:
             tn = p.part_type or 'Other'
         result.setdefault(tn, []).append(p)
     for tn in result:
-        result[tn].sort(key=lambda x: x.name)
+        result[tn].sort(key=lambda x: _natural_part_key(x.id))
     return result
 
 
@@ -1094,16 +1094,27 @@ def _part_type_name(part_type: str) -> str:
 
 
 def _part_slug(part_id: str) -> str:
-    """Slug for a part page URL.
+    """Slug for a part page URL (must be a valid DokuWiki page ID).
 
-    Lowercases and collapses separators, but PRESERVES '+', '-', and '_' internal
-    characters so distinct parts like 'RideHeight_+1' vs 'RideHeight_-1' map to
-    distinct page names instead of colliding.
+    DokuWiki page IDs allow [a-z0-9 _ - . :] but NOT '+'. Map '+' to 'p' so
+    'RideHeight_+1' -> 'rideheight_p1' stays distinct from 'RideHeight_-1' ->
+    'rideheight_-1' (the '-' is legal and kept). Without this, DokuWiki strips
+    the '+' from links and resolves them to a non-existent page.
     """
-    slug = part_id.lower()
-    # Keep [a-z0-9 _ + -]; collapse any other runs (e.g. whitespace) to '_'
-    slug = re.sub(r'[^a-z0-9_+\-]+', '_', slug)
+    slug = part_id.lower().replace('+', 'p')
+    slug = re.sub(r'[^a-z0-9_\-]+', '_', slug)
     return slug.strip('_')
+
+
+def _natural_part_key(pid: str):
+    """Sort key giving numeric ordering (small -> large) where parts are named
+    by magnitude (e.g. Damper 50, 80, 120; Ride Height -1 .. +20), and plain
+    alphabetical order for everything else.
+    """
+    nums = [int(m) for m in re.findall(r'([+-]?\d+)', pid)]
+    if nums:
+        return (0, nums, pid.lower())
+    return (1, [], pid.lower())
 
 
 def generate_part_page(p: Part) -> str:
@@ -1207,7 +1218,7 @@ def generate_parts_index(parts: list[Part]) -> str:
         type_name = _part_type_name(pt)
         lines.append(f"===== {type_name} =====")
         lines.append("^ Part ^ Cost ^ Mass ^")
-        for p in sorted(by_type[pt], key=lambda x: x.name):
+        for p in sorted(by_type[pt], key=lambda x: _natural_part_key(x.id)):
             slug = _part_slug(p.id)
             mass = _fmt_weight(p.mass_kg) if p.mass_kg else '—'
             lines.append(f"| [[parts:{slug}|{p.name}]] | {_fmt_cost(p.cost)} | {mass} |")
