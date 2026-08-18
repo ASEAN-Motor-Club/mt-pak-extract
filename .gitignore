@@ -49,6 +49,9 @@ mod_out/
 qxZap_*/
 *.zip
 
+# Raw extracted Game.locres binaries (regenerable via extract_locres)
+/locres/
+
 # Versioned game data archive (large, derived from PAKs)
 /versions/
 
