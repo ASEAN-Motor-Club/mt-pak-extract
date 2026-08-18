@@ -142,6 +142,41 @@ def resolve_engine_physics(out_dir, row):
     return {}
 
 
+def resolve_transmission_physics(out_dir, row):
+    """Return the MTTransmissionDataAsset's resolved TransmissionProperty dict
+    (AutoShiftComportRPM, ClutchType, Type, ShiftTimeSeconds, Gears, ...) plus the
+    asset-root DevComment (the engine's real-world inspiration, e.g. 'RTO-9513 (FLT)').
+
+    Mirrors resolve_engine_physics: reads out/<TransmissionAsset>_parsed.json whose
+    single export is an MTTransmissionDataAsset with a 'TransmissionProperty' struct.
+    """
+    ta = row.get("TransmissionAsset")
+    if not ta or ta == "None":
+        return {}
+    props = physics_assets(out_dir, ta)
+    tp = props.get("TransmissionProperty", {})
+    if not isinstance(tp, dict) or not tp.get("_StructType"):
+        return {}
+    tp = dict(tp)
+    tp.pop("_StructType", None)
+    # Strip the per-gear _StructType markers so the wiki renders Name/GearRatio/Inertia.
+    if isinstance(tp.get("Gears"), list):
+        clean_gears = []
+        for g in tp["Gears"]:
+            if isinstance(g, dict):
+                gg = dict(g)
+                gg.pop("_StructType", None)
+                clean_gears.append(gg)
+            else:
+                clean_gears.append(g)
+        tp["Gears"] = clean_gears
+    # DevComment sits on the asset root, next to TransmissionProperty.
+    tp.pop("GearGrindingSound", None)  # asset-ref plumbing, no tuning value
+    if props.get("DevComment") is not None:
+        tp["DevComment"] = props["DevComment"]
+    return tp
+
+
 def resolve_lsd_physics(out_dir, row, variant_key):
     la = row.get("LSDAsset")
     if not la or la == "None":
@@ -233,6 +268,18 @@ def main():
                 merged.update(ep)
                 if merged != stats.get("engine"):
                     stats["engine"] = merged
+                    part["stats"] = stats
+                    changed += 1
+            continue
+
+        # --- Transmission: merge the fully-resolved physics (adds new fields) ---
+        if ptype == "Transmission":
+            tp = resolve_transmission_physics(out_dir, row)
+            if tp:
+                merged = dict(stats.get("transmission") or {})
+                merged.update(tp)
+                if merged != stats.get("transmission"):
+                    stats["transmission"] = merged
                     part["stats"] = stats
                     changed += 1
             continue

@@ -2065,7 +2065,36 @@ class Program
         
         var exports = new List<object>();
         object? dataTable = null;
-        
+
+        // Convert RawExport CDOs (Default__*) to NormalExport so their properties
+        // (AirDragCoeff, BodyInstance.MassInKgOverride, FuelTankCapacityInLiter,
+        // LiftAxles, ...) are serialized instead of dropped. Cooked blueprints often
+        // store the CDO as a RawExport that UAssetAPI cannot classify without this.
+        for (int ei = 0; ei < asset.Exports.Count; ei++)
+        {
+            var exp = asset.Exports[ei];
+            if (exp is RawExport rawExp && (exp.ObjectName?.Value?.Value ?? "").StartsWith("Default__"))
+            {
+                try
+                {
+                    var converted = rawExp.ConvertToChildExport<NormalExport>();
+                    var reader = new AssetBinaryReader(new MemoryStream(rawExp.Data ?? []))
+                    {
+                        Asset = asset
+                    };
+                    converted.Data = new List<PropertyData>();
+                    var nextStarting = rawExp.Data?.Length ?? 0;
+                    converted.Read(reader, nextStarting);
+                    asset.Exports[ei] = converted;
+                    Console.WriteLine($"    Reparsed CDO RawExport '{exp.ObjectName.Value.Value}' as NormalExport ({converted.Data?.Count ?? 0} properties)");
+                }
+                catch (Exception cdoEx)
+                {
+                    Console.WriteLine($"    Warning: CDO RawExport reparse failed: {cdoEx.Message}");
+                }
+            }
+        }
+
         foreach (var export in asset.Exports)
         {
             if (export is DataTableExport dtExport)
@@ -2074,7 +2103,12 @@ class Program
                 foreach (var row in dtExport.Table.Data)
                 {
                     var rowData = new Dictionary<string, object?>();
-                    rowData["RowName"] = row.Name.Value.Value;
+                    // Use FName.ToString() so the instance-number suffix is
+                    // preserved in row names (e.g. Trailer_Shovan with Number=8
+                    // renders "Trailer_Shovan_7"). Using .Value drops the
+                    // suffix, merging UE auto-numbered variants like the 7m/10m
+                    // Shovan/Shobed/Shotan trailers into one row.
+                    rowData["RowName"] = row.Name.ToString();
                     foreach (var prop in row.Value)
                         rowData[prop.Name.Value.Value] = ExtractPropertyValue(prop, asset);
                     rows.Add(rowData);
@@ -2123,9 +2157,12 @@ class Program
             StructPropertyData structProp => ExtractStructValue(structProp, asset),
             MapPropertyData mapProp => ExtractMapValue(mapProp, asset),
             TextPropertyData textProp => textProp.Value?.Value,
-            BytePropertyData byteProp => byteProp.Value,
+            BytePropertyData byteProp => byteProp.EnumValue?.Value?.Value
+                ?? (object)(byteProp.Value),
             Vector2DPropertyData vec2Prop => new { X = vec2Prop.Value.X, Y = vec2Prop.Value.Y },
             VectorPropertyData vecProp => new { X = vecProp.Value.X, Y = vecProp.Value.Y, Z = vecProp.Value.Z },
+            LinearColorPropertyData linColorProp => new { R = linColorProp.Value.R, G = linColorProp.Value.G, B = linColorProp.Value.B, A = linColorProp.Value.A },
+            ColorPropertyData colorProp => new { R = colorProp.Value.R, G = colorProp.Value.G, B = colorProp.Value.B, A = colorProp.Value.A },
             GameplayTagContainerPropertyData tagProp => ExtractGameplayTags(tagProp),
             GuidPropertyData guidProp => guidProp.Value.ToString("N"),
             _ => $"<{prop.GetType().Name}>"

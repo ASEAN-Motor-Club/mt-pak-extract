@@ -82,7 +82,8 @@ class Vehicle:
     comport: int
     is_hidden: bool
     is_disabled: bool
-    air_drag: float = 0.0
+    air_drag: Optional[float] = None
+    drivetrain: str = ''
     chassis_mass_kg: float = 0.0
     total_weight_kg: float = 0.0
     parts_mass_kg: float = 0.0
@@ -113,6 +114,11 @@ class Vehicle:
     engine_hp: int = 0
     # Fuel tank
     fuel_capacity_liters: float = 0.0
+    fuel_type: str = ''
+    # Seats (MTSeatComponent count from blueprint CDO)
+    seats: int = 0
+    # Level requirement: {career: level} from out_vehicle.json e.g. {'CL_Driver': 20}
+    level: dict = field(default_factory=dict)
     # Final drive ratio
     final_drive_ratio: float = 0.0
     # Tags
@@ -283,11 +289,14 @@ def load_vehicles(conn: sqlite3.Connection, include_hidden: bool = False) -> lis
         SELECT v.id, v.name, v.vehicle_type, v.truck_class, v.cost, v.comport,
                v.is_hidden, v.is_disabled,
                COALESCE(vw.chassis_mass_kg, 0) as chassis_mass_kg,
+               vp2.drag_coeff, vp2.drivetrain, vp2.seats, vp2.fuel_tank_l,
+               vp2.level_json,
                v.is_taxiable, v.is_limoable, v.is_busable, v.is_race_car,
                v.can_haul_trailer, v.has_fuel_pump,
                v.delivery_payment_multiplier, v.delivery_base_payment
         FROM vehicles v
         LEFT JOIN vehicle_weights vw ON v.id = vw.vehicle_id
+        LEFT JOIN vehicle_physics vp2 ON v.id = vp2.vehicle_id
         {hidden_clause}
         ORDER BY v.vehicle_type, v.name
 """,):
@@ -302,11 +311,15 @@ def load_vehicles(conn: sqlite3.Connection, include_hidden: bool = False) -> lis
             truck_class=row[3] or '', cost=row[4] or 0, comport=row[5] or 0,
             is_hidden=bool(row[6]), is_disabled=bool(row[7]),
             chassis_mass_kg=row[8] or 0.0,
-            is_taxiable=bool(row[9]), is_limoable=bool(row[10]),
-            is_busable=bool(row[11]), is_race_car=bool(row[12]),
-            can_haul_trailer=bool(row[13]), has_fuel_pump=bool(row[14]),
-            delivery_payment_multiplier=row[15] or 1.0,
-            delivery_base_payment=row[16] or 0,
+            air_drag=row[9] if row[9] is not None else None, drivetrain=row[10] or '',
+            seats=int(row[11]) if row[11] else 0,
+            fuel_capacity_liters=float(row[12]) if row[12] else 0.0,
+            level=dict(json.loads(row[13])) if row[13] else {},
+            is_taxiable=bool(row[14]), is_limoable=bool(row[15]),
+            is_busable=bool(row[16]), is_race_car=bool(row[17]),
+            can_haul_trailer=bool(row[18]), has_fuel_pump=bool(row[19]),
+            delivery_payment_multiplier=row[20] or 1.0,
+            delivery_base_payment=row[21] or 0,
         )
 
         # Load default parts
@@ -336,32 +349,55 @@ def load_vehicles(conn: sqlite3.Connection, include_hidden: bool = False) -> lis
                     dedup.append((slot, pid))
             v.default_parts = dedup
 
+        # Fuel type comes from the default engine part's resolved engine stats
+        # (ref_parts.json, self-generated from our pak pipeline) — the engine
+        # data asset's FuelType field. Defaults to Gasoline when absent.
+        if not v.fuel_type:
+            eng_id = next((pid for slot, pid in v.default_parts if slot == 'Engine'), None)
+            if eng_id:
+                eng = _REF_PARTS.get(eng_id, {}).get('stats', {}).get('engine', {})
+                v.fuel_type = (eng.get('FuelType') or '').rsplit('::', 1)[-1] or 'Gasoline'
+
         # Reference gameplay tags (used to evaluate parts' tag-query restrictions).
         ref_tags = _REF_VEHICLES.get(v.id, {}).get('tags') or []
         v.ref_tags = list(ref_tags)
 
-        # Calculate total weight from parts
+        # Calculate total weight from parts. When reference default parts are
+        # overlaid (granular keys like BasicTire_65), sum their reference
+        # masses — the DB part_mass is inflated (merged rows double-count) and
+        # the validator's expected total is weightKg + Σ default-part massKg.
         parts_mass = inner.execute("""
             SELECT COALESCE(SUM(vp.mass_kg), 0)
             FROM vehicle_default_parts dp
             JOIN vehicle_parts vp ON dp.part_id = vp.id
             WHERE dp.vehicle_id = ?
         """, (v.id,)).fetchone()[0] or 0.0
+        if ref_vparts:
+            _load_ref_data()
+            ref_sum = 0.0
+            for _slot, pid in ref_vparts.items():
+                ref_sum += (_REF_PARTS.get(pid, {}).get('massKg') or 0.0)
+            if ref_sum > 0:
+                parts_mass = ref_sum
 
         v.parts_mass_kg = parts_mass
         v.total_weight_kg = v.chassis_mass_kg + parts_mass
 
-        # Get air drag from the first aero part or body
-        drag_row = inner.execute("""
-            SELECT vp.air_drag_multiplier
-            FROM vehicle_default_parts dp
-            JOIN vehicle_parts vp ON dp.part_id = vp.id
-            WHERE dp.vehicle_id = ? AND vp.air_drag_multiplier IS NOT NULL
-            AND vp.air_drag_multiplier != 0
-            LIMIT 1
-        """, (v.id,)).fetchone()
-        if drag_row:
-            v.air_drag = drag_row[0] or 0.0
+        # Air drag: prefer the DB physics drag_coeff (authoritative from blueprint
+        # CDO AirDragCoeff). Only fall back to an aero part's multiplier when the
+        # DB has no value at all (air_drag == 0 means a genuine 0 in the pak,
+        # e.g. Trophy_Air dragCoeff=0, so never treat 0 as "missing").
+        if v.air_drag is None:
+            drag_row = inner.execute("""
+                SELECT vp.air_drag_multiplier
+                FROM vehicle_default_parts dp
+                JOIN vehicle_parts vp ON dp.part_id = vp.id
+                WHERE dp.vehicle_id = ? AND vp.air_drag_multiplier IS NOT NULL
+                AND vp.air_drag_multiplier != 0
+                LIMIT 1
+            """, (v.id,)).fetchone()
+            if drag_row:
+                v.air_drag = drag_row[0] or 0.0
 
         # Engine info
         engine_id = next((pid for slot, pid in v.default_parts if slot == 'Engine'), None)
@@ -568,6 +604,7 @@ def _part_show_name(part_id: str, locres_key: Optional[str]) -> str:
 _REF_DIR = Path(__file__).resolve().parent.parent
 _REF_PARTS: dict = {}     # part key -> {type,name,cost,massKg,restrict,stats}
 _REF_VEHICLES: dict = {}  # vehicle key -> {name,type,...,parts:{slot:key}}
+_REF_DATA: dict = {}      # vehicle key -> {comfort,seats,fuelTankL,fuelType,weightKg} (out_vehicle_data.json)
 
 _ref_loaded = False
 
@@ -584,7 +621,8 @@ def _load_ref_data() -> None:
         return
     _ref_loaded = True
     for fname, store in (("ref_parts.json", _REF_PARTS),
-                         ("out_vehicle.json", _REF_VEHICLES)):
+                         ("out_vehicle.json", _REF_VEHICLES),
+                         ("out_vehicle_data.json", _REF_DATA)):
         store.clear()
         p = _REF_DIR / fname
         if not p.exists():
@@ -896,6 +934,13 @@ def build_slug_map(wiki_dir: Path) -> tuple[dict[str, str], dict[str, str]]:
     return slug_map, name_map
 
 
+def _humanize_drivetrain(value: str) -> str:
+    """Map the DB short form (FWD/RWD/AWD) to the spelled-out wiki label.
+    '' stays blank. _get_drivetrain already returns spelled-out forms."""
+    return {'FWD': 'Front-wheel drive', 'RWD': 'Rear-wheel drive',
+            'AWD': 'All-wheel drive'}.get(value, value)
+
+
 def _get_drivetrain(parts: list[tuple[str, str]]) -> str:
     """Infer drivetrain from default LSD parts."""
     # Collect unique LSD slot base numbers
@@ -971,7 +1016,8 @@ def generate_vehicle_infobox(v: Vehicle, existing_image: Optional[str] = None,
     if v.engine_hp:
         add('Engine', f"{v.engine_hp} HP")
 
-    drivetrain = _get_drivetrain(v.default_parts)
+    drivetrain = v.drivetrain if v.drivetrain else _get_drivetrain(v.default_parts)
+    drivetrain = _humanize_drivetrain(drivetrain)
     if drivetrain:
         add('Drivetrain', drivetrain)
 
@@ -979,6 +1025,23 @@ def generate_vehicle_infobox(v: Vehicle, existing_image: Optional[str] = None,
         add('Cargo space', v.cargo_space_type)
 
     add('Drag coefficient', f"{v.air_drag}")
+
+    # Comfort: stars for the pak Comport (0 -> "No comfort").
+    if v.comport:
+        add('Comfort', '⭐' * round(v.comport))
+
+    # Fuel: "{n}L ({Type})" when the CDO fuel tank is non-zero.
+    if v.fuel_capacity_liters:
+        add('Fuel', f"{_fmt_number(v.fuel_capacity_liters)}L ({v.fuel_type or 'Gasoline'})")
+
+    # Seats: MTSeatComponent count (trailers have none, skip).
+    if v.seats:
+        add('Seats', str(v.seats))
+
+    # Level requirement: "{Career}: {level}" (CL_ stripped), comma-joined.
+    if v.level:
+        levels = [f"{career.replace('CL_', '')}: {lvl}" for career, lvl in v.level.items()]
+        add('Level requirement', ', '.join(levels))
 
     # Preserve user-curated lines from the existing infobox that we do not
     # regenerate (Comfort, Fuel, Seats, Level requirement, Axle lift, ...).
@@ -1044,7 +1107,7 @@ def generate_vehicle_specs(v: Vehicle, slug: str = '') -> str:
         lines.append(f"| Transmission | [[parts:{_part_slug(transmission)}|{tdisp}]] |")
 
     # Drivetrain
-    drivetrain = _get_drivetrain(v.default_parts)
+    drivetrain = _humanize_drivetrain(v.drivetrain if v.drivetrain else _get_drivetrain(v.default_parts))
     if drivetrain:
         lines.append(f"| Drivetrain | {drivetrain} |")
 
@@ -1459,8 +1522,12 @@ def _display_name_key(name: str):
     def _num_tokens(s):
         return re.findall(r'\d+(?:\.\d+)?|.', s)
 
-    # Pure numeric with optional trailing unit/sign -> (0, float, unit-lower)
-    m = re.fullmatch(r'([+-]?\d+(?:\.\d+)?)\s*([a-zA-Z%°\u00b2\u00b3]*)', name)
+    # Pure numeric with a genuine trailing unit (% °C cm mm km kg m L N·m G rpm etc.)
+    # -> (0, float, unit-lower). A trailing WORD like "Speed" is NOT a unit: those
+    # names ("13 Speed") must fall through to the token split so "4 Speed Mini Bus"
+    # sorts before "13 Speed".
+    _UNIT = r'(?:%|°[Cc]|°|cm|mm|km|kg|kL|[NLmG]|N·m|N·s/?m|rpm|[KMGTP]?[VW])?'
+    m = re.fullmatch(r'([+-]?\d+(?:\.\d+)?)\s*(' + _UNIT + r')', name)
     if m:
         try:
             return (0, float(m.group(1)), m.group(2).lower())
@@ -1710,6 +1777,11 @@ _STAT_DROP_FIELDS = {
     'ComponentTags', 'CustomSocketName', 'bUseCustomSocket', 'SkelealMesh',
     'bIsValid', 'bFixCargo', 'bUnlimitedHeight',
     'TirePhysicsDataAsset',
+    # Transmission CVT tuning rows: the reference extractor does not surface
+    # these (review Task 2 lists only Inspiration/Clutch Type/Comfort Autoshift
+    # RPM/Type for transmission pages), so rendering them makes them wiki-only
+    # claims. Omit.
+    'CVT_InputRPMRange', 'CVT_GearRatios', 'CVT_ClutchCurvePow',
 }
 
 # Enum fields whose tail should be humanized for display (e.g.
@@ -1731,9 +1803,12 @@ _ENUM_HUMANIZE_OVERRIDE = {
     'EMTCargoSpaceType::Box': 'Box',
     'EMTCargoSpaceType::Tanker': 'Tanker',
     'EMTTransmissionClutchType::MultiPlateClutch': 'Multi Plate Clutch',
-    'EMTTransmissionType::EatonFuller13': 'Eaton Fuller 13',
-    'EMTTransmissionType::EatonFuller18': 'Eaton Fuller 18',
-    'EMTTransmissionType::CVT': 'CVT',
+    # Review Task 2: TorqueConvertorV2 -> "Torque Converter V2" (corrects the
+    # pak's "Convertor" typo, humanized).
+    'EMTTransmissionClutchType::TorqueConvertorV2': 'Torque Converter V2',
+    # NOTE: EMTTransmissionType::EatonFuller13/18 are intentionally NOT in the
+    # override. Review Task 2 renders the transmission Type as the raw enum
+    # tail ("EatonFuller13", "EatonFuller18", "CVT"), not camel-split.
     'EMTFuelType::Diesel': 'Diesel',
     'EMTFuelType::Petrol': 'Petrol',
     'EMTFuelType::Electric': 'Electric',
@@ -2003,6 +2078,11 @@ def _build_type_schema(part_type: str) -> list:
             if f == '__scalar__':
                 continue
             label, unit = _STAT_LABEL_UNIT.get(f, (_display_field(f), ''))
+            # Transmission's 'Type' field must render as 'Type (transmission)'
+            # to match the validator's field key (the engine already disambiguates
+            # its own Type as 'Engine Type'; transmission needs the parens form).
+            if st == 'transmission' and f == 'Type':
+                label = 'Type (transmission)'
             default = _mode(sv[f])
             present_all = sc.get(f, 0) >= total_parts
             fields.append((f, label, unit, default, present_all))
@@ -2075,8 +2155,14 @@ def _render_part_stats(p: Part) -> str:
       (e.g. engine CoolingEfficiency/StarterRPM) are omitted entirely when a
       given part lacks them.
     """
-    lines = ["===== Stats ====="]
+    lines = ["===== Stats =====\n"]
     stats = p.stats or {}
+
+    # A part with no pak stats renders no Stats heading at all — an empty
+    # section is a validation claim ("empty stats section"). We strip the
+    # heading and return an empty string if nothing is ever rendered.
+    def _is_empty() -> bool:
+        return len(lines) == 1
 
     # --- Aero section (type-driven: every aero field the type can have) ---
     lift_keys, drag_keys = _type_aero_fields(p.part_type)
@@ -2163,7 +2249,7 @@ def _render_part_stats(p: Part) -> str:
         lines.append(f"==== {head} ====")
         lines.append("^ Stat ^ Value ^")
         lines.extend(rows)
-    return '\n'.join(lines)
+    return '' if _is_empty() else '\n'.join(lines)
 
 
 def _fmt_stat_value(field: str, value, unit: str) -> str:
@@ -2181,6 +2267,10 @@ def _fmt_stat_value(field: str, value, unit: str) -> str:
     if isinstance(value, list):
         return _fmt_list(value)
     if isinstance(value, str):
+        # Review Task 2: the transmission 'Type' field renders the raw enum
+        # tail (EatonFuller13, EatonFuller18, CVT), NOT camel-split.
+        if field == 'Type':
+            return value.rsplit('::', 1)[-1]
         if value in _ENUM_HUMANIZE_OVERRIDE or '::' in value or field in _STAT_BOOL_FIELDS:
             return _humanize_enum(value)
         return value
@@ -2254,7 +2344,7 @@ def generate_vehicle_comparison(vehicles: list[Vehicle], slug_map: dict[str, str
 
     for v in sorted(vehicles, key=lambda x: (_humanize_vehicle_type(x.vehicle_type), x.name)):
         slug = slug_map.get(v.id, _name_to_slug(v.name))
-        drivetrain = _get_drivetrain(v.default_parts)
+        drivetrain = _humanize_drivetrain(v.drivetrain if v.drivetrain else _get_drivetrain(v.default_parts))
         lines.append(
             f"| [[vehicles:{slug}|{v.name}]] "
             f"| {_humanize_vehicle_type(v.vehicle_type)} "
@@ -2424,10 +2514,9 @@ def sync_vehicles(
                 sub_path.write_text(sub_text, encoding='utf-8')
                 print(f"  {'CREATE' if sub_existing is None else 'UPDATE'}: vehicles/{slug}/{sub_slug}.txt")
 
-        # Hidden vehicles don't get their main page rewritten (only the sub-page).
-        if v.is_hidden:
-            continue
-
+        # Hidden vehicles' main pages used to be skipped, leaving kart/trophy_air/
+        # trailers with only infobox + axle info. Rebuild them so Specifications /
+        # Capabilities / Default Parts render (review 2026-08-18).
         page_path = vehicles_dir / f"{slug}.txt"
 
         existing_text = None

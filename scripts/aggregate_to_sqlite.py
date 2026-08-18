@@ -9,6 +9,7 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from collections import defaultdict
 
 
 def strip_enum(value: str) -> str:
@@ -268,6 +269,19 @@ def create_schema(conn: sqlite3.Connection):
             vehicle_id TEXT PRIMARY KEY,
             chassis_mass_kg REAL,
             blueprint_path TEXT,
+            FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+        )
+    """)
+
+    # Vehicle physics from blueprints (drag + drivetrain, reviewed 2026-08-18)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vehicle_physics (
+            vehicle_id TEXT PRIMARY KEY,
+            drag_coeff REAL,
+            drivetrain TEXT,
+            seats INTEGER,
+            fuel_tank_l REAL,
+            level_json TEXT,
             FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
         )
     """)
@@ -822,7 +836,7 @@ def process_cargo_weights(conn: sqlite3.Connection, json_files: List[Path]):
             # (0.7.19+ parse emits bare class name "BottleBox_C", split gives 1 part)
             parts = actor_path.split("/")
             if parts:
-                blueprint_name = parts[-1].replace("_C", "")
+                blueprint_name = re.sub(r"_C$", "", parts[-1])
                 cargo_blueprint_map[cargo_id] = blueprint_name
     
     print(f"Mapped {len(cargo_blueprint_map)} cargos to blueprint names")
@@ -969,7 +983,7 @@ def process_vehicle_cargo_space(conn: sqlite3.Connection, json_files: List[Path]
             # (0.7.19+ parse emits bare class name "Bongo_C", split gives 1 part)
             parts = blueprint_path.split("/")
             if parts:
-                blueprint_name = parts[-1].replace("_C", "")
+                blueprint_name = re.sub(r"_C$", "", parts[-1])
                 vehicle_blueprint_map[vehicle_id] = blueprint_name
     
     print(f"Mapped {len(vehicle_blueprint_map)} vehicles to blueprint names")
@@ -1075,7 +1089,7 @@ def process_vehicle_weights(conn: sqlite3.Connection, json_files: List[Path]):
             parts = blueprint_path.split("/")
             if parts:
                 # Last part before _C is the blueprint name
-                blueprint_name = parts[-1].replace("_C", "")
+                blueprint_name = re.sub(r"_C$", "", parts[-1])
                 vehicle_blueprint_map[vehicle_id] = blueprint_name
     
     print(f"Mapped {len(vehicle_blueprint_map)} vehicles to blueprint names")
@@ -1137,6 +1151,136 @@ def process_vehicle_weights(conn: sqlite3.Connection, json_files: List[Path]):
     
     conn.commit()
     print(f"Inserted weights for {cursor.execute('SELECT COUNT(*) FROM vehicle_weights').fetchone()[0]} vehicles")
+
+
+def process_vehicle_physics(conn: sqlite3.Connection, json_files: List[Path]):
+    """Extract drag + drivetrain from vehicle blueprints.
+
+    Mirrors the reference extractor (beam41/mt-map-extract wiki/validate): the
+    class default object (Default__<V>_C) carries AirDragCoeff; each
+    MHWheelComponent export carries DifferentialComponentName, and counting the
+    distinct driven axles yields the drivetrain (0 -> blank, front -> FWD,
+    rear -> RWD, 2 -> AWD).
+    """
+    cursor = conn.cursor()
+
+    # Same blueprint->vehicle mapping as process_vehicle_weights.
+    vehicle_blueprint_map = {}
+    for vehicle_id, blueprint_path in cursor.execute(
+        "SELECT id, blueprint_path FROM vehicles WHERE blueprint_path IS NOT NULL"
+    ):
+        if blueprint_path:
+            parts = blueprint_path.split("/")
+            if parts:
+                vehicle_blueprint_map[vehicle_id] = re.sub(r"_C$", "", parts[-1])
+
+    blueprint_to_vehicles = defaultdict(list)
+    for vehicle_id, blueprint_name in vehicle_blueprint_map.items():
+        blueprint_to_vehicles[blueprint_name].append(vehicle_id)
+
+    inserted = 0
+    for json_file in json_files:
+        if not json_file.name.endswith("_parsed.json"):
+            continue
+        with open(json_file) as f:
+            data = json.load(f)
+        if data.get("Data", {}).get("Type") != "Blueprint":
+            continue
+
+        blueprint_name = json_file.stem.replace("_parsed", "")
+        matching = blueprint_to_vehicles.get(blueprint_name, [])
+        if not matching:
+            continue
+
+        drag_coeff = None
+        driven_axles = set()   # axle index -> driven (from wheelN)
+        wheel_indexes = set()  # ALL wheel indexes (driven or not) -> axle geometry
+        seats = 0
+        fuel_tank_l = None
+
+        for export in data["Data"].get("Exports", []):
+            props = export.get("Properties", {})
+            name = export.get("ExportName", "")
+            cls = export.get("Class") or ""
+            if drag_coeff is None and props.get("AirDragCoeff") is not None:
+                drag_coeff = props.get("AirDragCoeff")
+            if fuel_tank_l is None and props.get("FuelTankCapacityInLiter") is not None:
+                fuel_tank_l = props.get("FuelTankCapacityInLiter")
+            if cls == "MTSeatComponent":
+                seats += 1
+            if name and name.startswith("Wheel"):
+                # WheelN -> axle index N//2; front = lowest, rear = highest.
+                m = re.search(r"(\d+)", name)
+                if m:
+                    wi = int(m.group(1))
+                    wheel_indexes.add(wi)
+                    if props.get("DifferentialComponentName") is not None:
+                        driven_axles.add(wi // 2)
+
+        if not wheel_indexes:
+            continue
+
+        front_axle = min(wi // 2 for wi in wheel_indexes)
+        ndriven = len(driven_axles)
+        if ndriven == 0:
+            drivetrain = ""
+        elif ndriven == 1:
+            # Single driven axle: FWD only when it is the front axle, else RWD
+            # (matches reference: a 3-axle truck with only its middle axle driven
+            #  (Atlas 6x2 Semi, Cheetah Mk1) is RWD).
+            drivetrain = "FWD" if front_axle in driven_axles else "RWD"
+        else:
+            drivetrain = "AWD"
+
+        for vehicle_id in matching:
+            cursor.execute(
+                "INSERT OR REPLACE INTO vehicle_physics(vehicle_id, drag_coeff, drivetrain, seats, fuel_tank_l) VALUES (?,?,?,?,?)",
+                (vehicle_id, drag_coeff, drivetrain, seats if seats > 0 else None,
+                 fuel_tank_l if fuel_tank_l is not None and fuel_tank_l > 0 else None),
+            )
+            inserted += 1
+
+    conn.commit()
+    print(f"Inserted physics for {inserted} vehicles")
+
+
+def process_vehicle_levels(conn: sqlite3.Connection, json_files: List[Path]):
+    """Extract LevelRequirementToDrive (career -> level) from the Vehicles tables.
+
+    The map key is a career enum (CL_Bus, CL_Driver, ...) once the C# parser
+    resolves byte-backed enum keys to their FName; the value is the level. The
+    wiki infobox renders this as \"Driver: 20\" (CL_ prefix stripped).
+    """
+    cursor = conn.cursor()
+    updated = 0
+    for json_file in json_files:
+        if not json_file.name.startswith("Vehicles"):
+            continue
+        with open(json_file) as f:
+            data = json.load(f)
+        if data.get("Data", {}).get("Type") != "DataTable":
+            continue
+        for row in data["Data"]["Rows"]:
+            vid = row["RowName"]
+            lvl = row.get("LevelRequirementToDrive")
+            if not isinstance(lvl, dict) or not lvl.get("Entries"):
+                continue
+            level_map = {}
+            for entry in lvl["Entries"]:
+                key = entry.get("Key")
+                if isinstance(key, str) and key:
+                    level_map[key] = entry.get("Value")
+            if not level_map:
+                continue
+            level_json = json.dumps(level_map)
+            cursor.execute(
+                "INSERT INTO vehicle_physics(vehicle_id, level_json) VALUES (?, ?) "
+                "ON CONFLICT(vehicle_id) DO UPDATE SET level_json = excluded.level_json",
+                (vid, level_json),
+            )
+            updated += 1
+    conn.commit()
+    print(f"Set level requirement for {updated} vehicles")
 
 
 def process_delivery_points(conn: sqlite3.Connection, json_files: List[Path]):
@@ -1413,6 +1557,8 @@ def main():
     process_cargo_bed_specs(conn, json_files)
     process_vehicle_cargo_space(conn, json_files)
     process_vehicle_weights(conn, json_files)
+    process_vehicle_physics(conn, json_files)
+    process_vehicle_levels(conn, json_files)
     process_delivery_points(conn, json_files)
     process_houses(conn, json_files)
     

@@ -577,41 +577,42 @@
    },
    "stats": {
     "transmission": {
-     "TorqueConvertorStallRPM": 3000.0,
-     "TorqueConvertorStallRatioPower": 2.0,
+     "TorqueConvertorStallRPM": 3000,
+     "TorqueConvertorStallRatioPower": 2,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -3.484,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 3.587,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 2.022,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.384,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
-       "GearRatio": 1.0,
-       "Inertia": 100.0
+       "GearRatio": 1,
+       "Inertia": 100,
+       "Name": "4"
       }
-     ]
+     ],
+     "DevComment": "Toyota T 40 (AE86)"
     }
    }
   },
@@ -4241,67 +4242,70 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.5,
-     "TorqueConvertorStallRPM": 1500.0,
-     "TorqueConvertorStallRatioPower": 2.0,
+     "TorqueConvertorStallRPM": 1500,
+     "TorqueConvertorStallRatioPower": 2,
      "TorqueConvertorTorqueRate": 0.2,
      "DefaultGearIndex": 3,
      "Gears": [
       {
-       "Name": "R3",
        "GearRatio": -2.17,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R3"
       },
       {
-       "Name": "R2",
        "GearRatio": -3.08,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R2"
       },
       {
-       "Name": "R1",
        "GearRatio": -4.36,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R1"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 4.36,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 3.08,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 2.17,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.56,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5",
        "GearRatio": 1.129,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5"
       },
       {
-       "Name": "6",
        "GearRatio": 0.85,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6"
       },
       {
-       "Name": "7",
        "GearRatio": 0.69,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "7"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::TorqueConvertorV2",
+     "AutoShiftComportRPM": 2000,
+     "DevComment": "769D"
     }
    }
   },
@@ -4517,52 +4521,55 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.2,
-     "TorqueConvertorStallRPM": 3000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 40.0,
+     "TorqueConvertorStallRPM": 3000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 40,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
-       "GearRatio": -10.0,
-       "Inertia": 10.0
+       "GearRatio": -10,
+       "Inertia": 10,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 10.0
+       "GearRatio": 0,
+       "Inertia": 10,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 3.181,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 2.187,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.727,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.421,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "4"
       },
       {
-       "Name": "5",
        "GearRatio": 1.222,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "5"
       },
       {
-       "Name": "6",
        "GearRatio": 1.068,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "6"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 5000,
+     "DevComment": "CBR 250"
     }
    }
   },
@@ -4609,27 +4616,28 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.1,
-     "TorqueConvertorStallRPM": 2000.0,
-     "TorqueConvertorStallRatioPower": 2.0,
-     "TorqueConvertorTorqueRate": 30.0,
+     "TorqueConvertorStallRPM": 2000,
+     "TorqueConvertorStallRatioPower": 2,
+     "TorqueConvertorTorqueRate": 30,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
-       "GearRatio": -1.0,
-       "Inertia": 10.0
+       "GearRatio": -1,
+       "Inertia": 10,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 10.0
+       "GearRatio": 0,
+       "Inertia": 10,
+       "Name": "N"
       },
       {
-       "Name": "1",
-       "GearRatio": 1.0,
-       "Inertia": 10.0
+       "GearRatio": 1,
+       "Inertia": 10,
+       "Name": "1"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch"
     }
    }
   },
@@ -4972,46 +4980,48 @@
    },
    "stats": {
     "transmission": {
-     "TorqueConvertorStallRPM": 3000.0,
-     "TorqueConvertorStallRatioPower": 2.0,
+     "TorqueConvertorStallRPM": 3000,
+     "TorqueConvertorStallRatioPower": 2,
      "DefaultGearIndex": 3,
      "Gears": [
       {
-       "Name": "R3",
        "GearRatio": -1.08,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R3"
       },
       {
-       "Name": "R2",
        "GearRatio": -2.28,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R2"
       },
       {
-       "Name": "R1",
        "GearRatio": -4.36,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R1"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 4.36,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 2.28,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.08,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       }
-     ]
+     ],
+     "AutoShiftComportRPM": 2500,
+     "DevComment": "TE17"
     }
    }
   },
@@ -5591,50 +5601,51 @@
    },
    "stats": {
     "transmission": {
-     "TorqueConvertorStallRatioPower": 2.0,
+     "TorqueConvertorStallRatioPower": 2,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -3.06,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 4.03,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 2.36,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.53,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.15,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5",
        "GearRatio": 0.85,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5"
       },
       {
-       "Name": "6",
        "GearRatio": 0.67,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6"
       }
-     ]
+     ],
+     "DevComment": "Murcielago LP670"
     }
    }
   },
@@ -5897,42 +5908,45 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.6,
-     "TorqueConvertorStallRPM": 3000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 40.0,
+     "TorqueConvertorStallRPM": 3000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 40,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -5.202,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 5.202,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 2.656,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.785,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.315,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 3500,
+     "DevComment": "Citroen 2CV 6"
     }
    }
   },
@@ -6554,52 +6568,55 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.8,
-     "TorqueConvertorStallRPM": 2000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 80.0,
+     "TorqueConvertorStallRPM": 2000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 80,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -6.75,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 7.05,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 4.13,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 2.52,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.59,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5",
-       "GearRatio": 1.0,
-       "Inertia": 100.0
+       "GearRatio": 1,
+       "Inertia": 100,
+       "Name": "5"
       },
       {
-       "Name": "6",
        "GearRatio": 0.78,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 2000,
+     "DevComment": "Eaton Fuller FSO-8406A"
     }
    }
   },
@@ -7712,52 +7729,55 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.8,
-     "TorqueConvertorStallRPM": 2000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 100.0,
+     "TorqueConvertorStallRPM": 2000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 100,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -6.06,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 6.75,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 3.6,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 2.13,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.39,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5",
-       "GearRatio": 1.0,
-       "Inertia": 100.0
+       "GearRatio": 1,
+       "Inertia": 100,
+       "Name": "5"
       },
       {
-       "Name": "6",
        "GearRatio": 0.78,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 2000,
+     "DevComment": "ZF 6S 1010"
     }
    }
   },
@@ -8447,47 +8467,49 @@
    },
    "stats": {
     "transmission": {
-     "TorqueConvertorStallRPM": 3000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 40.0,
+     "TorqueConvertorStallRPM": 3000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 40,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -3.62,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 3.58,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 1.93,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.28,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 0.95,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5",
        "GearRatio": 0.76,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "DevComment": "Ford Fiesta 1.25 JA8 Facelift 82ps, (2013 - 2017)"
     }
    }
   },
@@ -9659,41 +9681,43 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.2,
-     "TorqueConvertorStallRPM": 3000.0,
-     "TorqueConvertorStallRatioPower": 2.0,
+     "TorqueConvertorStallRPM": 3000,
+     "TorqueConvertorStallRatioPower": 2,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -2.333,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 2.333,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 1.706,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.35,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.125,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "DevComment": "Formula Ford Hewland LD200 Brand Hatch Indy"
     }
    }
   },
@@ -10619,42 +10643,44 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.8,
-     "TorqueConvertorStallRPM": 2000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 100.0,
+     "TorqueConvertorStallRPM": 2000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 100,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -5.3,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 5.3,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 3.4,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
-       "GearRatio": 2.0,
-       "Inertia": 100.0
+       "GearRatio": 2,
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.2,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       }
-     ]
+     ],
+     "AutoShiftComportRPM": 2000,
+     "DevComment": "PRO-SHIFT  PS110-7B"
     }
    }
   },
@@ -12121,47 +12147,50 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.8,
-     "TorqueConvertorStallRPM": 2000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 80.0,
+     "TorqueConvertorStallRPM": 2000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 80,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
-       "GearRatio": -6.0,
-       "Inertia": 100.0
+       "GearRatio": -6,
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 6.06,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 3.5,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.8,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.1,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5",
        "GearRatio": 0.79,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 2000,
+     "DevComment": "Warner T93 5-speed"
     }
    }
   },
@@ -12799,52 +12828,55 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.8,
-     "TorqueConvertorStallRPM": 2000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 100.0,
+     "TorqueConvertorStallRPM": 2000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 100,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -12.27,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 12.27,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
-       "GearRatio": 7.0,
-       "Inertia": 100.0
+       "GearRatio": 7,
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 4.13,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 2.54,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5",
        "GearRatio": 1.84,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5"
       },
       {
-       "Name": "6",
        "GearRatio": 1.33,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 2000,
+     "DevComment": "PRO-SHIFT  PS110-7B"
     }
    }
   },
@@ -13414,92 +13446,96 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.8,
-     "TorqueConvertorStallRPM": 2000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 80.0,
+     "TorqueConvertorStallRPM": 2000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 80,
      "DefaultGearIndex": 2,
      "Gears": [
       {
-       "Name": "R2",
        "GearRatio": -3.87,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R2"
       },
       {
-       "Name": "R1",
        "GearRatio": -13.07,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R1"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "L",
        "GearRatio": 12.5,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "L"
       },
       {
-       "Name": "1",
        "GearRatio": 8.35,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 6.12,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 4.56,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 3.38,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5L",
        "GearRatio": 2.47,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5L"
       },
       {
-       "Name": "5H",
        "GearRatio": 2.14,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5H"
       },
       {
-       "Name": "6L",
        "GearRatio": 1.81,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6L"
       },
       {
-       "Name": "6H",
        "GearRatio": 1.57,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6H"
       },
       {
-       "Name": "7L",
        "GearRatio": 1.35,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "7L"
       },
       {
-       "Name": "7H",
        "GearRatio": 1.17,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "7H"
       },
       {
-       "Name": "8L",
-       "GearRatio": 1.0,
-       "Inertia": 100.0
+       "GearRatio": 1,
+       "Inertia": 100,
+       "Name": "8L"
       },
       {
-       "Name": "8H",
        "GearRatio": 0.87,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "8H"
       }
-     ]
+     ],
+     "Type": "EMTTransmissionType::EatonFuller13",
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 2000,
+     "DevComment": "RTO-9513 (FLT)"
     }
    }
   },
@@ -14473,50 +14509,52 @@
    },
    "stats": {
     "transmission": {
-     "TorqueConvertorStallRatioPower": 2.0,
+     "TorqueConvertorStallRatioPower": 2,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -2.692,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 3.091,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 2.105,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.565,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.241,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5",
        "GearRatio": 1.065,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5"
       },
       {
-       "Name": "6",
        "GearRatio": 0.939,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "DevComment": "Murcielago LP670"
     }
    }
   },
@@ -16654,52 +16692,55 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.8,
-     "TorqueConvertorStallRPM": 2000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 80.0,
+     "TorqueConvertorStallRPM": 2000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 80,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -8.07,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 9.03,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 5.25,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 3.1,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
-       "GearRatio": 2.0,
-       "Inertia": 100.0
+       "GearRatio": 2,
+       "Inertia": 100,
+       "Name": "4"
       },
       {
-       "Name": "5",
        "GearRatio": 1.38,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5"
       },
       {
-       "Name": "6",
-       "GearRatio": 1.0,
-       "Inertia": 100.0
+       "GearRatio": 1,
+       "Inertia": 100,
+       "Name": "6"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 2000,
+     "DevComment": "Eaton Fuller FS-4106A"
     }
    }
   },
@@ -16826,27 +16867,44 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.1,
-     "TorqueConvertorStallRPM": 7000.0,
-     "TorqueConvertorStallRatioPower": 1.0,
-     "TorqueConvertorTorqueRate": 10000.0,
+     "TorqueConvertorStallRPM": 7000,
+     "TorqueConvertorStallRatioPower": 1,
+     "TorqueConvertorTorqueRate": 10000,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
-       "GearRatio": -10.0,
-       "Inertia": 1.0
+       "GearRatio": -10,
+       "Inertia": 1,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 1.0
+       "GearRatio": 0,
+       "Inertia": 1,
+       "Name": "N"
       },
       {
-       "Name": "1",
-       "GearRatio": 3.0,
-       "Inertia": 1.0
+       "GearRatio": 3,
+       "Inertia": 1,
+       "Name": "1"
       }
-     ]
+     ],
+     "Type": "EMTTransmissionType::CVT",
+     "AutoShiftComportRPM": 5000,
+     "CVT_InputRPMRange": {
+      "_StructType": "Vector2D",
+      "CVT_InputRPMRange": {
+       "X": 1000,
+       "Y": 7000
+      }
+     },
+     "CVT_ClutchCurvePow": 2,
+     "CVT_GearRatios": {
+      "_StructType": "Vector2D",
+      "CVT_GearRatios": {
+       "X": 4,
+       "Y": 0.33329999446868896
+      }
+     }
     }
    }
   },
@@ -17976,42 +18034,43 @@
    },
    "stats": {
     "transmission": {
-     "TorqueConvertorStallRPM": 3000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 40.0,
+     "TorqueConvertorStallRPM": 3000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 40,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
        "GearRatio": -2.32,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 2.84,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 1.55,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2"
       },
       {
-       "Name": "3",
-       "GearRatio": 1.0,
-       "Inertia": 100.0
+       "GearRatio": 1,
+       "Inertia": 100,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 0.7,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4"
       }
-     ]
+     ],
+     "DevComment": "Ford 4R70W (Mustang)"
     }
    }
   },
@@ -20574,127 +20633,131 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.8,
-     "TorqueConvertorStallRPM": 2000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 80.0,
+     "TorqueConvertorStallRPM": 2000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 80,
      "DefaultGearIndex": 4,
      "Gears": [
       {
-       "Name": "R4",
        "GearRatio": -3.29,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R4"
       },
       {
-       "Name": "R3",
        "GearRatio": -3.89,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R3"
       },
       {
-       "Name": "R2",
        "GearRatio": -12.45,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R2"
       },
       {
-       "Name": "R1",
        "GearRatio": -14.71,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "R1"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 100.0
+       "GearRatio": 0,
+       "Inertia": 100,
+       "Name": "N"
       },
       {
-       "Name": "L1",
        "GearRatio": 14.71,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "L1"
       },
       {
-       "Name": "L2",
        "GearRatio": 12.45,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "L2"
       },
       {
-       "Name": "1L",
        "GearRatio": 10.2,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1L"
       },
       {
-       "Name": "1H",
        "GearRatio": 8.62,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "1H"
       },
       {
-       "Name": "2L",
        "GearRatio": 7.34,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2L"
       },
       {
-       "Name": "2H",
        "GearRatio": 6.21,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "2H"
       },
       {
-       "Name": "3L",
        "GearRatio": 5.26,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3L"
       },
       {
-       "Name": "3H",
        "GearRatio": 4.45,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "3H"
       },
       {
-       "Name": "4L",
        "GearRatio": 3.78,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4L"
       },
       {
-       "Name": "4H",
        "GearRatio": 3.2,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "4H"
       },
       {
-       "Name": "5L",
        "GearRatio": 2.7,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5L"
       },
       {
-       "Name": "5H",
        "GearRatio": 2.28,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "5H"
       },
       {
-       "Name": "6L",
        "GearRatio": 1.94,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6L"
       },
       {
-       "Name": "6H",
        "GearRatio": 1.64,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "6H"
       },
       {
-       "Name": "7L",
        "GearRatio": 1.39,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "7L"
       },
       {
-       "Name": "7H",
        "GearRatio": 1.18,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "7H"
       },
       {
-       "Name": "8L",
-       "GearRatio": 1.0,
-       "Inertia": 100.0
+       "GearRatio": 1,
+       "Inertia": 100,
+       "Name": "8L"
       },
       {
-       "Name": "8H",
        "GearRatio": 0.85,
-       "Inertia": 100.0
+       "Inertia": 100,
+       "Name": "8H"
       }
-     ]
+     ],
+     "Type": "EMTTransmissionType::EatonFuller18",
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 2000,
+     "DevComment": "RTO-15618"
     }
    }
   },
@@ -21082,52 +21145,55 @@
    "stats": {
     "transmission": {
      "ShiftTimeSeconds": 0.2,
-     "TorqueConvertorStallRPM": 3000.0,
-     "TorqueConvertorStallRatioPower": 3.0,
-     "TorqueConvertorTorqueRate": 40.0,
+     "TorqueConvertorStallRPM": 3000,
+     "TorqueConvertorStallRatioPower": 3,
+     "TorqueConvertorTorqueRate": 40,
      "DefaultGearIndex": 1,
      "Gears": [
       {
-       "Name": "R",
-       "GearRatio": -10.0,
-       "Inertia": 10.0
+       "GearRatio": -10,
+       "Inertia": 10,
+       "Name": "R"
       },
       {
-       "Name": "N",
-       "GearRatio": 0.0,
-       "Inertia": 10.0
+       "GearRatio": 0,
+       "Inertia": 10,
+       "Name": "N"
       },
       {
-       "Name": "1",
        "GearRatio": 2.6,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "1"
       },
       {
-       "Name": "2",
        "GearRatio": 2.176,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "2"
       },
       {
-       "Name": "3",
        "GearRatio": 1.842,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "3"
       },
       {
-       "Name": "4",
        "GearRatio": 1.579,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "4"
       },
       {
-       "Name": "5",
        "GearRatio": 1.381,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "5"
       },
       {
-       "Name": "6",
        "GearRatio": 1.25,
-       "Inertia": 10.0
+       "Inertia": 10,
+       "Name": "6"
       }
-     ]
+     ],
+     "ClutchType": "EMTTransmissionClutchType::MultiPlateClutch",
+     "AutoShiftComportRPM": 5000,
+     "DevComment": "R1"
     }
    }
   },
