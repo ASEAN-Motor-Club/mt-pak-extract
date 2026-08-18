@@ -533,6 +533,9 @@ def _part_display_name(part_id: str) -> str:
 # --- Localization (Game.locres) ---
 _LOCRES_CACHE: Optional[dict] = None
 _PART_INDEX: dict = {}  # part_id -> Part, populated by load_parts()
+# Reverse index: part_id -> [(vehicle_name, slug), ...] of vehicles that can
+# install the part. Populated by _build_part_vehicle_index() in sync_parts().
+_PART_VEHICLES: dict[str, list[tuple[str, str]]] = {}
 
 
 def _load_locres() -> dict:
@@ -1317,6 +1320,38 @@ def _installable_for_vehicle(v) -> dict[str, list]:
     return result
 
 
+def _build_part_vehicle_index(vehicles: list, slug_map: dict[str, str]) -> dict[str, list[tuple[str, str]]]:
+    """Reverse index: for each part, the vehicles that can install it.
+
+    Inverts _installable_for_vehicle() so part pages can link back to the
+    vehicles they fit. Returns {part_id: [(vehicle_name, vehicle_slug,
+    vehicle_type), ...]}.
+    Skips hidden parts (a hidden part isn't user-installable).
+    """
+    index: dict[str, list[tuple[str, str, str]]] = {}
+    for v in vehicles:
+        installable = _installable_for_vehicle(v)
+        if not installable:
+            continue
+        slug = slug_map.get(v.id, _name_to_slug(v.name))
+        vtype = _humanize_vehicle_type(v.vehicle_type)
+        for plist in installable.values():
+            for pp in plist:
+                if pp.is_hidden:
+                    continue
+                index.setdefault(pp.id, []).append((v.name, slug, vtype))
+    # Sort each part's vehicle list: group by type, then by name within type.
+    for pid in index:
+        # Dedupe by slug (a vehicle should appear once even if id/name vary).
+        seen: dict[str, tuple[str, str]] = {}
+        for name, slug, vtype in index[pid]:
+            seen.setdefault(slug, (name, vtype))
+        index[pid] = sorted(
+            (name, slug, vtype) for slug, (name, vtype) in seen.items()
+        )
+    return index
+
+
 def generate_installable_parts_page(v: Vehicle, slug: str = '') -> str:
     """Generate the per-vehicle "Installable Parts" sub-page.
 
@@ -1350,10 +1385,6 @@ def generate_installable_parts_page(v: Vehicle, slug: str = '') -> str:
     if not installable:
         lines.append("No installable parts found for this vehicle.")
         lines.append("")
-
-    # User placeholder consistent with other pages
-    lines.append("===== Notes =====")
-    lines.append("")
 
     return '\n'.join(lines).rstrip() + '\n'
 
@@ -1595,6 +1626,18 @@ def generate_part_page(p: Part) -> str:
         parts.append(_render_part_stats(p))
         parts.append("")
 
+    # Installable vehicles — a clickable link to the standalone sub-page that
+    # lists every vehicle which can install this part (reverse of each vehicle's
+    # Installable Parts sub-page). Wikipedia-style: the main page holds only the
+    # link, the full list lives on `parts:<slug>:installable_vehicles`.
+    if _PART_VEHICLES.get(p.id):
+        parts.append(
+            f"===== Installable Vehicles =====\n"
+            f"See [[parts:{_part_slug(p.id)}:installable_vehicles|"
+            f"Vehicles that can install {dname}]].\n"
+        )
+        parts.append("")
+
     # In other languages — at the bottom of the page.
     i18n_lines = ["===== In other languages =====", "^ Language ^ Name ^"]
     i18n_rows = _part_ref_localized_langs(p.id)
@@ -1607,6 +1650,47 @@ def generate_part_page(p: Part) -> str:
     parts.append('\n'.join(i18n_lines))
 
     return '\n'.join(parts) + '\n'
+
+
+def generate_installable_vehicles_page(p: Part) -> str:
+    """Generate the per-part \"Installable Vehicles\" sub-page.
+
+    This is a full standalone page at `parts:<slug>:installable_vehicles`
+    listing every vehicle that can install this part. Vehicles are grouped by
+    type and listed with the same bullet style as `list_of_vehicles`, with a
+    Return link on top mirroring the per-vehicle installable_parts sub-page.
+    """
+    dname = _part_display_name(p)
+    slug = _part_slug(p.id)
+    vehicles = _PART_VEHICLES.get(p.id, [])
+    total = len(vehicles)
+
+    lines = [
+        f"====== Installable Vehicles for {dname} ======",
+        "",
+        f"All vehicles that can install the **{dname}** "
+        f"({total} vehicle{'s' if total != 1 else ''} in total).",
+        "",
+        f"Return to [[parts:{slug}|{dname}]].",
+        "",
+    ]
+
+    # Group by vehicle type, mirroring the list_of_vehicles page.
+    by_type: dict[str, list[tuple[str, str]]] = {}
+    for name, vslug, vtype in vehicles:
+        by_type.setdefault(vtype, []).append((name, vslug))
+
+    for vtype in sorted(by_type.keys()):
+        lines.append(f"===== {vtype} =====")
+        for name, vslug in sorted(by_type[vtype], key=lambda x: x[0].lower()):
+            lines.append(f"  * [[vehicles:{vslug}|{name}]]")
+        lines.append("")
+
+    if not vehicles:
+        lines.append("No installable vehicles found for this part.")
+        lines.append("")
+
+    return '\n'.join(lines).rstrip() + '\n'
 
 
 def _display_field(field: str) -> str:
@@ -2662,6 +2746,7 @@ def sync_parts(
     wiki_dir: Path,
     dry_run: bool = False,
     part_filter: str | None = None,
+    slug_map: dict[str, str] | None = None,
 ) -> dict:
     """Sync all vehicle-part pages. Returns stats dict."""
     parts = load_parts(conn)
@@ -2671,6 +2756,17 @@ def sync_parts(
 
     if not dry_run:
         parts_dir.mkdir(parents=True, exist_ok=True)
+
+    # Build the reverse part -> vehicles index so part pages can list the
+    # vehicles that install them. Uses all (incl. hidden) vehicles, mirroring
+    # the per-vehicle Installable Parts sub-pages.
+    global _PART_VEHICLES
+    if not _PART_VEHICLES:
+        if slug_map is None:
+            slug_map, _ = build_slug_map(wiki_dir)
+        _PART_VEHICLES = _build_part_vehicle_index(
+            load_vehicles(conn, include_hidden=True), slug_map
+        )
 
     for p in parts:
         if part_filter and p.id != part_filter:
@@ -2692,9 +2788,7 @@ def sync_parts(
 
         if existing_text == new_text:
             stats['unchanged'] += 1
-            continue
-
-        if existing_text is None:
+        elif existing_text is None:
             action = "CREATE"
             stats['created'] += 1
         else:
@@ -2702,10 +2796,29 @@ def sync_parts(
             stats['updated'] += 1
 
         if dry_run:
-            print(f"  {action}: parts/{slug}.txt")
+            if existing_text != new_text:
+                print(f"  {action}: parts/{slug}.txt")
         else:
-            page_path.write_text(new_text, encoding='utf-8')
-            print(f"  {action}: parts/{slug}.txt")
+            if existing_text != new_text:
+                page_path.write_text(new_text, encoding='utf-8')
+                print(f"  {action}: parts/{slug}.txt")
+
+        # Wikipedia-style Installable Vehicles sub-page: a standalone page at
+        # parts/<slug>/installable_vehicles.txt listing every vehicle that can
+        # install this part (mirrors the per-vehicle installable_parts sub-page).
+        # Written on every pass (not just when the main page changed) so the
+        # sub-page stays in sync even if the link on the main page is identical.
+        sub_slug = "installable_vehicles"
+        sub_path = parts_dir / slug / f"{sub_slug}.txt"
+        sub_text = generate_installable_vehicles_page(p)
+        sub_existing = sub_path.read_text(encoding='utf-8') if sub_path.exists() else None
+        if sub_existing != sub_text:
+            if dry_run:
+                print(f"  {'CREATE' if sub_existing is None else 'UPDATE'}: parts/{slug}/{sub_slug}.txt")
+            else:
+                sub_path.parent.mkdir(parents=True, exist_ok=True)
+                sub_path.write_text(sub_text, encoding='utf-8')
+                print(f"  {'CREATE' if sub_existing is None else 'UPDATE'}: parts/{slug}/{sub_slug}.txt")
 
     # Remove orphaned part pages: pages in parts/ whose slug no longer maps to a
     # part in the authoritative catalog. When a part_filter is set we skip
@@ -3144,7 +3257,7 @@ def main():
     # Parts
     if args.only is None or args.only == 'parts':
         print("Syncing parts...")
-        stats = sync_parts(conn, wiki_dir, args.dry_run)
+        stats = sync_parts(conn, wiki_dir, args.dry_run, slug_map=slug_map)
         print(f"  Parts: {stats['created']} created, {stats['updated']} updated, "
               f"{stats['unchanged']} unchanged, {stats.get('errors', 0)} errors\n")
         pstats = sync_parts_index(conn, wiki_dir, args.dry_run)
