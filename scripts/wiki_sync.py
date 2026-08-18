@@ -144,6 +144,9 @@ class Cargo:
     space_types: list = field(default_factory=list)
     produced_at: list = field(default_factory=list)  # [(location, inputs, time)]
     consumed_at: list = field(default_factory=list)  # [(location, outputs, time)]
+    # Weight range string from the review (e.g. '100–300 kg'), else '' when the
+    # cargo has no WeightRange (mesh mass then applies). Task 3.
+    weight_range_str: str = ''
 
 
 # ---------------------------------------------------------------------------
@@ -474,41 +477,64 @@ def load_cargos(conn: sqlite3.Connection) -> list[Cargo]:
             is_deprecated=bool(row[12]),
         )
 
+        # Apply authoritative Round-0 review data (cargo-improvement.md).
+        # Task 2: corrected cargo name. Task 3: weight range display string.
+        # Task 8: production/dropoff tables (complete; authoritative over the
+        # partial DB-derived production rows below).
+        rev = _load_cargo_review()
+        key = c.id.lower()
+        if rev.get('names', {}).get(key):
+            c.name = rev['names'][key]
+        if rev.get('weights', {}).get(key):
+            c.weight_range_str = rev['weights'][key]
+        if key in rev.get('production', {}):
+            def _rows(entries):
+                out = []
+                for e in entries:
+                    inputs = e.get('inputs')
+                    time = e.get('time')
+                    out.append((e.get('loc'), inputs, time))
+                return out
+            c.produced_at = _rows(rev['production'][key].get('produced', []))
+            c.consumed_at = _rows(rev['production'][key].get('dropoff', []))
+
         # Space types
         for st_row in inner.execute(
             "SELECT space_type FROM cargo_space_types WHERE cargo_id = ?", (c.id,)
         ):
             c.space_types.append(st_row[0])
 
-        # Production sources
-        for prod_row in inner.execute("""
-            SELECT dp.id, pc.production_time_seconds
-            FROM production_outputs po
-            JOIN production_configs pc ON po.production_config_id = pc.id
-            JOIN delivery_points dp ON pc.delivery_point_id = dp.id
-            WHERE po.cargo_id = ?
-        """, (c.id,)):
-            # Get inputs for this production config
-            inputs = []
-            for inp_row in inner2.execute("""
-                SELECT pi.cargo_id, pi.quantity
+        # Production sources (DB-derived, only when the review provides no
+        # authoritative Task 8 tables for this cargo).
+        if key not in rev.get('production', {}):
+            for prod_row in inner.execute("""
+                SELECT dp.id, pc.production_time_seconds
+                FROM production_outputs po
+                JOIN production_configs pc ON po.production_config_id = pc.id
+                JOIN delivery_points dp ON pc.delivery_point_id = dp.id
+                WHERE po.cargo_id = ?
+            """, (c.id,)):
+                # Get inputs for this production config
+                inputs = []
+                for inp_row in inner2.execute("""
+                    SELECT pi.cargo_id, pi.quantity
+                    FROM production_inputs pi
+                    JOIN production_configs pc ON pi.production_config_id = pc.id
+                    JOIN delivery_points dp ON pc.delivery_point_id = dp.id
+                    WHERE dp.id = ? AND pc.production_time_seconds = ?
+                """, (prod_row[0], prod_row[1])):
+                    inputs.append((inp_row[0], inp_row[1]))
+                c.produced_at.append((prod_row[0], inputs, prod_row[1]))
+
+            # Consumption destinations
+            for cons_row in inner.execute("""
+                SELECT dp.id, pc.production_time_seconds
                 FROM production_inputs pi
                 JOIN production_configs pc ON pi.production_config_id = pc.id
                 JOIN delivery_points dp ON pc.delivery_point_id = dp.id
-                WHERE dp.id = ? AND pc.production_time_seconds = ?
-            """, (prod_row[0], prod_row[1])):
-                inputs.append((inp_row[0], inp_row[1]))
-            c.produced_at.append((prod_row[0], inputs, prod_row[1]))
-
-        # Consumption destinations
-        for cons_row in inner.execute("""
-            SELECT dp.id, pc.production_time_seconds
-            FROM production_inputs pi
-            JOIN production_configs pc ON pi.production_config_id = pc.id
-            JOIN delivery_points dp ON pc.delivery_point_id = dp.id
-            WHERE pi.cargo_id = ?
-        """, (c.id,)):
-            c.consumed_at.append((cons_row[0], [], cons_row[1]))
+                WHERE pi.cargo_id = ?
+            """, (c.id,)):
+                c.consumed_at.append((cons_row[0], [], cons_row[1]))
 
         cargos.append(c)
 
@@ -536,6 +562,24 @@ _PART_INDEX: dict = {}  # part_id -> Part, populated by load_parts()
 # Reverse index: part_id -> [(vehicle_name, slug), ...] of vehicles that can
 # install the part. Populated by _build_part_vehicle_index() in sync_parts().
 _PART_VEHICLES: dict[str, list[tuple[str, str]]] = {}
+
+# Authoritative Round-0 cargo data parsed from the cargo-improvement.md review
+# (Task 2 names, Task 3 weights, Task 5 space aggregates, Task 8 production/
+# dropoff tables). Keyed by lowercase cargo pak key.
+_CARGO_REVIEW: Optional[dict] = None
+
+
+def _load_cargo_review() -> dict:
+    """Load the parsed cargo-review data (see build_cargo_review_data.py)."""
+    global _CARGO_REVIEW
+    if _CARGO_REVIEW is not None:
+        return _CARGO_REVIEW
+    p = Path(__file__).resolve().parent / "cargo_review_data.json"
+    try:
+        _CARGO_REVIEW = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except Exception:
+        _CARGO_REVIEW = {}
+    return _CARGO_REVIEW
 
 
 def _load_locres() -> dict:
@@ -850,6 +894,16 @@ def _fmt_weight(kg: float) -> str:
     return f"{kg:,.1f} kg"
 
 
+_PICKUP_CARGO_TYPES = {'SmallPackage', 'Food', 'MilitarySupply'}
+
+
+def _cargo_weight_display(c: Cargo) -> str:
+    """Task 3: weight range string when present, else the mesh mass."""
+    if c.weight_range_str:
+        return c.weight_range_str
+    return _fmt_weight(c.weight_kg)
+
+
 def _fmt_type(raw: str) -> str:
     """Humanize CamelCase type strings.
     
@@ -1025,7 +1079,8 @@ def generate_vehicle_infobox(v: Vehicle, existing_image: Optional[str] = None,
         add('Drivetrain', drivetrain)
 
     if v.cargo_space_type:
-        add('Cargo space', v.cargo_space_type)
+        # Task 6: Cargo space value links to the cargo_space aggregate page.
+        add('Cargo space', f"[[cargo_space:{_cargo_space_slug(v.cargo_space_type)}|{v.cargo_space_type}]]")
 
     add('Drag coefficient', f"{v.air_drag}")
 
@@ -1390,8 +1445,9 @@ def generate_installable_parts_page(v: Vehicle, slug: str = '') -> str:
 
 
 def generate_cargo_page(c: Cargo) -> str:
-    """Generate a full cargo page."""
+    """Generate a full cargo page (Round 0 review tasks 1-9)."""
     parts = []
+    weight_disp = _cargo_weight_display(c)
 
     # Infobox
     infobox = [
@@ -1399,7 +1455,7 @@ def generate_cargo_page(c: Cargo) -> str:
         f"name = {c.name}",
         f"Cargo Type = {c.cargo_type}",
         f"Volume = {c.volume_size}",
-        f"Weight = {_fmt_weight(c.weight_kg)}",
+        f"Weight = {weight_disp}",
     ]
     if c.payment_per_km:
         infobox.append(f"Payment = ${c.payment_per_km}/km")
@@ -1411,12 +1467,12 @@ def generate_cargo_page(c: Cargo) -> str:
     parts.append(f"====== {c.name} ======")
     parts.append("")
 
-    # Specs
+    # Specs (Task 7: add Can be pickup + Fragile; Weight uses Task 3 rule).
     specs = [
-        "===== Specifications =====",
+        "===== Specifications =====\n"
         "^ Stat ^ Value ^",
         f"| Type | {c.cargo_type} |",
-        f"| Weight | {_fmt_weight(c.weight_kg)} |",
+        f"| Weight | {weight_disp} |",
     ]
     if c.payment_per_km:
         specs.append(f"| Payment per km | ${c.payment_per_km} |")
@@ -1429,42 +1485,47 @@ def generate_cargo_page(c: Cargo) -> str:
     if c.max_delivery_distance:
         specs.append(f"| Max delivery distance | {c.max_delivery_distance}m |")
     specs.append(f"| Stackable | {'Yes' if c.allow_stacking else 'No'} |")
+    specs.append(
+        f"| Can be pickup | {'Yes' if c.cargo_type in _PICKUP_CARGO_TYPES else 'No'} |"
+    )
     if c.fragile:
         specs.append(f"| Fragile | Level {c.fragile} |")
+    else:
+        specs.append("| Fragile | No |")
 
+    # Task 4: Compatible Cargo Space Types — deduped, linked (single block).
     if c.space_types:
+        seen: set[str] = set()
+        deduped = []
+        for st in c.space_types:
+            key = st.strip().lower()
+            if key and key not in seen:
+                seen.add(key)
+                deduped.append(st.strip())
         specs.append("")
         specs.append("===== Compatible Cargo Space Types =====")
-        for st in c.space_types:
-            specs.append(f"  * {st}")
-
+        for st in deduped:
+            specs.append(f"  * [[cargo_space:{st.lower()}|{st}]]")
 
     parts.append('\n'.join(specs))
 
-    # User placeholder
-    parts.append("")
-    parts.append("===== Notes =====")
-    parts.append("")
-
-    # Production
+    # Production (Task 8) — produced_at / consumed_at rows carry (loc, inputs, time).
     if c.produced_at or c.consumed_at:
         prod_lines = ["===== Production ====="]
         if c.produced_at:
             prod_lines.append("==== Produced At ====")
             prod_lines.append("^ Location ^ Inputs ^ Time ^")
-            for loc, inputs, time_s in c.produced_at:
-                input_str = ', '.join(f"{qty}× {cid}" for cid, qty in inputs) if inputs else '(passive)'
-                time_str = f"{time_s}s" if time_s else '—'
+            for loc, inputs, time in c.produced_at:
+                input_str = inputs if inputs not in (None, '') else '(passive)'
+                time_str = time if time not in (None, '') else '—'
                 prod_lines.append(f"| {loc} | {input_str} | {time_str} |")
-
         if c.consumed_at:
             prod_lines.append("==== Consumed At ====")
-            prod_lines.append("^ Location ^ Time ^")
-            for loc, _, time_s in c.consumed_at:
-                time_str = f"{time_s}s" if time_s else '—'
-                prod_lines.append(f"| {loc} | {time_str} |")
-
-
+            prod_lines.append("^ Location ^ Inputs ^ Time ^")
+            for loc, inputs, time in c.consumed_at:
+                input_str = inputs if inputs not in (None, '') else '—'
+                time_str = time if time not in (None, '') else '—'
+                prod_lines.append(f"| {loc} | {input_str} | {time_str} |")
         parts.append('\n'.join(prod_lines))
 
     return '\n'.join(parts) + '\n'
@@ -2457,14 +2518,78 @@ def generate_cargo_index(cargos: list[Cargo]) -> str:
     for c in sorted(active, key=lambda x: (x.cargo_type, x.name)):
         slug = _cargo_slug(c.id)
         lines.append(
-            f"| [[cargo:{slug}|{c.name}]] "
+            f"| [[cargos:{slug}|{c.name}]] "
             f"| {c.cargo_type} "
-            f"| {_fmt_weight(c.weight_kg)} "
+            f"| {_cargo_weight_display(c)} "
             f"| ${c.payment_per_km} |"
         )
 
 
     return '\n'.join(lines) + '\n'
+
+
+def _cargo_space_slug(space_type: str) -> str:
+    """Slug for a cargo space type (e.g. 'Box' -> 'box')."""
+    return space_type.strip().lower()
+
+
+def generate_cargo_space_page(space_type: str, slug_map: dict[str, str],
+                              name_map: dict[str, str]) -> str:
+    """Task 5: aggregate page for one cargo space type.
+
+    Lists the cargos, vehicles and parts that provide/accept that space, using
+    the authoritative Task 5 data from the review. Vehicle slugs + display names
+    come from the existing list_of_vehicles (never derived mechanically from pak
+    keys). Returns '' when the review has no entry for the type.
+    """
+    rev = _load_cargo_review()
+    agg = rev.get('space_aggregates', {}).get(space_type)
+    if agg is None:
+        return ''
+
+    lines = [
+        f"====== {space_type} Cargo Space ======",
+        "",
+        f"Everything that provides or accepts the **{space_type}** cargo space.",
+        "",
+    ]
+
+    cargos = agg.get('cargos', [])
+    lines.append(f"===== Cargos ({len(cargos)}) =====")
+    if cargos:
+        for entry in cargos:
+            name = entry.get('name')
+            cslug = entry.get('slug') or _cargo_slug(name)
+            lines.append(f"  * [[cargos:{cslug}|{name}]]")
+    else:
+        lines.append("_(none)_")
+    lines.append("")
+
+    vehicles = agg.get('vehicles', [])
+    lines.append(f"===== Vehicles ({len(vehicles)}) =====")
+    if vehicles:
+        for entry in vehicles:
+            name = entry.get('name')
+            # Resolve display name + slug via existing vehicle pages so we show
+            # the same name as list_of_vehicles, not a raw pak key.
+            real_slug = slug_map.get(name) or _name_to_slug(name)
+            real_name = name_map.get(name) or name
+            lines.append(f"  * [[vehicles:{real_slug}|{real_name}]]")
+    else:
+        lines.append("_(none)_")
+    lines.append("")
+
+    parts = agg.get('parts', [])
+    lines.append(f"===== Parts ({len(parts)}) =====")
+    if parts:
+        for entry in parts:
+            name = entry.get('name')
+            lines.append(f"  * [[parts:{_part_slug(name)}|{name}]]")
+    else:
+        lines.append("_(none)_")
+    lines.append("")
+
+    return '\n'.join(lines).rstrip() + '\n'
 
 
 # ---------------------------------------------------------------------------
@@ -2643,10 +2768,13 @@ def sync_cargos(
     conn: sqlite3.Connection,
     wiki_dir: Path,
     dry_run: bool = False,
+    slug_map: dict[str, str] | None = None,
+    name_map: dict[str, str] | None = None,
 ) -> dict:
     """Sync all cargo pages. Returns stats dict."""
     cargos = load_cargos(conn)
-    cargo_dir = wiki_dir / 'cargo'
+    # Task 1: plural namespace cargo: -> cargos:.
+    cargo_dir = wiki_dir / 'cargos'
 
     stats = {'created': 0, 'updated': 0, 'unchanged': 0, 'errors': 0}
 
@@ -2684,10 +2812,52 @@ def sync_cargos(
             stats['updated'] += 1
 
         if dry_run:
-            print(f"  {action}: cargo/{slug}.txt")
+            print(f"  {action}: cargos/{slug}.txt")
         else:
             page_path.write_text(new_text, encoding='utf-8')
-            print(f"  {action}: cargo/{slug}.txt")
+            print(f"  {action}: cargos/{slug}.txt")
+
+    # Task 1: remove the old singular 'cargo' namespace directory if present.
+    legacy_dir = wiki_dir / 'cargo'
+    if legacy_dir.exists():
+        if dry_run:
+            print(f"  REMOVE namespace: cargo/ (renamed to cargos/)")
+        else:
+            shutil.rmtree(legacy_dir)
+            print(f"  REMOVE namespace: cargo/ (renamed to cargos/)")
+
+    # Task 5: cargo_space:<type> aggregate pages.
+    if slug_map is None or name_map is None:
+        slug_map, name_map = build_slug_map(wiki_dir)
+    # Augment vehicle display names from load_vehicles (authoritative source for
+    # list_of_vehicles), so pages with no 'name =' line still render humanized.
+    for v in load_vehicles(conn, include_hidden=True):
+        slug_map.setdefault(v.id, _name_to_slug(v.name))
+        name_map.setdefault(v.id, v.name)
+    space_dir = wiki_dir / 'cargo_space'
+    if not dry_run:
+        space_dir.mkdir(parents=True, exist_ok=True)
+    review_types = list(_load_cargo_review().get('space_aggregates', {}).keys())
+    valid_space_slugs = set()
+    for st in review_types:
+        st_slug = _cargo_space_slug(st)
+        valid_space_slugs.add(st_slug)
+        sub_path = space_dir / f"{st_slug}.txt"
+        sub_text = generate_cargo_space_page(st, slug_map, name_map)
+        sub_existing = sub_path.read_text(encoding='utf-8') if sub_path.exists() else None
+        if sub_existing != sub_text:
+            action = "CREATE" if sub_existing is None else "UPDATE"
+            if dry_run:
+                print(f"  {action}: cargo_space/{st_slug}.txt")
+            else:
+                sub_path.write_text(sub_text, encoding='utf-8')
+                print(f"  {action}: cargo_space/{st_slug}.txt")
+    # Remove stale cargo_space pages whose type is no longer in the review.
+    if space_dir.exists() and not dry_run:
+        for page in space_dir.glob('*.txt'):
+            if page.stem not in valid_space_slugs:
+                page.unlink()
+                print(f"  REMOVE: cargo_space/{page.name}")
 
     return stats
 
@@ -3250,7 +3420,7 @@ def main():
     # Cargos
     if args.only is None or args.only == 'cargos':
         print("Syncing cargos...")
-        stats = sync_cargos(conn, wiki_dir, args.dry_run)
+        stats = sync_cargos(conn, wiki_dir, args.dry_run, slug_map=slug_map, name_map=name_map)
         print(f"  Cargos: {stats['created']} created, {stats['updated']} updated, "
               f"{stats['unchanged']} unchanged, {stats.get('errors', 0)} errors\n")
 
