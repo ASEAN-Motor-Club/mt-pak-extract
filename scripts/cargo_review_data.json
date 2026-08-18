@@ -1,0 +1,4241 @@
+{
+ "names": {
+  "container_20ft_01": "Container 20ft",
+  "container_40ft_01": "Container 40ft",
+  "bottlepallete": "Water Bottle Pallet",
+  "toyboxes": "Pallet of Toys",
+  "burger_01": "Burger",
+  "burger_01_signature": "Signature Burger",
+  "pizza_01": "Pizza 1 Box",
+  "pizza_01_premium": "Premium Pizza 1 Box",
+  "pizza_02": "Pizza 2 Box",
+  "pizza_03": "Pizza 3 Box",
+  "pizza_04": "Pizza 4 Box",
+  "pizza_05": "Pizza 5 Box",
+  "bed_01": "Bed A",
+  "bed_02": "Bed B",
+  "bed_03": "Bed C",
+  "sofa_01": "Sofa A",
+  "sofa_02": "Sofa B",
+  "sofa_03": "Sofa C",
+  "sofa_04": "Sofa D",
+  "trash_big": "Trash Bag",
+  "boxpallete_01": "Box Pallet A",
+  "boxpallete_02": "Box Pallet B",
+  "boxpallete_03": "Box Pallet C",
+  "orangeboxes": "Orange Pallet",
+  "log_oak_12ft": "Oak Log 12ft",
+  "log_oak_24ft": "Oak Log 24ft",
+  "log_30ft_30t": "Log 30ft 30t",
+  "militarysupplybox_01": "Supply Box",
+  "copperrodcoil_2t": "Copper Rod Coil",
+  "crudeoil": "Crude Oil",
+  "formulascm": "Formula SCM",
+  "livefish_01": "Live Fish",
+  "militarysupplybox_01_empty": "Empty Supply Box",
+  "plasticpallete": "Plastic Pallet",
+  "plasticpipes_6m": "Plastic Pipes 6m",
+  "steelcoil_10t": "Steel Coil",
+  "tank_250kl": "Tank 250kL",
+  "lhbeam_6m": "H-Beam 6m",
+  "applebox": "Apples",
+  "carrotbox": "Carrots",
+  "giftbox_01": "Gift Box",
+  "glassbottlebox": "Glass Bottle",
+  "orangebox": "Oranges",
+  "ironore": "Iron Ore",
+  "woodplank_14ft_5t": "WoodPlank 14ft 5t"
+ },
+ "weights": {
+  "boxpallete_01": "100–300 kg",
+  "boxpallete_02": "200–400 kg",
+  "boxpallete_03": "300–1,000 kg",
+  "cement": "1,300–1,500 kg",
+  "circuitboardpallet": "1,000 kg",
+  "coal": "600 kg",
+  "concrete": "2,300 kg",
+  "container_20ft_01": "3,000–30,000 kg",
+  "container_40ft_01": "5,000–30,000 kg",
+  "copperconcentrate": "1,800–2,300 kg",
+  "copperore": "2,200–2,800 kg",
+  "crudeoil": "900 kg",
+  "finesand": "1,800 kg",
+  "fuel": "800 kg",
+  "grocerybag": "1–5 kg",
+  "ironore": "1,600–3,200 kg",
+  "limestone": "2,000–2,400 kg",
+  "limestonerock": "1,500–2,000 kg",
+  "log_20ft": "3,000–7,000 kg",
+  "log_oak_12ft": "2,000–3,000 kg",
+  "milk": "1,030 kg",
+  "oil": "800 kg",
+  "sand": "1,600 kg",
+  "sunflowerseed": "350–450 kg",
+  "tank_250kl": "30,000 kg",
+  "transformer_20mva": "30,000 kg",
+  "transformer_50mva": "60,000 kg"
+ },
+ "space_aggregates": {
+  "Box": {
+   "cargos": [
+    {
+     "name": "Airline Meal Pallet",
+     "slug": "airlinemealpallet"
+    },
+    {
+     "name": "Apples",
+     "slug": "applebox"
+    },
+    {
+     "name": "Bean Pallet",
+     "slug": "beanpallet"
+    },
+    {
+     "name": "Bed A",
+     "slug": "bed_01"
+    },
+    {
+     "name": "Bed B",
+     "slug": "bed_02"
+    },
+    {
+     "name": "Bed C",
+     "slug": "bed_03"
+    },
+    {
+     "name": "Water Bottle Pallet",
+     "slug": "bottlepallete"
+    },
+    {
+     "name": "Box Pallet A",
+     "slug": "boxpallete_01"
+    },
+    {
+     "name": "Box Pallet B",
+     "slug": "boxpallete_02"
+    },
+    {
+     "name": "Box Pallet C",
+     "slug": "boxpallete_03"
+    },
+    {
+     "name": "Bread Box",
+     "slug": "breadbox"
+    },
+    {
+     "name": "Bread Pallet",
+     "slug": "breadpallet"
+    },
+    {
+     "name": "Burger",
+     "slug": "burger_01"
+    },
+    {
+     "name": "Signature Burger",
+     "slug": "burger_01_signature"
+    },
+    {
+     "name": "Cabbage Pallet",
+     "slug": "cabbagepallet"
+    },
+    {
+     "name": "Carrots",
+     "slug": "carrotbox"
+    },
+    {
+     "name": "Cheese Box",
+     "slug": "cheesebox"
+    },
+    {
+     "name": "Cheese Pallet",
+     "slug": "cheesepallet"
+    },
+    {
+     "name": "Chilli Pallet",
+     "slug": "chillipallet"
+    },
+    {
+     "name": "Circuit Board Pallet",
+     "slug": "circuitboardpallet"
+    },
+    {
+     "name": "Copper Rod Coil",
+     "slug": "copperrodcoil_2t"
+    },
+    {
+     "name": "Corn Box",
+     "slug": "cornbox"
+    },
+    {
+     "name": "Corn Pallet",
+     "slug": "cornpallet"
+    },
+    {
+     "name": "Gift Box",
+     "slug": "giftbox_01"
+    },
+    {
+     "name": "Glass Bottle",
+     "slug": "glassbottlebox"
+    },
+    {
+     "name": "Grocery Bag",
+     "slug": "grocerybag"
+    },
+    {
+     "name": "Hemp Pallet",
+     "slug": "hemppallet"
+    },
+    {
+     "name": "Meat Box",
+     "slug": "meatbox"
+    },
+    {
+     "name": "Supply Box",
+     "slug": "militarysupplybox_01"
+    },
+    {
+     "name": "Empty Supply Box",
+     "slug": "militarysupplybox_01_empty"
+    },
+    {
+     "name": "Oranges",
+     "slug": "orangebox"
+    },
+    {
+     "name": "Orange Pallet",
+     "slug": "orangeboxes"
+    },
+    {
+     "name": "Pizza 1 Box",
+     "slug": "pizza_01"
+    },
+    {
+     "name": "Premium Pizza 1 Box",
+     "slug": "pizza_01_premium"
+    },
+    {
+     "name": "Pizza 2 Box",
+     "slug": "pizza_02"
+    },
+    {
+     "name": "Pizza 3 Box",
+     "slug": "pizza_03"
+    },
+    {
+     "name": "Pizza 4 Box",
+     "slug": "pizza_04"
+    },
+    {
+     "name": "Pizza 5 Box",
+     "slug": "pizza_05"
+    },
+    {
+     "name": "Plastic Pallet",
+     "slug": "plasticpallete"
+    },
+    {
+     "name": "Plastic Pipes 6m",
+     "slug": "plasticpipes_6m"
+    },
+    {
+     "name": "Potato Pallet",
+     "slug": "potatopallet"
+    },
+    {
+     "name": "Power Box",
+     "slug": "powerbox"
+    },
+    {
+     "name": "Pumpkin Box",
+     "slug": "pumpkinbox"
+    },
+    {
+     "name": "Pumpkin Pallet",
+     "slug": "pumpkinpallet"
+    },
+    {
+     "name": "Quicklime Pallet",
+     "slug": "quicklimepallet"
+    },
+    {
+     "name": "Rice",
+     "slug": "rice"
+    },
+    {
+     "name": "Rice Pallet",
+     "slug": "ricepallet"
+    },
+    {
+     "name": "Small Box",
+     "slug": "smallbox"
+    },
+    {
+     "name": "Snack Box",
+     "slug": "snackbox"
+    },
+    {
+     "name": "Sofa A",
+     "slug": "sofa_01"
+    },
+    {
+     "name": "Sofa B",
+     "slug": "sofa_02"
+    },
+    {
+     "name": "Sofa C",
+     "slug": "sofa_03"
+    },
+    {
+     "name": "Sofa D",
+     "slug": "sofa_04"
+    },
+    {
+     "name": "Steel Coil",
+     "slug": "steelcoil_10t"
+    },
+    {
+     "name": "Pallet of Toys",
+     "slug": "toyboxes"
+    },
+    {
+     "name": "WoodPlank 14ft 5t",
+     "slug": "woodplank_14ft_5t"
+    },
+    {
+     "name": "H-Beam 6m",
+     "slug": "lhbeam_6m"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Daffy"
+    },
+    {
+     "name": "Micky"
+    },
+    {
+     "name": "Stella"
+    },
+    {
+     "name": "Stagon"
+    },
+    {
+     "name": "Zino"
+    },
+    {
+     "name": "Neo"
+    },
+    {
+     "name": "Zydro"
+    },
+    {
+     "name": "Mitage"
+    },
+    {
+     "name": "Zydro_Police"
+    },
+    {
+     "name": "Kira_Box"
+    },
+    {
+     "name": "Tronko"
+    },
+    {
+     "name": "Atlas_6x2_Dryvan"
+    },
+    {
+     "name": "Kuda_Dryvan_4x2"
+    },
+    {
+     "name": "Bongo"
+    },
+    {
+     "name": "Trailer_Vamos3"
+    },
+    {
+     "name": "Trailer_01"
+    },
+    {
+     "name": "Trailer_LoboVan"
+    },
+    {
+     "name": "Trailer_Shovan_7"
+    },
+    {
+     "name": "Trailer_Shovan_10"
+    },
+    {
+     "name": "Trailer_Dinky_Dryvan"
+    },
+    {
+     "name": "Trophy2"
+    },
+    {
+     "name": "Pulse"
+    },
+    {
+     "name": "Monarch"
+    },
+    {
+     "name": "Monarch_Limo"
+    },
+    {
+     "name": "Raven"
+    },
+    {
+     "name": "Elisa2"
+    },
+    {
+     "name": "Van_01"
+    },
+    {
+     "name": "Boxy"
+    },
+    {
+     "name": "Tavan"
+    },
+    {
+     "name": "Kira_Van"
+    },
+    {
+     "name": "EVan"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Kira_Box_01"
+    },
+    {
+     "name": "Bike_Box_Italian"
+    },
+    {
+     "name": "Gunthoo_CargoBox_01"
+    },
+    {
+     "name": "Gunthoo_CargoBox_02"
+    },
+    {
+     "name": "Gunthoo_CargoBox_03"
+    }
+   ]
+  },
+  "CarCarrier": {
+   "cargos": [],
+   "vehicles": [
+    {
+     "name": "Trailer_Lomax"
+    },
+    {
+     "name": "Trailer_Carry"
+    },
+    {
+     "name": "Trailer_SPT1"
+    },
+    {
+     "name": "Kira_RollbackTow"
+    },
+    {
+     "name": "Longhorn_Rollback"
+    }
+   ],
+   "parts": []
+  },
+  "ConcreteMixer": {
+   "cargos": [
+    {
+     "name": "Concrete",
+     "slug": "concrete"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MixerTruck_01"
+    }
+   ],
+   "parts": []
+  },
+  "Container": {
+   "cargos": [
+    {
+     "name": "Container 20ft",
+     "slug": "container_20ft_01"
+    },
+    {
+     "name": "Container 40ft",
+     "slug": "container_40ft_01"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Kuda_Container_6x2"
+    },
+    {
+     "name": "Trailer_Cotra_20_3"
+    },
+    {
+     "name": "Trailer_Cotra_20_3L"
+    },
+    {
+     "name": "Trailer_Cotra_40_3"
+    },
+    {
+     "name": "Trailer_9m_Flat_01"
+    },
+    {
+     "name": "Trailer_Conter_Lead_20ft"
+    },
+    {
+     "name": "Trailer_Conter_Rear_20ft"
+    },
+    {
+     "name": "Trailer_Conter_Lead_40ft"
+    },
+    {
+     "name": "Trailer_Conter_Rear_40ft"
+    }
+   ],
+   "parts": []
+  },
+  "DryBulk": {
+   "cargos": [
+    {
+     "name": "Cement",
+     "slug": "cement"
+    },
+    {
+     "name": "Sunflower Seed",
+     "slug": "sunflowerseed"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trailer_Bulko"
+    }
+   ],
+   "parts": []
+  },
+  "Dump": {
+   "cargos": [
+    {
+     "name": "Coal",
+     "slug": "coal"
+    },
+    {
+     "name": "Copper Concentrate",
+     "slug": "copperconcentrate"
+    },
+    {
+     "name": "Copper Ore",
+     "slug": "copperore"
+    },
+    {
+     "name": "Fine Sand",
+     "slug": "finesand"
+    },
+    {
+     "name": "Iron Ore",
+     "slug": "ironore"
+    },
+    {
+     "name": "Limestone",
+     "slug": "limestone"
+    },
+    {
+     "name": "Limestone Rock",
+     "slug": "limestonerock"
+    },
+    {
+     "name": "Sand",
+     "slug": "sand"
+    },
+    {
+     "name": "Sunflower Seed",
+     "slug": "sunflowerseed"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Jemusi_Dump"
+    },
+    {
+     "name": "DumpTruck_01"
+    },
+    {
+     "name": "Atlas_8x4_Dump"
+    },
+    {
+     "name": "Trailer_Oldum"
+    },
+    {
+     "name": "Terra"
+    }
+   ],
+   "parts": []
+  },
+  "Flatbed": {
+   "cargos": [
+    {
+     "name": "Airline Meal Pallet",
+     "slug": "airlinemealpallet"
+    },
+    {
+     "name": "Apples",
+     "slug": "applebox"
+    },
+    {
+     "name": "Bean Pallet",
+     "slug": "beanpallet"
+    },
+    {
+     "name": "Bed A",
+     "slug": "bed_01"
+    },
+    {
+     "name": "Bed B",
+     "slug": "bed_02"
+    },
+    {
+     "name": "Bed C",
+     "slug": "bed_03"
+    },
+    {
+     "name": "Water Bottle Pallet",
+     "slug": "bottlepallete"
+    },
+    {
+     "name": "Box Pallet A",
+     "slug": "boxpallete_01"
+    },
+    {
+     "name": "Box Pallet B",
+     "slug": "boxpallete_02"
+    },
+    {
+     "name": "Box Pallet C",
+     "slug": "boxpallete_03"
+    },
+    {
+     "name": "Bread Box",
+     "slug": "breadbox"
+    },
+    {
+     "name": "Bread Pallet",
+     "slug": "breadpallet"
+    },
+    {
+     "name": "Burger",
+     "slug": "burger_01"
+    },
+    {
+     "name": "Signature Burger",
+     "slug": "burger_01_signature"
+    },
+    {
+     "name": "Cabbage Pallet",
+     "slug": "cabbagepallet"
+    },
+    {
+     "name": "Carrots",
+     "slug": "carrotbox"
+    },
+    {
+     "name": "Cheese Box",
+     "slug": "cheesebox"
+    },
+    {
+     "name": "Cheese Pallet",
+     "slug": "cheesepallet"
+    },
+    {
+     "name": "Chilli Pallet",
+     "slug": "chillipallet"
+    },
+    {
+     "name": "Circuit Board Pallet",
+     "slug": "circuitboardpallet"
+    },
+    {
+     "name": "Copper Rod Coil",
+     "slug": "copperrodcoil_2t"
+    },
+    {
+     "name": "Corn Box",
+     "slug": "cornbox"
+    },
+    {
+     "name": "Corn Pallet",
+     "slug": "cornpallet"
+    },
+    {
+     "name": "Gift Box",
+     "slug": "giftbox_01"
+    },
+    {
+     "name": "Glass Bottle",
+     "slug": "glassbottlebox"
+    },
+    {
+     "name": "Grocery Bag",
+     "slug": "grocerybag"
+    },
+    {
+     "name": "Hemp Pallet",
+     "slug": "hemppallet"
+    },
+    {
+     "name": "Meat Box",
+     "slug": "meatbox"
+    },
+    {
+     "name": "Supply Box",
+     "slug": "militarysupplybox_01"
+    },
+    {
+     "name": "Empty Supply Box",
+     "slug": "militarysupplybox_01_empty"
+    },
+    {
+     "name": "Oranges",
+     "slug": "orangebox"
+    },
+    {
+     "name": "Orange Pallet",
+     "slug": "orangeboxes"
+    },
+    {
+     "name": "Pizza 1 Box",
+     "slug": "pizza_01"
+    },
+    {
+     "name": "Premium Pizza 1 Box",
+     "slug": "pizza_01_premium"
+    },
+    {
+     "name": "Pizza 2 Box",
+     "slug": "pizza_02"
+    },
+    {
+     "name": "Pizza 3 Box",
+     "slug": "pizza_03"
+    },
+    {
+     "name": "Pizza 4 Box",
+     "slug": "pizza_04"
+    },
+    {
+     "name": "Pizza 5 Box",
+     "slug": "pizza_05"
+    },
+    {
+     "name": "Plastic Pallet",
+     "slug": "plasticpallete"
+    },
+    {
+     "name": "Plastic Pipes 6m",
+     "slug": "plasticpipes_6m"
+    },
+    {
+     "name": "Potato Pallet",
+     "slug": "potatopallet"
+    },
+    {
+     "name": "Power Box",
+     "slug": "powerbox"
+    },
+    {
+     "name": "Pumpkin Box",
+     "slug": "pumpkinbox"
+    },
+    {
+     "name": "Pumpkin Pallet",
+     "slug": "pumpkinpallet"
+    },
+    {
+     "name": "Quicklime Pallet",
+     "slug": "quicklimepallet"
+    },
+    {
+     "name": "Rice",
+     "slug": "rice"
+    },
+    {
+     "name": "Rice Pallet",
+     "slug": "ricepallet"
+    },
+    {
+     "name": "Small Box",
+     "slug": "smallbox"
+    },
+    {
+     "name": "Snack Box",
+     "slug": "snackbox"
+    },
+    {
+     "name": "Sofa A",
+     "slug": "sofa_01"
+    },
+    {
+     "name": "Sofa B",
+     "slug": "sofa_02"
+    },
+    {
+     "name": "Sofa C",
+     "slug": "sofa_03"
+    },
+    {
+     "name": "Sofa D",
+     "slug": "sofa_04"
+    },
+    {
+     "name": "Steel Coil",
+     "slug": "steelcoil_10t"
+    },
+    {
+     "name": "Tank 250kL",
+     "slug": "tank_250kl"
+    },
+    {
+     "name": "Pallet of Toys",
+     "slug": "toyboxes"
+    },
+    {
+     "name": "Transformer 20MVA",
+     "slug": "transformer_20mva"
+    },
+    {
+     "name": "Transformer 50MVA",
+     "slug": "transformer_50mva"
+    },
+    {
+     "name": "WoodPlank 14ft 5t",
+     "slug": "woodplank_14ft_5t"
+    },
+    {
+     "name": "H-Beam 6m",
+     "slug": "lhbeam_6m"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Voltex"
+    },
+    {
+     "name": "Kira_Flatbed"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Voltex_CargoBed_01"
+    },
+    {
+     "name": "Kira_Flatbed_01"
+    }
+   ]
+  },
+  "Garbage": {
+   "cargos": [
+    {
+     "name": "Trash Bag",
+     "slug": "trashbag"
+    },
+    {
+     "name": "Trash Bag",
+     "slug": "trash_big"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Atlas_6x2_Garbage"
+    },
+    {
+     "name": "GarbageTruck_01"
+    }
+   ],
+   "parts": []
+  },
+  "Grain": {
+   "cargos": [
+    {
+     "name": "Sunflower Seed",
+     "slug": "sunflowerseed"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trailer_Hobber_Lead"
+    },
+    {
+     "name": "Trailer_Hobber_Rear"
+    }
+   ],
+   "parts": []
+  },
+  "LiveFishTanker": {
+   "cargos": [
+    {
+     "name": "Live Fish",
+     "slug": "livefish_01"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Kuda_LiveFishTank_4x2"
+    }
+   ],
+   "parts": []
+  },
+  "Log": {
+   "cargos": [
+    {
+     "name": "Log 20ft",
+     "slug": "log_20ft"
+    },
+    {
+     "name": "Log 30ft 30t",
+     "slug": "log_30ft_30t"
+    },
+    {
+     "name": "Oak Log 12ft",
+     "slug": "log_oak_12ft"
+    },
+    {
+     "name": "Oak Log 24ft",
+     "slug": "log_oak_24ft"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Jemusi"
+    },
+    {
+     "name": "Trailer_Eastwood"
+    },
+    {
+     "name": "Trailer_30ft_Log_01"
+    },
+    {
+     "name": "Trailer_Ollok"
+    }
+   ],
+   "parts": []
+  },
+  "Tanker": {
+   "cargos": [
+    {
+     "name": "Crude Oil",
+     "slug": "crudeoil"
+    },
+    {
+     "name": "Fuel",
+     "slug": "fuel"
+    },
+    {
+     "name": "Milk",
+     "slug": "milk"
+    },
+    {
+     "name": "Oil",
+     "slug": "oil"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Kira_Tanker"
+    },
+    {
+     "name": "Jemusi_Tanker"
+    },
+    {
+     "name": "Atlas_6x2_Tanker"
+    },
+    {
+     "name": "Brutus_Tanker"
+    },
+    {
+     "name": "Trailer_Tanko40"
+    },
+    {
+     "name": "Trailer_30ft_Tanker_01"
+    },
+    {
+     "name": "Trailer_Shotan_7"
+    },
+    {
+     "name": "Trailer_Shotan_10"
+    },
+    {
+     "name": "Trailer_Taber_Lead"
+    },
+    {
+     "name": "Trailer_Taber_Rear"
+    },
+    {
+     "name": "Trailer_Middle_Tanker_01"
+    },
+    {
+     "name": "Trailer_Dinky_Tanker"
+    },
+    {
+     "name": "Brutus_FireEngine"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Kira_Tank_01"
+    }
+   ]
+  }
+ },
+ "production": {
+  "airlinemealpallet": {
+   "produced": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× Container",
+     "time": "30s"
+    },
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ],
+   "dropoff": []
+  },
+  "applebox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "beanpallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Farm_Base_",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× BeanPallet",
+     "time": "1800s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "bed_01": {
+   "produced": [
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "2× WoodPlank_14ft_5t, 1× PlasticPallete",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ]
+  },
+  "bed_02": {
+   "produced": [
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "2× WoodPlank_14ft_5t, 1× PlasticPallete",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ]
+  },
+  "bed_03": {
+   "produced": [
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "2× WoodPlank_14ft_5t, 1× PlasticPallete",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ]
+  },
+  "bottlepallete": {
+   "produced": [
+    {
+     "loc": "Factory_Bottle",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bottle",
+     "inputs": "1× LargePackage",
+     "time": "30s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Supermarket",
+     "inputs": "1× BottlePallete",
+     "time": "2400s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× FinalProduct",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× FinalProduct",
+     "time": "10s"
+    }
+   ]
+  },
+  "boxpallete_01": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× Container",
+     "time": "60s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Bottle",
+     "inputs": "1× LargePackage",
+     "time": "30s"
+    },
+    {
+     "loc": "Factory_FormulaSCM",
+     "inputs": "2× SmallBox, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_FormulaSCM",
+     "inputs": "1× SteelCoil_10t, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Plastic",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Raven",
+     "inputs": "1× SteelCoil_10t, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Toy",
+     "inputs": "3× PlasticPallete, 1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Farm_Base_",
+     "inputs": "1× LargePackage",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Cabbage",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Corn",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Hemp",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Orange",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Pumpkin",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Ranch",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Rice",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Sunflower",
+     "inputs": "1× LargePackage",
+     "time": "1200s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "boxpallete_02": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× Container",
+     "time": "60s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Bottle",
+     "inputs": "1× LargePackage",
+     "time": "30s"
+    },
+    {
+     "loc": "Factory_Plastic",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Toy",
+     "inputs": "3× PlasticPallete, 1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Farm_Base_",
+     "inputs": "1× LargePackage",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Cabbage",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Corn",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Hemp",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Orange",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Pumpkin",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Ranch",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Rice",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Sunflower",
+     "inputs": "1× LargePackage",
+     "time": "1200s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "boxpallete_03": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× Container",
+     "time": "60s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Bottle",
+     "inputs": "1× LargePackage",
+     "time": "30s"
+    },
+    {
+     "loc": "Factory_Plastic",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Toy",
+     "inputs": "3× PlasticPallete, 1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Farm_Base_",
+     "inputs": "1× LargePackage",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Cabbage",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Corn",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Hemp",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Orange",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Pumpkin",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Ranch",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Rice",
+     "inputs": "1× LargePackage",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Sunflower",
+     "inputs": "1× LargePackage",
+     "time": "1200s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "breadbox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "breadpallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× BreadPallet",
+     "time": "2400s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "burger_01": {
+   "produced": [
+    {
+     "loc": "BurgerCounter",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "burger_01_signature": {
+   "produced": [
+    {
+     "loc": "BurgerCounter",
+     "inputs": "1× MeatBox, 1× CheeseBox",
+     "time": "60s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "cabbagepallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Farm_Cabbage",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× CabbagePallet",
+     "time": "1800s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "carrotbox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "cement": {
+   "produced": [
+    {
+     "loc": "Factory_Cement",
+     "inputs": "10× Limestone",
+     "time": "60s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Cement_Drop",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Factory_Concrete",
+     "inputs": "10× Cement, 1× Fuel, 10× Sand",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Concrete_SandDump",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "cheesebox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Cheese",
+     "inputs": "1× Milk",
+     "time": "10s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "BurgerCounter",
+     "inputs": "1× MeatBox, 1× CheeseBox",
+     "time": "60s"
+    },
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "FastFood_Storage",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "PizzaCounter",
+     "inputs": "1× MeatBox, 1× CheeseBox",
+     "time": "60s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "cheesepallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Factory_Cheese",
+     "inputs": "1× Milk",
+     "time": "10s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× CheesePallet",
+     "time": "2400s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "chillipallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "circuitboardpallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Factory_Electronics_Biyang",
+     "inputs": "1× CopperRodCoil_2t, 5× PlasticPallete",
+     "time": "300s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Export_Harbor",
+     "inputs": "1× CircuitBoardPallet",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Terra",
+     "inputs": "3× SteelCoil_10t, 2× Container_20ft_01, 2× lHBeam_6m, 2× Oil, 2× PlasticPallete, 1× Fuel, 1× CircuitBoardPallet",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Transformer_50MVA",
+     "inputs": "3× lHBeam_6m, 10× SteelCoil_10t, 6× PlasticPallete, 3× Oil, 3× CopperRodCoil_2t, 1× CircuitBoardPallet",
+     "time": "900s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "coal": {
+   "produced": [
+    {
+     "loc": "CoalWarehouse",
+     "inputs": "1× Coal",
+     "time": "1s"
+    },
+    {
+     "loc": "Import_Coal",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Mine_Coal",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Mine_Coal",
+     "inputs": "3× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CoalWarehouse",
+     "inputs": "1× Coal",
+     "time": "1s"
+    },
+    {
+     "loc": "Export_Coal",
+     "inputs": "1× Coal",
+     "time": "600s"
+    },
+    {
+     "loc": "SteelMill_CoalDrop",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "SteelMill_Coil",
+     "inputs": "30× Coal, 20× IronOre, 5× Limestone",
+     "time": "120s"
+    },
+    {
+     "loc": "SteelMill_H-Beam",
+     "inputs": "12× Coal, 8× IronOre, 2× Limestone",
+     "time": "120s"
+    }
+   ]
+  },
+  "concrete": {
+   "produced": [
+    {
+     "loc": "Factory_Concrete",
+     "inputs": "10× Cement, 1× Fuel, 10× Sand",
+     "time": "60s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "ConstructionSite",
+     "inputs": "1× Concrete",
+     "time": "5s"
+    },
+    {
+     "loc": "ConstructionSite",
+     "inputs": "1× Concrete",
+     "time": "300s"
+    }
+   ]
+  },
+  "container_20ft_01": {
+   "produced": [
+    {
+     "loc": "Container_ExportImport",
+     "inputs": "(passive)",
+     "time": "5s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CrudeOil_Refinery_Input_Container",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bottle",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× Container",
+     "time": "30s"
+    },
+    {
+     "loc": "Factory_FormulaSCM",
+     "inputs": "2× SmallBox, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_FormulaSCM",
+     "inputs": "1× SteelCoil_10t, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Meat",
+     "inputs": "1× Container",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Plastic",
+     "inputs": "20× Oil, 1× Container",
+     "time": "180s"
+    },
+    {
+     "loc": "Factory_Raven",
+     "inputs": "1× SteelCoil_10t, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Terra",
+     "inputs": "3× SteelCoil_10t, 2× Container_20ft_01, 2× lHBeam_6m, 2× Oil, 2× PlasticPallete, 1× Fuel, 1× CircuitBoardPallet",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Toy",
+     "inputs": "10× PlasticPallete, 1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Refinery_Fuel",
+     "inputs": "10× CrudeOil, 1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Refinery_Oil",
+     "inputs": "10× CrudeOil, 1× Container",
+     "time": "180s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "5× ToyBoxes, 1× Container",
+     "time": "120s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× Container",
+     "time": "60s"
+    }
+   ]
+  },
+  "container_40ft_01": {
+   "produced": [
+    {
+     "loc": "Container_ExportImport",
+     "inputs": "(passive)",
+     "time": "5s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CrudeOil_Refinery_Input_Container",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bakery",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bottle",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× Container",
+     "time": "30s"
+    },
+    {
+     "loc": "Factory_Meat",
+     "inputs": "1× Container",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Plastic",
+     "inputs": "20× Oil, 1× Container",
+     "time": "180s"
+    },
+    {
+     "loc": "Factory_Toy",
+     "inputs": "10× PlasticPallete, 1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Refinery_Fuel",
+     "inputs": "10× CrudeOil, 1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Refinery_Oil",
+     "inputs": "10× CrudeOil, 1× Container",
+     "time": "180s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "5× ToyBoxes, 1× Container",
+     "time": "120s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× Container",
+     "time": "60s"
+    }
+   ]
+  },
+  "copperconcentrate": {
+   "produced": [
+    {
+     "loc": "CopperConcentrator",
+     "inputs": "30× CopperOre",
+     "time": "60s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CopperRefinery",
+     "inputs": "3× CopperConcentrate",
+     "time": "300s"
+    }
+   ]
+  },
+  "copperore": {
+   "produced": [
+    {
+     "loc": "Mine_CopperOre",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Mine_CopperOre",
+     "inputs": "3× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CopperConcentrator",
+     "inputs": "30× CopperOre",
+     "time": "60s"
+    }
+   ]
+  },
+  "copperrodcoil_2t": {
+   "produced": [
+    {
+     "loc": "CopperRefinery",
+     "inputs": "3× CopperConcentrate",
+     "time": "300s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Electronics_Biyang",
+     "inputs": "1× CopperRodCoil_2t, 5× PlasticPallete",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Transformer_20MVA",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 2× PlasticPallete, 1× Oil, 1× CopperRodCoil_2t",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Transformer_50MVA",
+     "inputs": "3× lHBeam_6m, 10× SteelCoil_10t, 6× PlasticPallete, 3× Oil, 3× CopperRodCoil_2t, 1× CircuitBoardPallet",
+     "time": "900s"
+    }
+   ]
+  },
+  "cornbox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Farm_Corn",
+     "inputs": "(passive)",
+     "time": "30s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "cornpallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Farm_Corn",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× CornPallet",
+     "time": "1800s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "crudeoil": {
+   "produced": [
+    {
+     "loc": "CrudeOil_Supplier",
+     "inputs": "(passive)",
+     "time": "120s"
+    },
+    {
+     "loc": "CrudeOil_Supplier",
+     "inputs": "5× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CrudeOil_Refinery_Input",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Refinery_Fuel",
+     "inputs": "5× CrudeOil",
+     "time": "60s"
+    },
+    {
+     "loc": "Refinery_Fuel",
+     "inputs": "10× CrudeOil, 1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Refinery_Oil",
+     "inputs": "2× CrudeOil",
+     "time": "60s"
+    },
+    {
+     "loc": "Refinery_Oil",
+     "inputs": "10× CrudeOil, 1× Container",
+     "time": "180s"
+    }
+   ]
+  },
+  "finesand": {
+   "produced": [
+    {
+     "loc": "ConstructionSite",
+     "inputs": "1× Concrete",
+     "time": "5s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Concrete",
+     "inputs": "10× Cement, 1× Fuel, 10× Sand",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Concrete_SandDump",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "formulascm": {
+   "produced": [
+    {
+     "loc": "Factory_FormulaSCM",
+     "inputs": "2× SmallBox, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_FormulaSCM",
+     "inputs": "1× SteelCoil_10t, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    }
+   ],
+   "dropoff": []
+  },
+  "fuel": {
+   "produced": [
+    {
+     "loc": "Refinery_Fuel",
+     "inputs": "5× CrudeOil",
+     "time": "60s"
+    },
+    {
+     "loc": "Refinery_Fuel",
+     "inputs": "10× CrudeOil, 1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Storage_Fuel",
+     "inputs": "1× Fuel",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "ConstructionSite",
+     "inputs": "1× Fuel",
+     "time": "360s"
+    },
+    {
+     "loc": "CrudeOil_Supplier",
+     "inputs": "5× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    },
+    {
+     "loc": "Factory_Bottle",
+     "inputs": "1× Fuel",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Concrete",
+     "inputs": "10× Cement, 1× Fuel, 10× Sand",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Concrete_SandDump",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "1× Fuel",
+     "time": "180s"
+    },
+    {
+     "loc": "Factory_Lumbermil",
+     "inputs": "1× Fuel",
+     "time": "720s"
+    },
+    {
+     "loc": "Factory_Terra",
+     "inputs": "3× SteelCoil_10t, 2× Container_20ft_01, 2× lHBeam_6m, 2× Oil, 2× PlasticPallete, 1× Fuel, 1× CircuitBoardPallet",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Base_",
+     "inputs": "1× Fuel",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Cabbage",
+     "inputs": "1× Fuel",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Corn",
+     "inputs": "1× Fuel",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Hemp",
+     "inputs": "1× Fuel",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Orange",
+     "inputs": "1× Fuel",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Ranch",
+     "inputs": "1× Fuel",
+     "time": "600s"
+    },
+    {
+     "loc": "Farm_Rice",
+     "inputs": "1× Fuel",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Sunflower",
+     "inputs": "1× Fuel",
+     "time": "1200s"
+    },
+    {
+     "loc": "FuelDemand",
+     "inputs": "1× Fuel",
+     "time": "600s"
+    },
+    {
+     "loc": "GasStation",
+     "inputs": "1× Fuel",
+     "time": "1800s"
+    },
+    {
+     "loc": "LogSupply",
+     "inputs": "1× Fuel",
+     "time": "360s"
+    },
+    {
+     "loc": "LogSupply_Oak",
+     "inputs": "1× Fuel",
+     "time": "360s"
+    },
+    {
+     "loc": "Mine_Coal",
+     "inputs": "3× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    },
+    {
+     "loc": "Mine_CopperOre",
+     "inputs": "3× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    },
+    {
+     "loc": "Mine_IronOre",
+     "inputs": "3× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    },
+    {
+     "loc": "Storage_Fuel",
+     "inputs": "1× Fuel",
+     "time": "1s"
+    }
+   ]
+  },
+  "giftbox_01": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "5× ToyBoxes, 1× Container",
+     "time": "120s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "glassbottlebox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Bottle",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "grocerybag": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": "1× GroceryBag",
+     "time": "1200s"
+    }
+   ]
+  },
+  "hemppallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Farm_Hemp",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "ironore": {
+   "produced": [
+    {
+     "loc": "Import_IronOre",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "IronOreWarehouse",
+     "inputs": "1× IronOre",
+     "time": "1s"
+    },
+    {
+     "loc": "Mine_IronOre",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Mine_IronOre",
+     "inputs": "3× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "IronOreWarehouse",
+     "inputs": "1× IronOre",
+     "time": "1s"
+    },
+    {
+     "loc": "SteelMill_Coil",
+     "inputs": "30× Coal, 20× IronOre, 5× Limestone",
+     "time": "120s"
+    },
+    {
+     "loc": "SteelMill_H-Beam",
+     "inputs": "12× Coal, 8× IronOre, 2× Limestone",
+     "time": "120s"
+    },
+    {
+     "loc": "SteelMill_IronOreDrop",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "limestone": {
+   "produced": [
+    {
+     "loc": "Factory_LimestoneProcessing",
+     "inputs": "10× LimestoneRock",
+     "time": "60s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Cement",
+     "inputs": "10× Limestone",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Limestone_Drop",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Factory_Quicklime",
+     "inputs": "1× Limestone",
+     "time": "120s"
+    },
+    {
+     "loc": "SteelMill_Coil",
+     "inputs": "30× Coal, 20× IronOre, 5× Limestone",
+     "time": "120s"
+    },
+    {
+     "loc": "SteelMill_H-Beam",
+     "inputs": "12× Coal, 8× IronOre, 2× Limestone",
+     "time": "120s"
+    },
+    {
+     "loc": "SteelMill_LimestoneDrop",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "limestonerock": {
+   "produced": [
+    {
+     "loc": "Mine_LimestoneRockQuarry",
+     "inputs": "(passive)",
+     "time": "120s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_LimestoneProcessing",
+     "inputs": "10× LimestoneRock",
+     "time": "60s"
+    },
+    {
+     "loc": "LimestoneRockDrop",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "livefish_01": {
+   "produced": [
+    {
+     "loc": "LiveFishSupplier",
+     "inputs": "(passive)",
+     "time": "600s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Store_LiveFishRestaurant",
+     "inputs": "2× LiveFish_01",
+     "time": "600s"
+    }
+   ]
+  },
+  "log_20ft": {
+   "produced": [
+    {
+     "loc": "LogSupply",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "LogSupply",
+     "inputs": "1× Fuel",
+     "time": "360s"
+    },
+    {
+     "loc": "LogWarehouse",
+     "inputs": "1× Log_20ft",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Lumbermil",
+     "inputs": "1× Log_20ft",
+     "time": "60s"
+    },
+    {
+     "loc": "LogDrop",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "LogExport",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "LogWarehouse",
+     "inputs": "1× Log_20ft",
+     "time": "1s"
+    }
+   ]
+  },
+  "log_30ft_30t": {
+   "produced": [],
+   "dropoff": []
+  },
+  "log_oak_12ft": {
+   "produced": [
+    {
+     "loc": "LogSupply_Oak",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "LogWarehouse",
+     "inputs": "1× Log_Oak_12ft",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Lumbermil",
+     "inputs": "1× Log_Oak_12ft",
+     "time": "60s"
+    },
+    {
+     "loc": "LogDrop",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "LogExport",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "LogWarehouse",
+     "inputs": "1× Log_Oak_12ft",
+     "time": "1s"
+    }
+   ]
+  },
+  "log_oak_24ft": {
+   "produced": [],
+   "dropoff": []
+  },
+  "meatbox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Meat",
+     "inputs": "1× Container",
+     "time": "10s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "BurgerCounter",
+     "inputs": "1× MeatBox, 1× CheeseBox",
+     "time": "60s"
+    },
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "FastFood_Storage",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "PizzaCounter",
+     "inputs": "1× MeatBox, 1× CheeseBox",
+     "time": "60s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× MeatBox",
+     "time": "720s"
+    }
+   ]
+  },
+  "militarysupplybox_01": {
+   "produced": [
+    {
+     "loc": "Warehouse",
+     "inputs": "1× MilitarySupplyBox_01_Empty",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× MilitarySupplyBox_01_Empty",
+     "time": "10s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "MilitaryBase",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "militarysupplybox_01_empty": {
+   "produced": [],
+   "dropoff": [
+    {
+     "loc": "Warehouse",
+     "inputs": "1× MilitarySupplyBox_01_Empty",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× MilitarySupplyBox_01_Empty",
+     "time": "10s"
+    }
+   ]
+  },
+  "milk": {
+   "produced": [
+    {
+     "loc": "Farm_Ranch",
+     "inputs": "(passive)",
+     "time": "120s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Cheese",
+     "inputs": "1× Milk",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Cheese",
+     "inputs": "1× Milk",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Cheese_MilkDrop",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "oil": {
+   "produced": [
+    {
+     "loc": "Refinery_Oil",
+     "inputs": "2× CrudeOil",
+     "time": "60s"
+    },
+    {
+     "loc": "Refinery_Oil",
+     "inputs": "10× CrudeOil, 1× Container",
+     "time": "180s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Plastic",
+     "inputs": "20× Oil",
+     "time": "180s"
+    },
+    {
+     "loc": "Factory_Plastic",
+     "inputs": "20× Oil, 1× Container",
+     "time": "180s"
+    },
+    {
+     "loc": "Factory_Terra",
+     "inputs": "3× SteelCoil_10t, 2× Container_20ft_01, 2× lHBeam_6m, 2× Oil, 2× PlasticPallete, 1× Fuel, 1× CircuitBoardPallet",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Transformer_20MVA",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 2× PlasticPallete, 1× Oil, 1× CopperRodCoil_2t",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Transformer_50MVA",
+     "inputs": "3× lHBeam_6m, 10× SteelCoil_10t, 6× PlasticPallete, 3× Oil, 3× CopperRodCoil_2t, 1× CircuitBoardPallet",
+     "time": "900s"
+    },
+    {
+     "loc": "Oil_Drop",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "orangebox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "orangeboxes": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Farm_Orange",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× OrangeBoxes",
+     "time": "1800s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "pizza_01": {
+   "produced": [
+    {
+     "loc": "PizzaCounter",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "pizza_01_premium": {
+   "produced": [
+    {
+     "loc": "PizzaCounter",
+     "inputs": "1× MeatBox, 1× CheeseBox",
+     "time": "60s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "pizza_02": {
+   "produced": [
+    {
+     "loc": "PizzaCounter",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "pizza_03": {
+   "produced": [
+    {
+     "loc": "PizzaCounter",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "pizza_04": {
+   "produced": [
+    {
+     "loc": "PizzaCounter",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "pizza_05": {
+   "produced": [
+    {
+     "loc": "PizzaCounter",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "plasticpallete": {
+   "produced": [
+    {
+     "loc": "Factory_Plastic",
+     "inputs": "20× Oil",
+     "time": "180s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Electronics_Biyang",
+     "inputs": "1× CopperRodCoil_2t, 5× PlasticPallete",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "2× WoodPlank_14ft_5t, 1× PlasticPallete",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Tank_250kL",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 1× PlasticPallete",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Terra",
+     "inputs": "3× SteelCoil_10t, 2× Container_20ft_01, 2× lHBeam_6m, 2× Oil, 2× PlasticPallete, 1× Fuel, 1× CircuitBoardPallet",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Toy",
+     "inputs": "10× PlasticPallete, 1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Toy",
+     "inputs": "3× PlasticPallete, 1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Transformer_20MVA",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 2× PlasticPallete, 1× Oil, 1× CopperRodCoil_2t",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Transformer_50MVA",
+     "inputs": "3× lHBeam_6m, 10× SteelCoil_10t, 6× PlasticPallete, 3× Oil, 3× CopperRodCoil_2t, 1× CircuitBoardPallet",
+     "time": "900s"
+    }
+   ]
+  },
+  "plasticpipes_6m": {
+   "produced": [
+    {
+     "loc": "Factory_Plastic",
+     "inputs": "20× Oil, 1× Container",
+     "time": "180s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "ConstructionSite",
+     "inputs": "1× PlasticPipes_6m",
+     "time": "600s"
+    }
+   ]
+  },
+  "potatopallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× PotatoPallet",
+     "time": "1800s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "powerbox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "pumpkinbox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Farm_Pumpkin",
+     "inputs": "(passive)",
+     "time": "30s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "pumpkinpallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Farm_Pumpkin",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× PumpkinPallet",
+     "time": "1800s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "quicklimepallet": {
+   "produced": [
+    {
+     "loc": "Factory_Quicklime",
+     "inputs": "1× Limestone",
+     "time": "120s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Farm_Base_",
+     "inputs": "1× QuicklimePallet",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Cabbage",
+     "inputs": "1× QuicklimePallet",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Corn",
+     "inputs": "1× QuicklimePallet",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Hemp",
+     "inputs": "1× QuicklimePallet",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Orange",
+     "inputs": "1× QuicklimePallet",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Pumpkin",
+     "inputs": "1× QuicklimePallet",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Rice",
+     "inputs": "1× QuicklimePallet",
+     "time": "1200s"
+    },
+    {
+     "loc": "Farm_Sunflower",
+     "inputs": "1× QuicklimePallet",
+     "time": "1200s"
+    }
+   ]
+  },
+  "raven": {
+   "produced": [
+    {
+     "loc": "Factory_Raven",
+     "inputs": "1× SteelCoil_10t, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    }
+   ],
+   "dropoff": []
+  },
+  "rice": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Farm_Rice",
+     "inputs": "(passive)",
+     "time": "30s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "ricepallet": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Farm_Rice",
+     "inputs": "(passive)",
+     "time": "300s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Food",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× RicePallet",
+     "time": "1800s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× LargePackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× LargePackage",
+     "time": "10s"
+    }
+   ]
+  },
+  "sand": {
+   "produced": [
+    {
+     "loc": "ConstructionSite",
+     "inputs": "(passive)",
+     "time": "120s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Factory_Concrete",
+     "inputs": "10× Cement, 1× Fuel, 10× Sand",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Concrete_SandDump",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "smallbox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Factory_FormulaSCM",
+     "inputs": "2× SmallBox, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "snackbox": {
+   "produced": [
+    {
+     "loc": "CourierService",
+     "inputs": "1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "(passive)",
+     "time": null
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "(passive)",
+     "time": null
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CourierService",
+     "inputs": "4× SmallPackage",
+     "time": "1s"
+    },
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    }
+   ]
+  },
+  "sofa_01": {
+   "produced": [
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "2× WoodPlank_14ft_5t, 1× PlasticPallete",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ]
+  },
+  "sofa_02": {
+   "produced": [
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "2× WoodPlank_14ft_5t, 1× PlasticPallete",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ]
+  },
+  "sofa_03": {
+   "produced": [
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "2× WoodPlank_14ft_5t, 1× PlasticPallete",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ]
+  },
+  "sofa_04": {
+   "produced": [
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "2× WoodPlank_14ft_5t, 1× PlasticPallete",
+     "time": "10s"
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Resident",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Store_Furniture",
+     "inputs": "1× Furniture",
+     "time": "1s"
+    }
+   ]
+  },
+  "steelcoil_10t": {
+   "produced": [
+    {
+     "loc": "SteelMill_Coil",
+     "inputs": "30× Coal, 20× IronOre, 5× Limestone",
+     "time": "120s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Export_Harbor",
+     "inputs": "1× SteelCoil_10t",
+     "time": "1200s"
+    },
+    {
+     "loc": "Factory_FormulaSCM",
+     "inputs": "1× SteelCoil_10t, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Raven",
+     "inputs": "1× SteelCoil_10t, 6× BoxPallete_01, 2× Container_20ft_01",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Tank_250kL",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 1× PlasticPallete",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Terra",
+     "inputs": "3× SteelCoil_10t, 2× Container_20ft_01, 2× lHBeam_6m, 2× Oil, 2× PlasticPallete, 1× Fuel, 1× CircuitBoardPallet",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Transformer_20MVA",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 2× PlasticPallete, 1× Oil, 1× CopperRodCoil_2t",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Transformer_50MVA",
+     "inputs": "3× lHBeam_6m, 10× SteelCoil_10t, 6× PlasticPallete, 3× Oil, 3× CopperRodCoil_2t, 1× CircuitBoardPallet",
+     "time": "900s"
+    }
+   ]
+  },
+  "sunflowerseed": {
+   "produced": [
+    {
+     "loc": "Farm_Sunflower",
+     "inputs": "(passive)",
+     "time": "90s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "GrainExport",
+     "inputs": "1× SunflowerSeed",
+     "time": "120s"
+    }
+   ]
+  },
+  "tank_250kl": {
+   "produced": [
+    {
+     "loc": "Factory_Tank_250kL",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 1× PlasticPallete",
+     "time": "300s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "CrudeOil_Supplier",
+     "inputs": "1× Tank_250kL",
+     "time": "1800s"
+    }
+   ]
+  },
+  "terra": {
+   "produced": [
+    {
+     "loc": "Factory_Terra",
+     "inputs": "3× SteelCoil_10t, 2× Container_20ft_01, 2× lHBeam_6m, 2× Oil, 2× PlasticPallete, 1× Fuel, 1× CircuitBoardPallet",
+     "time": "600s"
+    }
+   ],
+   "dropoff": []
+  },
+  "toyboxes": {
+   "produced": [
+    {
+     "loc": "Factory_Toy",
+     "inputs": "10× PlasticPallete, 1× Container",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Toy",
+     "inputs": "3× PlasticPallete, 1× LargePackage",
+     "time": "10s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Export_Harbor",
+     "inputs": "1× ToyBoxes",
+     "time": "600s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "1× ToyBoxes, 1× LargePackage",
+     "time": "60s"
+    },
+    {
+     "loc": "Store_SantaCabin",
+     "inputs": "5× ToyBoxes, 1× Container",
+     "time": "120s"
+    },
+    {
+     "loc": "Supermarket",
+     "inputs": "1× ToyBoxes",
+     "time": "1200s"
+    },
+    {
+     "loc": "Warehouse",
+     "inputs": "1× FinalProduct",
+     "time": "10s"
+    },
+    {
+     "loc": "WarehouseDoor",
+     "inputs": "1× FinalProduct",
+     "time": "10s"
+    }
+   ]
+  },
+  "transformer_20mva": {
+   "produced": [
+    {
+     "loc": "Factory_Transformer_20MVA",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 2× PlasticPallete, 1× Oil, 1× CopperRodCoil_2t",
+     "time": "300s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Export_Harbor",
+     "inputs": "1× Transformer_20MVA",
+     "time": "1200s"
+    }
+   ]
+  },
+  "transformer_50mva": {
+   "produced": [
+    {
+     "loc": "Factory_Transformer_50MVA",
+     "inputs": "3× lHBeam_6m, 10× SteelCoil_10t, 6× PlasticPallete, 3× Oil, 3× CopperRodCoil_2t, 1× CircuitBoardPallet",
+     "time": "900s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "Export_Harbor",
+     "inputs": "1× Transformer_50MVA",
+     "time": "1200s"
+    }
+   ]
+  },
+  "trashbag": {
+   "produced": [],
+   "dropoff": []
+  },
+  "trash_big": {
+   "produced": [],
+   "dropoff": []
+  },
+  "woodplank_14ft_5t": {
+   "produced": [
+    {
+     "loc": "Factory_Lumbermil",
+     "inputs": "1× Log_20ft",
+     "time": "60s"
+    },
+    {
+     "loc": "Factory_Lumbermil",
+     "inputs": "1× Log_Oak_12ft",
+     "time": "60s"
+    },
+    {
+     "loc": "Storage_Plank",
+     "inputs": "1× WoodPlank_14ft_5t",
+     "time": "1s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "ConstructionSite",
+     "inputs": "1× WoodPlank_14ft_5t",
+     "time": "900s"
+    },
+    {
+     "loc": "CrudeOil_Supplier",
+     "inputs": "5× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    },
+    {
+     "loc": "Factory_Furniture",
+     "inputs": "2× WoodPlank_14ft_5t, 1× PlasticPallete",
+     "time": "10s"
+    },
+    {
+     "loc": "Factory_Terra",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "Mine_Coal",
+     "inputs": "3× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    },
+    {
+     "loc": "Mine_CopperOre",
+     "inputs": "3× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    },
+    {
+     "loc": "Mine_IronOre",
+     "inputs": "3× Fuel, 1× WoodPlank_14ft_5t",
+     "time": "30s"
+    },
+    {
+     "loc": "Storage_Plank",
+     "inputs": "1× WoodPlank_14ft_5t",
+     "time": "1s"
+    }
+   ]
+  },
+  "lhbeam_6m": {
+   "produced": [
+    {
+     "loc": "SteelMill_H-Beam",
+     "inputs": "12× Coal, 8× IronOre, 2× Limestone",
+     "time": "120s"
+    }
+   ],
+   "dropoff": [
+    {
+     "loc": "ComonDrop",
+     "inputs": null,
+     "time": null
+    },
+    {
+     "loc": "ConstructionSite",
+     "inputs": "1× lHBeam_6m",
+     "time": "600s"
+    },
+    {
+     "loc": "Export_Harbor",
+     "inputs": "1× lHBeam_6m",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Tank_250kL",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 1× PlasticPallete",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Terra",
+     "inputs": "3× SteelCoil_10t, 2× Container_20ft_01, 2× lHBeam_6m, 2× Oil, 2× PlasticPallete, 1× Fuel, 1× CircuitBoardPallet",
+     "time": "600s"
+    },
+    {
+     "loc": "Factory_Transformer_20MVA",
+     "inputs": "1× lHBeam_6m, 3× SteelCoil_10t, 2× PlasticPallete, 1× Oil, 1× CopperRodCoil_2t",
+     "time": "300s"
+    },
+    {
+     "loc": "Factory_Transformer_50MVA",
+     "inputs": "3× lHBeam_6m, 10× SteelCoil_10t, 6× PlasticPallete, 3× Oil, 3× CopperRodCoil_2t, 1× CircuitBoardPallet",
+     "time": "900s"
+    }
+   ]
+  }
+ }
+}
