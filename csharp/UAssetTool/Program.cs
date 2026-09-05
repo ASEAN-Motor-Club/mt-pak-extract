@@ -188,12 +188,27 @@ class Program
                     {
                         Console.WriteLine($"    NormalExport CDO: {neCdo.Data?.Count ?? 0} properties");
                         foreach (var p in neCdo.Data ?? new List<PropertyData>())
+                        {
                             Console.WriteLine($"      {p.Name?.Value?.Value} ({p.PropertyType}) IsZero={p.IsZero}");
+                            DumpProperty(p, "        ");
+                        }
                     }
                 }
                 
                 // Dump export data (properties) - skip CDO since we already printed it
-                if (exp is UAssetAPI.ExportTypes.NormalExport normalExp && !exp.ObjectName?.Value?.Value?.StartsWith("Default__") == true)
+                if (exp is UAssetAPI.ExportTypes.DataTableExport dte)
+                {
+                    Console.WriteLine($"    Rows ({dte.Table?.Data?.Count ?? 0}):");
+                    foreach (var row in dte.Table?.Data ?? new List<StructPropertyData>())
+                    {
+                        Console.WriteLine($"      Row '{row.Name?.Value?.Value}':");
+                        foreach (var p in row.Value ?? new List<PropertyData>())
+                        {
+                            DumpProperty(p, "        ");
+                        }
+                    }
+                }
+                else if (exp is UAssetAPI.ExportTypes.NormalExport normalExp && !exp.ObjectName?.Value?.Value?.StartsWith("Default__") == true)
                 {
                     Console.WriteLine($"    Properties ({normalExp.Data.Count}):");
                     foreach (var prop in normalExp.Data)
@@ -1135,6 +1150,34 @@ class Program
             case "set":
             {
                 var prop = ResolveProperty(properties, path);
+                if (prop == null && !path.Contains('.'))
+                {
+                    // Cloned entries from zero-masked vanilla structs (e.g.
+                    // Export_Harbor's existing DemandConfigs) omit
+                    // default-valued fields entirely, so a scalar 'set' has
+                    // nothing to hit. Create the field instead of warning —
+                    // the unversioned header generator matches properties by
+                    // name, so append order is irrelevant.
+                    var newVal = patch.GetProperty("value");
+                    if (newVal.ValueKind == JsonValueKind.Number)
+                    {
+                        // "2.0" stays Float even when the value is whole;
+                        // "10" is Int. Distinguish via the raw JSON text.
+                        bool isFloat = newVal.GetRawText().Contains('.');
+                        prop = isFloat
+                            ? new FloatPropertyData(new FName(asset, path))
+                            : new IntPropertyData(new FName(asset, path));
+                    }
+                    else if (newVal.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                    {
+                        prop = new BoolPropertyData(new FName(asset, path));
+                    }
+                    if (prop != null)
+                    {
+                        properties.Add(prop);
+                        Console.WriteLine($"    Added missing property '{path}' ({prop.PropertyType})");
+                    }
+                }
                 if (prop == null) { Console.WriteLine($"    Warning: Property '{path}' not found for 'set'"); break; }
                 var val = patch.GetProperty("value");
                 switch (val.ValueKind)

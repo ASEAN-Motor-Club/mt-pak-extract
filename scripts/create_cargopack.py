@@ -356,8 +356,10 @@ class CargoModBuilder(ModBuilder):
              "value": speed_mult},
             {"path": "LocalFoodSupply", "op": "set", "value": 0},
             {"path": "bHidden", "op": "set", "value": hidden},
-            {"path": "TimeSinceLastProduction", "op": "set", "value": 0},
-            {"path": "ProductionFlags", "op": "set", "value": 0},
+            # TimeSinceLastProduction / ProductionFlags are RUNTIME state —
+            # deliberately not patched: they're absent from some classes'
+            # usmap schemas (write-time FormatException if auto-added), and
+            # zero-valued absence was proven fine by the live 0.4.8 faucet.
         ]
 
     # ── Build hooks ────────────────────────────────────────────────────
