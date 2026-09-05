@@ -57,7 +57,9 @@
       "template_path": "out/Export_Harbor.uasset",
       "replace_production_configs": false,
       "recipes": [
-        {"cargo": "CocaineBricks", "production_time": 300, "hidden": false}
+        {"cargo": "CocaineBricks", "production_time": 300, "hidden": false},
+        {"cargo": "Money", "production_time": 60, "hidden": false},
+        {"cargo": "MoneyPallet", "production_time": 120, "hidden": false}
       ]
     }
   ],
@@ -75,7 +77,7 @@
       "template_path": "out/Farm_Sunflower.uasset",
       "replace_production_configs": false,
       "recipes": [
-        {"input_cargos": {"CocaLeavesPallet": 4, "Fuel": 1, "QuicklimePallet": 1}, "output_cargo": "CocaPaste", "output_count": 1, "production_time": 300, "hidden": false}
+        {"input_cargos": {"CocaLeavesPallet": 4, "Fuel": 1, "QuicklimePallet": 1}, "output_cargo": "CocaPaste", "output_count": 4, "production_time": 300, "hidden": false}
       ]
     },
     {
@@ -83,7 +85,7 @@
       "template_path": "out/Mine_IronOre.uasset",
       "replace_production_configs": false,
       "recipes": [
-        {"input_cargos": {"CocaPaste": 4, "Acetone": 3, "HydrochloricAcid": 3}, "output_cargo": "CocaineBricks", "output_count": 1, "production_time": 300, "hidden": false}
+        {"input_cargos": {"CocaPaste": 4, "Acetone": 3, "HydrochloricAcid": 3}, "output_cargo": "CocaineBricks", "output_count": 2, "production_time": 300, "hidden": false}
       ]
     },
     {
@@ -91,7 +93,7 @@
       "template_path": "out/Factory_Toy.uasset",
       "replace_production_configs": false,
       "recipes": [
-        {"input_cargo": "CocaineBricks", "input_count": 5, "output_cargo": "Money", "output_count": 10, "production_time": 120, "hidden": false}
+        {"input_cargo": "CocaineBricks", "input_count": 5, "output_cargo": "Money", "output_count": 30, "production_time": 120, "hidden": false}
       ]
     },
     {
@@ -147,7 +149,7 @@
       "delivery_point": "Farm_Hemp",
       "template_path": "out/Farm_Hemp.uasset",
       "entries": [
-        {"cargo_key": "CocaLeavesPallet", "max_storage": 10},
+        {"cargo_key": "CocaLeavesPallet", "max_storage": 30},
         {"cargo_key": "Money", "max_storage": 10}
       ]
     },
@@ -155,30 +157,31 @@
       "delivery_point": "Farm_Sunflower",
       "template_path": "out/Farm_Sunflower.uasset",
       "entries": [
-        {"cargo_key": "CocaLeavesPallet", "max_storage": 20},
-        {"cargo_key": "CocaPaste", "max_storage": 20},
+        {"cargo_key": "CocaLeavesPallet", "max_storage": 30},
+        {"cargo_key": "CocaPaste", "max_storage": 40},
         {"cargo_key": "Fuel", "max_storage": 50},
         {"cargo_key": "QuicklimePallet", "max_storage": 30},
         {"cargo_key": "SunflowerSeed", "max_storage": 500},
-        {"cargo_key": "Money", "max_storage": 5}
+        {"cargo_key": "Money", "max_storage": 25}
       ]
     },
     {
       "delivery_point": "Mine_IronOre",
       "template_path": "out/Mine_IronOre.uasset",
       "entries": [
-        {"cargo_key": "CocaPaste", "max_storage": 20},
+        {"cargo_key": "CocaPaste", "max_storage": 40},
         {"cargo_key": "Acetone", "max_storage": 15},
         {"cargo_key": "HydrochloricAcid", "max_storage": 15},
-        {"cargo_key": "CocaineBricks", "max_storage": 15},
-        {"cargo_key": "Money", "max_storage": 5}
+        {"cargo_key": "CocaineBricks", "max_storage": 30},
+        {"cargo_key": "Money", "max_storage": 25}
       ]
     },
     {
       "delivery_point": "Factory_Toy",
       "template_path": "out/Factory_Toy.uasset",
       "entries": [
-        {"cargo_key": "CocaineBricks", "max_storage": 20}
+        {"cargo_key": "CocaineBricks", "max_storage": 30},
+        {"cargo_key": "Money", "max_storage": 40}
       ]
     },
     {
@@ -200,8 +203,8 @@
       "delivery_point": "LiveFishSupplier",
       "template_path": "out/LiveFishSupplier.uasset",
       "entries": [
-        {"cargo_key": "CocaineBricks", "max_storage": 10},
-        {"cargo_key": "MoneyPallet", "max_storage": 15}
+        {"cargo_key": "CocaineBricks", "max_storage": 20},
+        {"cargo_key": "MoneyPallet", "max_storage": 30}
       ]
     }
   ],
@@ -217,21 +220,23 @@
       "delivery_point": "Supermarket",
       "template_path": "out/Supermarket.uasset",
       "entries": [
-        {"cargo_type": "None", "cargo_key": "Moonshine", "payment_multiplier": 1.5, "max_storage": 10}
+        {"cargo_type": "None", "cargo_key": "Moonshine", "payment_multiplier": 1.5, "max_storage": 20}
       ]
     },
     {
       "delivery_point": "GasStation",
       "template_path": "out/GasStation.uasset",
       "entries": [
-        {"cargo_type": "None", "cargo_key": "Moonshine", "payment_multiplier": 1.2, "max_storage": 10}
+        {"cargo_type": "None", "cargo_key": "Moonshine", "payment_multiplier": 1.2, "max_storage": 20}
       ]
     },
     {
       "delivery_point": "Export_Harbor",
       "template_path": "out/Export_Harbor.uasset",
       "entries": [
-        {"cargo_type": "None", "cargo_key": "CocaineBricks", "payment_multiplier": 2.0, "max_storage": 10}
+        {"cargo_type": "None", "cargo_key": "CocaineBricks", "payment_multiplier": 2.0, "max_storage": 10},
+        {"cargo_type": "None", "cargo_key": "Money", "payment_multiplier": 1.0, "max_storage": 40},
+        {"cargo_type": "None", "cargo_key": "MoneyPallet", "payment_multiplier": 1.0, "max_storage": 20}
       ]
     }
   ]

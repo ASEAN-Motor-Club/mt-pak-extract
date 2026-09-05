@@ -15,6 +15,21 @@ class Program
 {
     static string? RootDir;
     static Usmap? Mappings;
+
+    /// <summary>
+    /// Build a UE5.5+ FPropertyTypeName for a programmatically created property.
+    /// Parser-populated properties get this from the binary; anything we create
+    /// in code must set it or UE5.5 nametagged serialization NPEs.
+    /// </summary>
+    static FPropertyTypeName MakeTypeName(INameMap asset, FString typeName)
+    {
+        var name = FName.FromString(asset, typeName?.Value) ?? new FName(asset, 0, 0);
+        return new FPropertyTypeName(new List<FPropertyTypeNameNode>
+        {
+            new FPropertyTypeNameNode { Name = name, InnerCount = 0 }
+        });
+    }
+
     
     static void Main(string[] args)
     {
@@ -258,6 +273,12 @@ class Program
                 break;
             case UAssetAPI.PropertyTypes.Objects.FloatPropertyData fp:
                 Console.WriteLine($"{indent}{name} (Float): {fp.Value}");
+                break;
+            case UAssetAPI.PropertyTypes.Objects.SoftObjectPropertyData sop:
+                Console.WriteLine($"{indent}{name} (SoftObject):");
+                Console.WriteLine($"{indent}  PackageName: '{sop.Value.AssetPath.PackageName?.Value?.Value ?? "(null)"}'");
+                Console.WriteLine($"{indent}  AssetName: '{sop.Value.AssetPath.AssetName?.Value?.Value ?? "(null)"}'");
+                Console.WriteLine($"{indent}  SubPathString: '{sop.Value.SubPathString?.Value ?? "(null)"}'");
                 break;
             case UAssetAPI.PropertyTypes.Objects.ObjectPropertyData op:
                 Console.WriteLine($"{indent}{name} (Object): Index={op.Value}");
@@ -1135,6 +1156,18 @@ class Program
                             tp.CultureInvariantString = FString.FromString(val.GetString()!);
                             tp.HistoryType = TextHistoryType.Base;
                         }
+                        else if (prop is SoftObjectPropertyData softStr)
+                        {
+                            // 0.7.19 CargoRow format: soft class ref stored with the
+                            // class name in AssetName and an empty PackageName
+                            softStr.Value = new FSoftObjectPath(
+                                new FTopLevelAssetPath(new FName(asset, 0), FName.FromString(asset, val.GetString()!)), null);
+                            Console.WriteLine($"    set (soft path): {path} -> {val.GetString()}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"    [type-probe] cannot set string on '{path}': {prop.GetType().Name}");
+                        }
                         break;
                 }
                 break;
@@ -1144,7 +1177,16 @@ class Program
             {
                 var prop = ResolveProperty(properties, path);
                 if (prop is EnumPropertyData ep)
-                    ep.Value = FName.DefineDummy(asset, patch.GetProperty("value").GetString()!);
+                {
+                    // Qualify with the property's enum type and add to the
+                    // NameMap (FName.FromString) — DefineDummy leaves a dummy
+                    // FName that newer UAssetAPI refuses to serialize.
+                    var enumTypeName = ep.EnumType?.Value?.Value;
+                    var val = patch.GetProperty("value").GetString()!;
+                    ep.Value = !string.IsNullOrEmpty(enumTypeName) && !val.Contains("::")
+                        ? FName.FromString(asset, $"{enumTypeName}::{val}")
+                        : FName.FromString(asset, val);
+                }
                 break;
             }
             
@@ -1218,6 +1260,40 @@ class Program
                 {
                     objProp.Value = pkgIdx;
                 }
+                else if (op == "set_import_ref" && prop != null)
+                {
+                    // 0.7.19+ schema drift: refs like the DataTable ActorClass
+                    // may deserialize as a non-Object property type, so the
+                    // branch above silently no-oped and every cloned row kept
+                    // the template row's ActorClass (Transformer bug). Replace
+                    // the property with an ObjectPropertyData pointing at the
+                    // new import — UE tag-serialization binds it to the row's
+                    // FObjectProperty at load time.
+                    var leafName = path.Split('.').Last();
+                    var repl = new ObjectPropertyData(FName.FromString(asset, leafName)) { Value = pkgIdx };
+                    repl.PropertyTypeName = MakeTypeName(asset, repl.PropertyType);
+                    if (container != null)
+                    {
+                        int ridx = -1;
+                        for (int i = 0; i < container.Count; i++)
+                            if (ReferenceEquals(container[i], prop)) { ridx = i; break; }
+                        if (ridx >= 0) container[ridx] = repl;
+                        else container.Add(repl);
+                    }
+                    else
+                    {
+                        properties.Add(repl);
+                    }
+                    Console.WriteLine($"    set_import_ref: replaced {prop.GetType().Name} at '{path}' with ObjectPropertyData -> {patch.GetProperty("asset_name").GetString()}");
+                }
+                else if (op == "set_import_ref" && prop == null)
+                {
+                    var leafName = path.Split('.').Last();
+                    var appended = new ObjectPropertyData(FName.FromString(asset, leafName)) { Value = pkgIdx };
+                    appended.PropertyTypeName = MakeTypeName(asset, appended.PropertyType);
+                    properties.Add(appended);
+                    Console.WriteLine($"    set_import_ref: WARNING '{path}' not found on row — appended ObjectPropertyData -> {patch.GetProperty("asset_name").GetString()}");
+                }
                 else if (op == "set_or_create_import_ref" && container != null)
                 {
                     var leafName = path.Split('.').Last();
@@ -1225,6 +1301,7 @@ class Program
                     {
                         Value = pkgIdx
                     };
+                    newProp.PropertyTypeName = MakeTypeName(asset, newProp.PropertyType);
                     container.Add(newProp);
                     Console.WriteLine($"    Created import ref: {path} -> {patch.GetProperty("asset_name").GetString()}");
                 }
@@ -1236,6 +1313,7 @@ class Program
                     {
                         Value = pkgIdx
                     };
+                    newProp.PropertyTypeName = MakeTypeName(asset, newProp.PropertyType);
                     properties.Add(newProp);
                     Console.WriteLine($"    Created top-level import ref: {path} -> {patch.GetProperty("asset_name").GetString()}");
                 }
@@ -1292,7 +1370,8 @@ class Program
                     {
                         Value = FPackageIndex.FromImport(importIdx - 1)
                     };
-                    
+                    newEntry.PropertyTypeName = MakeTypeName(asset, newEntry.PropertyType);
+
                     var list = new List<PropertyData>(arr.Value);
                     list.Add(newEntry);
                     arr.Value = list.ToArray();
@@ -1391,6 +1470,7 @@ class Program
                     foreach (var v in patch.GetProperty("values").EnumerateArray())
                     {
                         var np = new NamePropertyData(FName.FromString(asset, leafName));
+                        np.PropertyTypeName = MakeTypeName(asset, np.PropertyType);
                         np.Value = FName.FromString(asset, v.GetString()!);
                         list.Add(np);
                     }
@@ -1412,8 +1492,10 @@ class Program
                         {
                             var keyProp = new NamePropertyData(new FName(asset, leafName, 0))
                             { Value = FName.FromString(asset, entry.Name) };
+                            keyProp.PropertyTypeName = MakeTypeName(asset, keyProp.PropertyType);
                             var valProp = new IntPropertyData(new FName(asset, leafName, 0))
                             { Value = entry.Value.GetInt32() };
+                            valProp.PropertyTypeName = MakeTypeName(asset, valProp.PropertyType);
                             mapProp.Value.Add(keyProp, valProp);
                         }
                     }
@@ -2134,10 +2216,10 @@ class Program
     
     static object? ExtractSoftObjectValue(SoftObjectPropertyData softProp)
     {
+        var pkg = softProp.Value.AssetPath.PackageName?.Value?.Value;
         var assetName = softProp.Value.AssetPath.AssetName?.Value?.Value;
         var subPath = softProp.Value.SubPathString?.Value;
-        if (string.IsNullOrEmpty(assetName)) return null;
-        return !string.IsNullOrEmpty(subPath) ? $"{assetName}:{subPath}" : assetName;
+        return new { package = pkg ?? "", asset = assetName ?? "", subpath = subPath ?? "" };
     }
     
     static object? ResolveObjectReference(ObjectPropertyData objProp, UAsset asset)

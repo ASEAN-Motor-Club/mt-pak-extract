@@ -175,6 +175,8 @@ class CargoModBuilder(ModBuilder):
                  "asset": f"{entry['blueprint_name']}_C"},
                 {"path": "DumpPileActorClass", "op": "set_soft_object",
                  "package": "None", "asset": "None"},
+                {"path": "BasePayment", "op": "set",
+                 "value": entry.get("base_payment", 0)},
                 {"path": "GameplayTags", "op": "clear_tags"},
                 {"path": "bAllowStacking", "op": "set",
                  "value": entry.get("allow_stacking", False)},
@@ -309,7 +311,12 @@ class CargoModBuilder(ModBuilder):
     def _recipe_patches(self, mode, recipe):
         """Generate patches for a single production config entry."""
         if mode == "transform":
-            input_map = {recipe["input_cargo"]: recipe.get("input_count", 1)}
+            # Support both singular ("input_cargo" + "input_count") and plural
+            # ("input_cargos" as a {cargo: count} dict, for multi-input recipes).
+            if "input_cargos" in recipe:
+                input_map = dict(recipe["input_cargos"])
+            else:
+                input_map = {recipe["input_cargo"]: recipe.get("input_count", 1)}
             output_map = {recipe["output_cargo"]: recipe.get("output_count", 1)}
             production_time = recipe["production_time"]
             hidden = recipe.get("hidden", False)

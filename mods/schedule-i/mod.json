@@ -1,7 +1,7 @@
 {
   "name": "schedule-i",
   "display_name": "Schedule_I",
-  "version": "0.4.6",
+  "version": "0.4.9",
   "type": "cargo",
   "prefix": "",
   "script": "scripts/create_cargopack.py",
