@@ -1,10 +1,13 @@
 {
   "name": "schedule-i",
   "display_name": "Schedule_I",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "type": "cargo",
   "prefix": "",
   "script": "scripts/create_cargopack.py",
-  "configs": ["cargo_entries.json", "recipe_entries.json"],
+  "configs": [
+    "cargo_entries.json",
+    "recipe_entries.json"
+  ],
   "extra_args": {}
 }
