@@ -165,12 +165,16 @@ class CargoModBuilder(ModBuilder):
                 {"path": "PaymentPer1KmMultiplierByMaxWeight",
                  "op": "set", "value": entry.get("payment_multiplier", 2.0)},
                 {"path": "PaymentSqrtRatio", "op": "set", "value": 1.0},
-                {"path": "ActorClass", "op": "set_import_ref",
-                 "class_package": "/Script/Engine",
-                 "class_name": "BlueprintGeneratedClass",
-                 "package_path": f"/Game/Objects/Mission/Delivery/{entry['blueprint_name']}",
-                 "asset_name": f"{entry['blueprint_name']}_C",
-                 "add_cdo_import": True},
+                # 0.7.19+: ActorClass is a SoftObjectPropertyData (FSoftObjectPath
+                # with PackageName+AssetName), NOT an import reference — writing an
+                # ObjectPropertyData here silently breaks class resolution and every
+                # cargo renders as the default cube (v0.4.6/v0.4.7 bug, fixed in
+                # v0.4.8 via set_soft_object). Keep the full package+asset form.
+                {"path": "ActorClass", "op": "set_soft_object",
+                 "package": f"/Game/Objects/Mission/Delivery/{entry['blueprint_name']}",
+                 "asset": f"{entry['blueprint_name']}_C"},
+                {"path": "DumpPileActorClass", "op": "set_soft_object",
+                 "package": "None", "asset": "None"},
                 {"path": "GameplayTags", "op": "clear_tags"},
                 {"path": "bAllowStacking", "op": "set",
                  "value": entry.get("allow_stacking", False)},
@@ -180,7 +184,6 @@ class CargoModBuilder(ModBuilder):
                  "value": entry.get("cargo_flags", 11)},
                 {"path": "DumpCargoSurfaceMesh", "op": "null_ref"},
                 {"path": "DumpCargoSurfaceMaterial", "op": "null_ref"},
-                {"path": "DumpPileActorClass", "op": "null_ref"},
                 {"path": "bTimer", "op": "set", "value": False},
                 {"path": "bHoldingOffsetUsingItemBounds", "op": "set",
                  "value": False},
