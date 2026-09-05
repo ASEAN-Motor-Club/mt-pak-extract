@@ -302,7 +302,27 @@ class Program
                 Console.WriteLine($"{indent}{name} (Enum): {ep.Value?.Value?.Value ?? "(null)"}");
                 break;
             case UAssetAPI.PropertyTypes.Objects.MapPropertyData mp:
-                Console.WriteLine($"{indent}{name} (Map[{mp.Value?.Count ?? 0}])");
+                Console.WriteLine($"{indent}{name} (Map):");
+                if (mp.Value != null)
+                {
+                    foreach (var kv in mp.Value)
+                    {
+                        var kDesc = kv.Key switch
+                        {
+                            UAssetAPI.PropertyTypes.Objects.NamePropertyData kn => kn.Value?.Value?.Value ?? "(null)",
+                            UAssetAPI.PropertyTypes.Objects.StrPropertyData ks => ks.Value?.Value ?? "(null)",
+                            _ => kv.Key?.PropertyType?.ToString() ?? "?"
+                        };
+                        var vDesc = kv.Value switch
+                        {
+                            UAssetAPI.PropertyTypes.Objects.IntPropertyData iv => iv.Value.ToString(),
+                            UAssetAPI.PropertyTypes.Objects.Int64PropertyData ilv => ilv.Value.ToString(),
+                            UAssetAPI.PropertyTypes.Objects.FloatPropertyData fv => fv.Value.ToString(),
+                            _ => kv.Value?.PropertyType?.ToString() ?? "?"
+                        };
+                        Console.WriteLine($"{indent}  {kDesc} = {vDesc}");
+                    }
+                }
                 break;
             default:
                 Console.WriteLine($"{indent}{name} ({type})");

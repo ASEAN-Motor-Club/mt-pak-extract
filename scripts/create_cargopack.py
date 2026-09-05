@@ -62,6 +62,43 @@ class CargoModBuilder(ModBuilder):
         self.log(f"  Sinks: {[s['delivery_point'] for s in self.recipe_config.get('sinks', [])]}")
         self.log(f"  Catalysts: {[s['delivery_point'] for s in self.recipe_config.get('catalysts', [])]}")
 
+        self._check_template_pollution()
+
+    def _check_template_pollution(self):
+        """Abort if any out/ template already contains mod cargo names.
+
+        A vanilla template cannot know mod cargo names. A hit means a prior
+        build's patched output overwrote the template, and this build would
+        silently APPEND onto the previous entries (doubled production rates).
+        See references/out-template-pollution.md.
+        """
+        names = sorted({e["row_name"] for e in self.config["entries"]}
+                       | set(self.cargo_names))
+        templates = {self.cargos_template, self.child_table_template,
+                     self.blueprint_template}
+        for section in ("sources", "sinks", "transforms", "catalysts",
+                        "storage", "demand_configs"):
+            for dp in self.recipe_config.get(section, []):
+                tp = dp.get("template_path")
+                if tp:
+                    templates.add(os.path.join(self.repo_root, tp))
+        polluted = []
+        for tp in sorted(templates):
+            if not os.path.exists(tp):
+                continue  # missing templates fail later with their own error
+            with open(tp, "rb") as f:
+                data = f.read()
+            hits = [n for n in names if n.encode() in data]
+            if hits:
+                polluted.append((tp, hits))
+        if polluted:
+            for tp, hits in polluted:
+                self.log(f"  POLLUTED TEMPLATE: {tp} contains mod cargo names: {hits}")
+            self.fail("out/ templates polluted with mod cargo names — "
+                      "re-extract them vanilla from the game PAK before "
+                      "building (references/out-template-pollution.md)")
+        self.log(f"  Template pollution check: {len(templates)} templates clean")
+
     # ── Config generation ──────────────────────────────────────────────
 
     def _blueprint_clone_configs(self):
