@@ -62,6 +62,43 @@ class CargoModBuilder(ModBuilder):
         self.log(f"  Sinks: {[s['delivery_point'] for s in self.recipe_config.get('sinks', [])]}")
         self.log(f"  Catalysts: {[s['delivery_point'] for s in self.recipe_config.get('catalysts', [])]}")
 
+        self._check_template_pollution()
+
+    def _check_template_pollution(self):
+        """Abort if any out/ template already contains mod cargo names.
+
+        A vanilla template cannot know mod cargo names. A hit means a prior
+        build's patched output overwrote the template, and this build would
+        silently APPEND onto the previous entries (doubled production rates).
+        See references/out-template-pollution.md.
+        """
+        names = sorted({e["row_name"] for e in self.config["entries"]}
+                       | set(self.cargo_names))
+        templates = {self.cargos_template, self.child_table_template,
+                     self.blueprint_template}
+        for section in ("sources", "sinks", "transforms", "catalysts",
+                        "storage", "demand_configs"):
+            for dp in self.recipe_config.get(section, []):
+                tp = dp.get("template_path")
+                if tp:
+                    templates.add(os.path.join(self.repo_root, tp))
+        polluted = []
+        for tp in sorted(templates):
+            if not os.path.exists(tp):
+                continue  # missing templates fail later with their own error
+            with open(tp, "rb") as f:
+                data = f.read()
+            hits = [n for n in names if n.encode() in data]
+            if hits:
+                polluted.append((tp, hits))
+        if polluted:
+            for tp, hits in polluted:
+                self.log(f"  POLLUTED TEMPLATE: {tp} contains mod cargo names: {hits}")
+            self.fail("out/ templates polluted with mod cargo names — "
+                      "re-extract them vanilla from the game PAK before "
+                      "building (references/out-template-pollution.md)")
+        self.log(f"  Template pollution check: {len(templates)} templates clean")
+
     # ── Config generation ──────────────────────────────────────────────
 
     def _blueprint_clone_configs(self):
@@ -175,6 +212,8 @@ class CargoModBuilder(ModBuilder):
                  "asset": f"{entry['blueprint_name']}_C"},
                 {"path": "DumpPileActorClass", "op": "set_soft_object",
                  "package": "None", "asset": "None"},
+                {"path": "BasePayment", "op": "set",
+                 "value": entry.get("base_payment", 0)},
                 {"path": "GameplayTags", "op": "clear_tags"},
                 {"path": "bAllowStacking", "op": "set",
                  "value": entry.get("allow_stacking", False)},
@@ -309,7 +348,12 @@ class CargoModBuilder(ModBuilder):
     def _recipe_patches(self, mode, recipe):
         """Generate patches for a single production config entry."""
         if mode == "transform":
-            input_map = {recipe["input_cargo"]: recipe.get("input_count", 1)}
+            # Support both singular ("input_cargo" + "input_count") and plural
+            # ("input_cargos" as a {cargo: count} dict, for multi-input recipes).
+            if "input_cargos" in recipe:
+                input_map = dict(recipe["input_cargos"])
+            else:
+                input_map = {recipe["input_cargo"]: recipe.get("input_count", 1)}
             output_map = {recipe["output_cargo"]: recipe.get("output_count", 1)}
             production_time = recipe["production_time"]
             hidden = recipe.get("hidden", False)
@@ -349,8 +393,10 @@ class CargoModBuilder(ModBuilder):
              "value": speed_mult},
             {"path": "LocalFoodSupply", "op": "set", "value": 0},
             {"path": "bHidden", "op": "set", "value": hidden},
-            {"path": "TimeSinceLastProduction", "op": "set", "value": 0},
-            {"path": "ProductionFlags", "op": "set", "value": 0},
+            # TimeSinceLastProduction / ProductionFlags are RUNTIME state —
+            # deliberately not patched: they're absent from some classes'
+            # usmap schemas (write-time FormatException if auto-added), and
+            # zero-valued absence was proven fine by the live 0.4.8 faucet.
         ]
 
     # ── Build hooks ────────────────────────────────────────────────────

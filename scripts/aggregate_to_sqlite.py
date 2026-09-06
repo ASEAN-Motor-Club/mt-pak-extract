@@ -39,7 +39,7 @@ def create_schema(conn: sqlite3.Connection):
     """)
     cursor.execute("""
         INSERT OR REPLACE INTO schema_version (version, game_version) 
-        VALUES (7, '0.7.18+1')
+        VALUES (7, '0.7.19')
     """)
     
     # Vehicles table
