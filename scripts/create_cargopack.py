@@ -32,7 +32,7 @@ class CargoModBuilder(ModBuilder):
 
     def __init__(self, config_path, output_path, recipes_path,
                  compat_mods=None, cargos_template=None,
-                 blueprint_template=None):
+                 blueprint_template=None, items_path=None):
         super().__init__("cargo mod", config_path, output_path, compat_mods)
         self.recipes_path = os.path.abspath(recipes_path)
         self.cargos_template = cargos_template or os.path.join(
@@ -47,6 +47,24 @@ class CargoModBuilder(ModBuilder):
 
         with open(self.recipes_path) as f:
             self.recipe_config = json.load(f)
+
+        # Optional custom-item rows (--items / mod.json configs[2])
+        self.items_path = os.path.abspath(items_path) if items_path else None
+        self.items_template = os.path.join(self.repo_root, "out", "Items.uasset")
+        self.items_output_dir: str | None = None
+        self.item_entries: list = []
+        self.item_names: list[str] = []
+        self.item_template_row = "Costume_ScareCrow_01"
+        if self.items_path:
+            if not os.path.exists(self.items_path):
+                self.fail(f"Items config not found: {self.items_path}")
+            with open(self.items_path) as f:
+                items_config = json.load(f)
+            self.item_entries = items_config.get("entries", [])
+            self.item_template_row = items_config.get(
+                "template_row", "Costume_ScareCrow_01")
+            self.item_names = [e["row_name"] for e in self.item_entries]
+            self.log(f"  Items: {', '.join(self.item_names)}")
 
         self.cargo_names = [e["blueprint_name"] for e in self.config["entries"]]
 
@@ -98,6 +116,19 @@ class CargoModBuilder(ModBuilder):
                       "re-extract them vanilla from the game PAK before "
                       "building (references/out-template-pollution.md)")
         self.log(f"  Template pollution check: {len(templates)} templates clean")
+
+        # The Items master DataTable ships as a FULL replacement (vanilla 566
+        # rows + our collectibles appended) — its template must be vanilla too.
+        if self.item_names and os.path.exists(self.items_template):
+            with open(self.items_template, "rb") as f:
+                items_data = f.read()
+            item_hits = [n for n in self.item_names if n.encode() in items_data]
+            if item_hits:
+                self.log(f"  POLLUTED TEMPLATE: {self.items_template} contains "
+                         f"mod item names: {item_hits}")
+                self.fail("out/Items.uasset polluted with mod item names — "
+                          "re-extract vanilla before building")
+            self.log("  Items template pollution check: clean")
 
     # ── Config generation ──────────────────────────────────────────────
 
@@ -243,6 +274,51 @@ class CargoModBuilder(ModBuilder):
 
         return {
             "output_filename": self.CHILD_TABLE_NAME,
+            "rows": rows,
+        }
+
+    def _item_rows_config(self):
+        """Generate --add-rows config for the master Items DataTable.
+
+        Clones the template row (generic row-driven-mesh item: StaticMesh soft
+        path + IT_Common_Cargo_C placeholder actor) per entry. Names are
+        written as culture-invariant inline text (same mechanism the cargo
+        display names use — no locres entry needed).
+        """
+        rows = []
+        for entry in self.item_entries:
+            mesh = entry["mesh_path"].rstrip("/")
+            asset_name = mesh.split("/")[-1]
+            display = entry["display_name"]
+            patches = [
+                {"path": "ItemName", "op": "set_localization_guid",
+                 "value": display},
+                {"path": "ItemNameTexts", "op": "set_display_name",
+                 "value": [display]},
+                {"path": "ItemNameAndNumber.Name", "op": "set_localization_guid",
+                 "value": display},
+                # Plain collectible — strip the costume template's equipment key
+                {"path": "ItemType", "op": "set_enum", "value": "None"},
+                {"path": "CostumeBodyKey", "op": "set_name", "value": "None"},
+                {"path": "StaticMesh", "op": "set_soft_object",
+                 "package": mesh, "asset": asset_name},
+                {"path": "StaticMeshScale", "op": "set_vector",
+                 "x": 1.0, "y": 1.0, "z": 1.0},
+                {"path": "MassKg", "op": "set", "value": entry["mass_kg"]},
+                {"path": "Cost", "op": "set", "value": entry["cost"]},
+                {"path": "MaxStack", "op": "set",
+                 "value": entry.get("max_stack", 1)},
+                {"path": "bNotForSale", "op": "set",
+                 "value": entry.get("not_for_sale", True)},
+                {"path": "IconTexture", "op": "set_soft_object",
+                 "package": f"/Game/UI/Icons/Item/{entry['icon']}",
+                 "asset": entry["icon"]},
+            ]
+            rows.append({"row_name": entry["row_name"], "patches": patches})
+
+        return {
+            "output_filename": "Items",
+            "template_row_match": {"RowName": self.item_template_row},
             "rows": rows,
         }
 
@@ -461,6 +537,16 @@ class CargoModBuilder(ModBuilder):
                          cargos_template, self.cargos_output_dir,
                          "patch-composite-parent")
 
+        # Step 2d: Add custom item rows to the master Items DataTable
+        if self.item_entries:
+            self.log_step("2d", "Add collectible item rows to Items DataTable")
+            items_dir = os.path.join(self.build_dir, "items")
+            self.items_output_dir = items_dir
+            os.makedirs(items_dir)
+            config = self._item_rows_config()
+            self.run_generic("--add-rows", config, self.items_template,
+                             items_dir, "add-item-rows")
+
         # Step: Add production config recipes
         self.log_step(3, "Add delivery point recipes")
         self.recipes_output_dir = os.path.join(self.build_dir, "recipes")
@@ -577,6 +663,14 @@ class CargoModBuilder(ModBuilder):
                     name=dp_name,
                 )
 
+        # Master Items DataTable (vanilla rows + our collectibles) — FULL
+        # replacement of MotorTown/Content/DataAsset/Items/Items.uasset.
+        # Version-discipline: must be re-extracted + rebuilt per game version
+        # or a stale copy shadows new vanilla item rows after an update.
+        if self.item_entries and self.items_output_dir:
+            items_asset = os.path.join(self.items_output_dir, "Items.uasset")
+            self.stage_datatable(items_asset, "Items", "DataAsset/Items")
+
     def print_summary(self):
         self.log(f"  Cargos: {', '.join(self.cargo_names)}")
 
@@ -592,17 +686,22 @@ def main():
                         help="Base game SmallBox.uasset template")
     parser.add_argument("--mod", default=None,
                         help="Mod directory (e.g. mods/schedule-i) to load mod.json from")
+    parser.add_argument("--items", default=None,
+                        help="Items entries JSON config (custom item rows in the "
+                             "master Items DataTable)")
     args = parser.parse_args()
 
     if args.mod:
         mod = load_mod_config(args.mod)
         config_path = mod["configs"][0]
         recipes_path = mod["configs"][1] if len(mod["configs"]) > 1 else args.recipes
+        items_path = mod["configs"][2] if len(mod["configs"]) > 2 else args.items
         game_ver = resolve_game_version()
         output_path = compute_output_path(mod, game_ver)
     else:
         config_path = args.config
         recipes_path = args.recipes or "recipe_entries.json"
+        items_path = args.items
         output_path = args.output
 
     builder = CargoModBuilder(
@@ -612,6 +711,7 @@ def main():
         compat_mods=args.compat_mod,
         cargos_template=args.cargos_template,
         blueprint_template=args.blueprint_template,
+        items_path=items_path,
     )
     builder.build()
 

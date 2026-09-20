@@ -1,0 +1,77 @@
+{
+  "template_row": "Costume_ScareCrow_01",
+  "entries": [
+    {
+      "row_name": "CC_Cash_Wad",
+      "display_name": "Cash Wad",
+      "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_Money_Note_01",
+      "icon": "Trophy",
+      "mass_kg": 1.0,
+      "cost": 5000,
+      "max_stack": 10
+    },
+    {
+      "row_name": "CC_Cash_Stack",
+      "display_name": "Cash Stack",
+      "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_Money_Stack_01",
+      "icon": "Trophy",
+      "mass_kg": 2.0,
+      "cost": 12000,
+      "max_stack": 10
+    },
+    {
+      "row_name": "CC_Gold_Bar",
+      "display_name": "Gold Bar",
+      "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_GoldBar_01",
+      "icon": "Trophy",
+      "mass_kg": 12.5,
+      "cost": 50000,
+      "max_stack": 1
+    },
+    {
+      "row_name": "CC_Ring",
+      "display_name": "Jewel Ring",
+      "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_Jewellery_Ring_01",
+      "icon": "Glasses",
+      "mass_kg": 0.1,
+      "cost": 25000,
+      "max_stack": 1
+    },
+    {
+      "row_name": "CC_Necklace",
+      "display_name": "Jewel Necklace",
+      "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_Jewellery_Necklace_01",
+      "icon": "Glasses",
+      "mass_kg": 0.3,
+      "cost": 40000,
+      "max_stack": 1
+    },
+    {
+      "row_name": "CC_Booze",
+      "display_name": "Contraband Booze",
+      "mesh_path": "/Game/Models/PolygonGangWarfare/Meshes/Props/SM_Prop_Alcohol_Bottle_01",
+      "icon": "Cup",
+      "mass_kg": 1.2,
+      "cost": 3000,
+      "max_stack": 10
+    },
+    {
+      "row_name": "CC_Loot_Bag",
+      "display_name": "Loot Bag",
+      "mesh_path": "/Game/Models/PolygonNightClubs/Meshes/Props/SM_Prop_Bag_Sports_01",
+      "icon": "ChristmasGift",
+      "mass_kg": 3.0,
+      "cost": 20000,
+      "max_stack": 1
+    },
+    {
+      "row_name": "CC_Safe",
+      "display_name": "Stolen Safe",
+      "mesh_path": "/Game/Models/PolygonGangWarfare/Meshes/Props/SM_Prop_Safe_01",
+      "icon": "Safe",
+      "mass_kg": 45.0,
+      "cost": 100000,
+      "max_stack": 1
+    }
+  ]
+}
