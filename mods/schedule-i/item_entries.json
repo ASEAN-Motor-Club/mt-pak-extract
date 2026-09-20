@@ -22,6 +22,7 @@
     {
       "row_name": "CC_Gold_Bar",
       "display_name": "Gold Bar (Decoration)",
+      "pocketable": true,
       "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_GoldBar_01",
       "icon": "Trophy",
       "mass_kg": 12.5,
