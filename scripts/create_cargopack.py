@@ -29,8 +29,6 @@ class CargoModBuilder(ModBuilder):
     CARGOS_PAK_PATH = "MotorTown/Content/DataAsset/Cargos.uasset"
     # Name for the child DataTable added to the CompositeDataTable
     CHILD_TABLE_NAME = "Cargos_ScheduleI"
-    # Items side: plain-DataTable child + master composite registration
-    ITEMS_CHILD_TABLE_NAME = "Items_ScheduleI"
 
     def __init__(self, config_path, output_path, recipes_path,
                  compat_mods=None, cargos_template=None,
@@ -52,11 +50,9 @@ class CargoModBuilder(ModBuilder):
 
         # Optional custom-item rows (--items / mod.json configs[2])
         self.items_path = os.path.abspath(items_path) if items_path else None
-        self.items_template = os.path.join(self.repo_root, "out", "Items.uasset")
-        self.items_child_template = os.path.join(
-            self.repo_root, "out", "Items_Etc.uasset")
+        self.items_furnitures_template = os.path.join(
+            self.repo_root, "out", "Items_Furnitures.uasset")
         self.items_output_dir: str | None = None
-        self.items_parent_output_dir: str | None = None
         self.item_entries: list = []
         self.item_names: list[str] = []
         self.item_template_row = "Costume_ScareCrow_01"
@@ -122,21 +118,17 @@ class CargoModBuilder(ModBuilder):
                       "building (references/out-template-pollution.md)")
         self.log(f"  Template pollution check: {len(templates)} templates clean")
 
-        # The Items master ships as a FULL replacement (vanilla composite +
-        # our ParentTables entry) — its template must be vanilla too. The
-        # child template (Items_Etc) must be vanilla as well (cloned+renamed).
-        if self.item_names:
-            for tpl in (self.items_template, self.items_child_template):
-                if not os.path.exists(tpl):
-                    continue
-                with open(tpl, "rb") as f:
-                    items_data = f.read()
-                item_hits = [n for n in self.item_names if n.encode() in items_data]
-                if item_hits:
-                    self.log(f"  POLLUTED TEMPLATE: {tpl} contains "
-                             f"mod item names: {item_hits}")
-                    self.fail(f"{os.path.basename(tpl)} polluted with mod item "
-                              "names — re-extract vanilla before building")
+        # The Items_Furnitures child ships as a FULL replacement (vanilla 441
+        # rows + our collectibles) — its template must be vanilla too.
+        if self.item_names and os.path.exists(self.items_furnitures_template):
+            with open(self.items_furnitures_template, "rb") as f:
+                items_data = f.read()
+            item_hits = [n for n in self.item_names if n.encode() in items_data]
+            if item_hits:
+                self.log(f"  POLLUTED TEMPLATE: {self.items_furnitures_template} "
+                         f"contains mod item names: {item_hits}")
+                self.fail("out/Items_Furnitures.uasset polluted with mod item "
+                          "names — re-extract vanilla before building")
             self.log("  Items template pollution check: clean")
 
     # ── Config generation ──────────────────────────────────────────────
@@ -287,15 +279,19 @@ class CargoModBuilder(ModBuilder):
         }
 
     def _item_rows_config(self):
-        """Generate --add-rows config for the child Items DataTable.
+        """Generate --add-rows config for the Items_Furnitures child table.
 
-        CRITICAL: the master /Game/DataAsset/Items/Items is a
-        CompositeDataTable — the engine delegates FindRow to the child
-        category tables (Items_Furnitures/Items_Etc/...) and IGNORES the
-        composite's own inline rows. Adding rows inline to the master makes
-        them invisible at runtime (v0.4.13 bug). So our rows go into a NEW
-        plain-DataTable child (cloned from Items_Etc) registered via the
-        master's ParentTables array — exactly the Cargos child-table pattern.
+        The master /Game/DataAsset/Items/Items is a CompositeDataTable: the
+        engine delegates FindRow to the child category tables and IGNORES the
+        composite's own inline rows (v0.4.13 bug). The collectibles therefore
+        live in the Items_Furnitures child directly (vanilla 441 rows + our
+        8), which the composite already includes — no new child table, no
+        master patch (v0.4.14 pattern).
+
+        Template row: any furniture row (row-driven mesh + IT_Common_Cargo_C
+        placeholder). Furniture rows carry InteractionType::Build + a per-row
+        BuildingKey — both neutralized so collectibles don't trigger the
+        Build placement flow.
         """
         rows = []
         for entry in self.item_entries:
@@ -309,9 +305,14 @@ class CargoModBuilder(ModBuilder):
                  "value": [display]},
                 {"path": "ItemNameAndNumber.Name", "op": "set_localization_guid",
                  "value": display},
-                # Plain collectible — strip the costume template's equipment key
-                {"path": "ItemType", "op": "set_enum", "value": "None"},
-                {"path": "CostumeBodyKey", "op": "set_name", "value": "None"},
+                # Home-decoration collectibles: keep the furniture build flow.
+                # ItemType::Furniture + InteractionType::Build + a UNIQUE
+                # per-row BuildingKey (vanilla pattern = key == row name) so
+                # placement writes fresh housing-save entries, no collisions.
+                {"path": "ItemType", "op": "set_enum", "value": "Furniture"},
+                {"path": "BuildingKey", "op": "set_name",
+                 "value": entry["row_name"]},
+                {"path": "InteractionType", "op": "set_enum", "value": "Build"},
                 {"path": "StaticMesh", "op": "set_soft_object",
                  "package": mesh, "asset": asset_name},
                 {"path": "StaticMeshScale", "op": "set_vector",
@@ -329,28 +330,9 @@ class CargoModBuilder(ModBuilder):
             rows.append({"row_name": entry["row_name"], "patches": patches})
 
         return {
-            "output_filename": self.ITEMS_CHILD_TABLE_NAME,
-            "template_row_match": {"RowName": self.item_template_row},
+            "output_filename": "Items_Furnitures",
+            "template_row_match": {"ItemType": "EMTItemType::Furniture"},
             "rows": rows,
-        }
-
-    def _items_parent_config(self):
-        """Generate --patch-export-props config for the master Items composite.
-
-        Appends our child DataTable to the master's ParentTables array so the
-        engine's CompositeDataTable row resolution finds our items.
-        """
-        return {
-            "patches": [
-                {
-                    "path": "ParentTables",
-                    "op": "append_import_to_array",
-                    "class_package": "/Script/Engine",
-                    "class_name": "DataTable",
-                    "package_path": f"/Game/DataAsset/Items/{self.ITEMS_CHILD_TABLE_NAME}",
-                    "asset_name": self.ITEMS_CHILD_TABLE_NAME,
-                },
-            ],
         }
 
     def _composite_parent_config(self):
@@ -568,44 +550,17 @@ class CargoModBuilder(ModBuilder):
                          cargos_template, self.cargos_output_dir,
                          "patch-composite-parent")
 
-        # Step 2d: custom item rows — child DataTable + master registration
+        # Step 2d: custom item rows — appended to the Items_Furnitures child
+        # table (the master Items composite already includes it as a parent;
+        # v0.4.14's separate child + ParentTables patch is superseded).
         if self.item_entries:
-            self.log_step("2d", f"Items: clone child table ({self.ITEMS_CHILD_TABLE_NAME})")
-            items_child_dir = os.path.join(self.build_dir, "items_child")
-            os.makedirs(items_child_dir)
-            # Clone the plain Items_Etc child -> Items_ScheduleI (renames paths)
-            clone_config = {
-                "assets": [{
-                    "new_name": self.ITEMS_CHILD_TABLE_NAME,
-                    "old_name": "Items_Etc",
-                    "new_path": f"/Game/DataAsset/Items/{self.ITEMS_CHILD_TABLE_NAME}",
-                    "rename_exports": True,
-                    "rename_imports": True,
-                    "patch_namemap_0": True,
-                }],
-            }
-            self.run_generic("--clone-asset", clone_config,
-                             self.items_child_template, items_child_dir,
-                             "clone-items-child")
-            cloned_child = os.path.join(
-                items_child_dir, self.ITEMS_CHILD_TABLE_NAME,
-                f"{self.ITEMS_CHILD_TABLE_NAME}.uasset")
-
-            self.log_step("2d", "Add collectible item rows to child table")
-            self.items_output_dir = os.path.join(self.build_dir, "items")
-            os.makedirs(self.items_output_dir)
+            self.log_step("2d", "Add collectible item rows to Items_Furnitures")
+            items_dir = os.path.join(self.build_dir, "items")
+            self.items_output_dir = items_dir
+            os.makedirs(items_dir)
             config = self._item_rows_config()
-            self.run_generic("--add-rows", config, cloned_child,
-                             self.items_output_dir, "add-item-rows")
-
-            # Register child in the master Items CompositeDataTable
-            self.log_step("2d", "Register child in master Items ParentTables")
-            self.items_parent_output_dir = os.path.join(
-                self.build_dir, "items_parent")
-            os.makedirs(self.items_parent_output_dir)
-            self.run_generic("--patch-export-props", self._items_parent_config(),
-                             self.items_template, self.items_parent_output_dir,
-                             "patch-items-parent")
+            self.run_generic("--add-rows", config, self.items_furnitures_template,
+                             items_dir, "add-item-rows")
 
         # Step: Add production config recipes
         self.log_step(3, "Add delivery point recipes")
@@ -723,17 +678,16 @@ class CargoModBuilder(ModBuilder):
                     name=dp_name,
                 )
 
-        # Master Items composite (vanilla + our child registered) + the child
-        # table itself. Version-discipline: the patched master is a FULL
-        # replacement — must be re-extracted/rebuilt per game version or a
-        # stale copy shadows new vanilla rows after an update.
-        if self.item_entries and self.items_parent_output_dir:
-            items_asset = os.path.join(self.items_parent_output_dir, "Items.uasset")
-            self.stage_datatable(items_asset, "Items", "DataAsset/Items")
+        # Items_Furnitures child table (vanilla 441 rows + our collectibles).
+        # The master Items composite is NOT shipped — it already lists
+        # Items_Furnitures in ParentTables, so the vanilla master resolves
+        # our rows. Version-discipline: full replacement of the child, must
+        # be re-extracted/rebuilt per game version.
+        if self.item_entries and self.items_output_dir:
             child_asset = os.path.join(
-                self.items_output_dir, f"{self.ITEMS_CHILD_TABLE_NAME}.uasset")
+                self.items_output_dir, "Items_Furnitures.uasset")
             self.stage_datatable(
-                child_asset, self.ITEMS_CHILD_TABLE_NAME, "DataAsset/Items")
+                child_asset, "Items_Furnitures", "DataAsset/Items")
 
     def print_summary(self):
         self.log(f"  Cargos: {', '.join(self.cargo_names)}")
