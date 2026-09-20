@@ -21,12 +21,23 @@
     },
     {
       "row_name": "CC_Gold_Bar",
-      "display_name": "Gold Bar",
+      "display_name": "Gold Bar (Decoration)",
       "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_GoldBar_01",
       "icon": "Trophy",
       "mass_kg": 12.5,
       "cost": 1000000,
       "max_stack": 1
+    },
+    {
+      "row_name": "CC_Gold_Bar_Item",
+      "display_name": "Gold Bar",
+      "type": "item",
+      "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_GoldBar_01",
+      "icon": "Trophy",
+      "mass_kg": 12.5,
+      "cost": 1000000,
+      "not_for_sale": false,
+      "max_stack": 10
     },
     {
       "row_name": "CC_Ring",
