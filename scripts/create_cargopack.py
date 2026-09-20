@@ -305,14 +305,32 @@ class CargoModBuilder(ModBuilder):
                  "value": [display]},
                 {"path": "ItemNameAndNumber.Name", "op": "set_localization_guid",
                  "value": display},
-                # Home-decoration collectibles: keep the furniture build flow.
-                # ItemType::Furniture + InteractionType::Build + a UNIQUE
-                # per-row BuildingKey (vanilla pattern = key == row name) so
-                # placement writes fresh housing-save entries, no collisions.
-                {"path": "ItemType", "op": "set_enum", "value": "Furniture"},
-                {"path": "BuildingKey", "op": "set_name",
-                 "value": entry["row_name"]},
-                {"path": "InteractionType", "op": "set_enum", "value": "Build"},
+                # Per-entry behavior type:
+                #   furniture (default): ItemType::Furniture +
+                #     InteractionType::Build + a UNIQUE per-row BuildingKey
+                #     (vanilla pattern = key == row name) so placement writes
+                #     fresh housing-save entries, no collisions.
+                #   item: vanilla carryable (Flashlight pattern) —
+                #     ItemType::None, InteractionType::None, BuildingKey
+                #     None; sellable when not_for_sale is false.
+                *(
+                    [
+                        {"path": "ItemType", "op": "set_enum", "value": "None"},
+                        {"path": "BuildingKey", "op": "set_name",
+                         "value": "None"},
+                        {"path": "InteractionType", "op": "set_enum",
+                         "value": "None"},
+                    ]
+                    if entry.get("type", "furniture") == "item"
+                    else [
+                        {"path": "ItemType", "op": "set_enum",
+                         "value": "Furniture"},
+                        {"path": "BuildingKey", "op": "set_name",
+                         "value": entry["row_name"]},
+                        {"path": "InteractionType", "op": "set_enum",
+                         "value": "Build"},
+                    ]
+                ),
                 {"path": "StaticMesh", "op": "set_soft_object",
                  "package": mesh, "asset": asset_name},
                 {"path": "StaticMeshScale", "op": "set_vector",
