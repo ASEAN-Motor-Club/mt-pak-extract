@@ -313,6 +313,20 @@ class CargoModBuilder(ModBuilder):
                 #   item: vanilla carryable (Flashlight pattern) —
                 #     ItemType::None, InteractionType::None, BuildingKey
                 #     None; sellable when not_for_sale is false.
+                #   Pocketability flags (vanilla pocketable ground truth:
+                #   Flashlight/Cone/Jerrycan/Snowball all identical):
+                #     bHoldOnlyItem=false — THE stash-into-inventory flag;
+                #       furniture template inherits true = hold-only, the
+                #       v0.4.17 "can't put it in my inventory" bug.
+                #     bIsPersistence=false — carryables don't persist as
+                #       world actors (furniture true = housing-save).
+                #     HoldableSocketName=Hand_R_Hold — hand socket, not the
+                #       cargo socket (HoldingCargo).
+                #     bUseCargoHoldingPose=false,
+                #     bHoldingOffsetUsingItemBounds=false,
+                #     bTrashByInteraction=false.
+                #   bDropable/bSpawnActorOnDrop stay template-true: dropping
+                #   still spawns the world actor.
                 *(
                     [
                         {"path": "ItemType", "op": "set_enum", "value": "None"},
@@ -320,6 +334,16 @@ class CargoModBuilder(ModBuilder):
                          "value": "None"},
                         {"path": "InteractionType", "op": "set_enum",
                          "value": "None"},
+                        {"path": "bHoldOnlyItem", "op": "set", "value": False},
+                        {"path": "bIsPersistence", "op": "set", "value": False},
+                        {"path": "HoldableSocketName", "op": "set_name",
+                         "value": "Hand_R_Hold"},
+                        {"path": "bUseCargoHoldingPose", "op": "set",
+                         "value": False},
+                        {"path": "bHoldingOffsetUsingItemBounds", "op": "set",
+                         "value": False},
+                        {"path": "bTrashByInteraction", "op": "set",
+                         "value": False},
                     ]
                     if entry.get("type", "furniture") == "item"
                     else [
@@ -329,6 +353,19 @@ class CargoModBuilder(ModBuilder):
                          "value": entry["row_name"]},
                         {"path": "InteractionType", "op": "set_enum",
                          "value": "Build"},
+                        # pocketable: opt-in per-entry override — furniture
+                        # that can ALSO be stashed into the inventory.
+                        # bHoldOnlyItem=False is the stash flag; Build flow,
+                        # BuildingKey and bIsPersistence (housing-save) stay
+                        # vanilla-furniture. NOTE: no vanilla Furniture row
+                        # has bHoldOnlyItem=false (all 441 are true), so this
+                        # combo is unproven upstream — fallback is converting
+                        # the row to the full item pattern (loses Build).
+                        *(
+                            [{"path": "bHoldOnlyItem", "op": "set",
+                              "value": False}]
+                            if entry.get("pocketable") else []
+                        ),
                     ]
                 ),
                 {"path": "StaticMesh", "op": "set_soft_object",
