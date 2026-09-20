@@ -25,7 +25,7 @@
       "mesh_path": "/Game/Models/PolygonHeist/Meshes/Props/SM_Prop_GoldBar_01",
       "icon": "Trophy",
       "mass_kg": 12.5,
-      "cost": 50000,
+      "cost": 1000000,
       "max_stack": 1
     },
     {
