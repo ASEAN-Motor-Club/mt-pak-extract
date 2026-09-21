@@ -269,8 +269,29 @@ class CargoModBuilder(ModBuilder):
                 {"path": "Fragile", "op": "set", "value": entry.get("fragile", 0)},
                 {"path": "CargoFlags", "op": "set",
                  "value": entry.get("cargo_flags", 11)},
-                {"path": "DumpCargoSurfaceMesh", "op": "null_ref"},
-                {"path": "DumpCargoSurfaceMaterial", "op": "null_ref"},
+                # Dump surface mesh/material: only meaningful for Dump-space
+                # cargos — the game projects this mesh+material over the dump
+                # bed volume (vanilla Coal/Sand/Limestone pattern). Leaving
+                # them null renders the cargo invisible in dump beds.
+                *(
+                    [
+                        {"path": "DumpCargoSurfaceMesh", "op": "set_import_ref",
+                         "class_package": "/Script/Engine",
+                         "class_name": "StaticMesh",
+                         "package_path": entry["dump_mesh_path"].rsplit("/", 1)[0],
+                         "asset_name": entry["dump_mesh_path"].rsplit("/", 1)[1]},
+                        {"path": "DumpCargoSurfaceMaterial", "op": "set_import_ref",
+                         "class_package": "/Script/Engine",
+                         "class_name": "MaterialInstanceConstant",
+                         "package_path": entry["dump_material_path"].rsplit("/", 1)[0],
+                         "asset_name": entry["dump_material_path"].rsplit("/", 1)[1]},
+                    ]
+                    if entry.get("dump_mesh_path") and entry.get("dump_material_path")
+                    else [
+                        {"path": "DumpCargoSurfaceMesh", "op": "null_ref"},
+                        {"path": "DumpCargoSurfaceMaterial", "op": "null_ref"},
+                    ]
+                ),
                 {"path": "bTimer", "op": "set", "value": False},
                 {"path": "bHoldingOffsetUsingItemBounds", "op": "set",
                  "value": False},
