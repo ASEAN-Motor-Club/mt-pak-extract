@@ -134,6 +134,8 @@ def cmd_build(args):
         if len(mod["configs"]) > 1:
             cmd.extend(["--recipes", mod["configs"][1]])
         cmd.extend(["--output", output_path])
+        if args.template_root:
+            cmd.extend(["--template-root", args.template_root])
         if args.compat_mod:
             for cm in args.compat_mod:
                 cmd.extend(["--compat-mod", cm])
@@ -249,6 +251,9 @@ def main():
                            help="Input directory or file (for decal/font mods)")
     sub_build.add_argument("--category", "-c", default=None,
                            help="Decal category (for decal mods)")
+    sub_build.add_argument("--template-root", default=None,
+                           help="Template dir for cargo mods: out/client or "
+                                "out/server (defaults to the mod's config)")
     sub_build.add_argument("--cost", type=int, default=None,
                            help="Decal cost (for decal mods)")
     sub_build.set_defaults(func=cmd_build)
