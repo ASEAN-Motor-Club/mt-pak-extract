@@ -48,6 +48,8 @@ class Program
         bool patchExportMode = args.Contains("--patch-export-props");
         bool patchNamedExportsMode = args.Contains("--patch-named-exports");
         bool dumpMode = args.Contains("--dump");
+        bool ptProbe = args.Contains("--ptprobe");
+        int ptIdx = Array.IndexOf(args, "--ptprobe");
         
         Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--patch-export-props ...] [--patch-named-exports ...] [--dump ...] [path/to/asset.uasset]");
         Console.WriteLine();
@@ -64,6 +66,50 @@ class Program
         
         PatchMappingsForVersion();
         
+        if (ptProbe)
+        {
+            var asset = new UAsset(args[ptIdx + 1], EngineVersion.VER_UE5_5, Mappings);
+            void Walk(PropertyData d, string path)
+            {
+                if (d == null) return;
+                string dname = d.Name == null ? "" : (d.Name.Value?.Value ?? "");
+                if (path.EndsWith("ParentTables", StringComparison.Ordinal) || dname == "ParentTables")
+                {
+                    Console.WriteLine($"PT {path}: type={d.GetType().Name}");
+                    if (d is ArrayPropertyData ap)
+                    {
+                        Console.WriteLine($"  count={ap.Value.Length} elemType={(ap.Value.Length>0?ap.Value[0].GetType().Name:"n/a")}");
+                        foreach (var e in ap.Value)
+                        {
+                            string en = e.Name == null ? "?" : (e.Name.Value?.Value ?? "?");
+                            string ev;
+                            if (e is ObjectPropertyData o) ev = o.Value?.Index.ToString() ?? "null";
+                            else ev = e.GetType().Name;
+                            Console.WriteLine($"  elem {e.GetType().Name} name={en} val={ev}");
+                        }
+                    }
+                }
+                if (d is StructPropertyData sd) foreach (var c in sd.Value) Walk(c, path + "." + (c.Name == null ? "?" : c.Name.Value?.Value ?? "?"));
+                if (d is ArrayPropertyData ap2 && ap2.Value.Length > 0 && ap2.Value[0] is StructPropertyData) foreach (var c in ap2.Value) Walk((PropertyData)c, path + "[]");
+            }
+            foreach (var ex in asset.Exports)
+            {
+                Console.WriteLine($"EXPORT {ex.ObjectName.Value} type={ex.GetType().Name}");
+                System.Collections.Generic.IEnumerable<PropertyData> props = null;
+                if (ex is UAssetAPI.ExportTypes.NormalExport ne) props = ne.Data;
+                else if (ex is UAssetAPI.ExportTypes.DataTableExport dte) props = null;
+                if (props != null) foreach (var p in props)
+                {
+                    string pn = p.Name == null ? "?" : (p.Name.Value?.Value ?? "?");
+                    Console.WriteLine($"  PROP {pn}: {p.GetType().Name}");
+                    Walk(p, pn);
+                }
+                else Console.WriteLine($"  (no generic Data accessor)");
+            }
+            Console.WriteLine("=== parenttables probe done ===");
+            return;
+        }
+
         if (batchMapsMode)
         {
             ProcessBatchMaps();
@@ -119,6 +165,71 @@ class Program
             var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
             var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
             PatchNamedExports(configPath, templatePath, outputDir);
+        }
+        else if (args.Contains("--roundtrip"))
+        {
+            var idx = Array.IndexOf(args, "--roundtrip");
+            var rtPath = args.ElementAtOrDefault(idx + 1) ?? Path.Combine(RootDir, "Cargos.uasset");
+            if (!Path.IsPathRooted(rtPath)) rtPath = Path.Combine(RootDir, rtPath);
+            var outRt = args.ElementAtOrDefault(idx + 2) ?? rtPath + ".rt.uasset";
+            var a = new UAsset(rtPath, EngineVersion.VER_UE5_5, Mappings);
+            a.Write(outRt);
+            var orig = File.ReadAllBytes(rtPath);
+            var redo = File.ReadAllBytes(outRt);
+            Console.WriteLine($"orig={orig.Length} rewritten={redo.Length} identical={orig.SequenceEqual(redo)}");
+            if (!orig.SequenceEqual(redo))
+            {
+                int n = Math.Min(orig.Length, redo.Length);
+                for (int i = 0; i < n; i++)
+                    if (orig[i] != redo[i])
+                    {
+                        Console.WriteLine($"first-diff at byte {i} (0x{i:X}): orig=0x{orig[i]:X2} rewritten=0x{redo[i]:X2}");
+                        break;
+                    }
+                if (orig.Length != redo.Length)
+                    Console.WriteLine($"length differs: {orig.Length} vs {redo.Length}");
+            }
+            return;
+        }
+        else if (args.Contains("--textprobe"))
+        {
+            var idx = Array.IndexOf(args, "--textprobe");
+            var path = args.ElementAtOrDefault(idx + 1) ?? Path.Combine(RootDir, "Cargos_ScheduleI.uasset");
+            if (!Path.IsPathRooted(path)) path = Path.Combine(RootDir, path);
+            var a = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+            var dt = FindDataTable(a);
+            if (dt == null) { Console.WriteLine("no datatable"); return; }
+            foreach (var row in dt.Table.Data)
+            {
+                var spd = row as StructPropertyData;
+                if (spd == null) continue;
+                var rowName = spd.Name?.Value?.Value ?? "?";
+                foreach (var prop in spd.Value)
+                {
+                    if (prop is TextPropertyData tp && (prop.Name.Value.Value == "Name"))
+                    {
+                        Console.WriteLine($"row={rowName} Name: Flags={tp.Flags} Hist={tp.HistoryType} NS={(tp.Namespace?.Value == null ? "<null>" : tp.Namespace.Value)} Key/Value={(tp.Value == null || tp.Value.Value == null ? "<null>" : tp.Value.Value)} Invariant={(tp.CultureInvariantString == null || tp.CultureInvariantString.Value == null ? "<null>" : tp.CultureInvariantString.Value)}");
+                    }
+                    if (prop.Name.Value.Value == "Name2" && prop is StructPropertyData n2)
+                    {
+                        foreach (var sp in n2.Value)
+                        {
+                            if (sp.Name.Value.Value == "Texts" && sp is ArrayPropertyData arr)
+                            {
+                                foreach (var el in arr.Value)
+                                {
+                                    if (el is TextPropertyData t2)
+                                        Console.WriteLine($"row={rowName} Name2.Texts: Flags={t2.Flags} Hist={t2.HistoryType} NS={(t2.Namespace?.Value == null ? "<null>" : t2.Namespace.Value)} Key={(t2.Value == null || t2.Value.Value == null ? "<null>" : t2.Value.Value)} Invariant={(t2.CultureInvariantString == null || t2.CultureInvariantString.Value == null ? "<null>" : t2.CultureInvariantString.Value)}");
+                                }
+                            }
+                            if (sp.Name.Value.Value == "Pattern" && sp is TextPropertyData pat)
+                                Console.WriteLine($"row={rowName} Pattern: Flags={pat.Flags} Hist={pat.HistoryType} NS={(pat.Namespace?.Value == null ? "<null>" : pat.Namespace.Value)} Key={(pat.Value == null || pat.Value.Value == null ? "<null>" : pat.Value.Value)} Invariant={(pat.CultureInvariantString == null || pat.CultureInvariantString.Value == null ? "<null>" : pat.CultureInvariantString.Value)}");
+                        }
+                    }
+                }
+                break; // template row only
+            }
+            return;
         }
         else if (dumpMode)
         {
@@ -1385,6 +1496,49 @@ class Program
                 break;
             }
             
+            case "set_soft_ref":
+            {
+                // Vanilla-conformant soft object path (e.g. tire physics assets:
+                // /Game/Cars/Parts/Tire/<Name> + <Name>). No import-table entry
+                // is needed; the game resolves the package at use time. Writing
+                // a hard ObjectPropertyData here desyncs the UE5.5 unversioned
+                // header (schema type is FSoftObjectPath) and corrupts the row.
+                var (container, prop) = ResolvePropertyWithContainer(properties, path);
+                var packageName = patch.GetProperty("package_path").GetString()!;
+                var assetName = patch.GetProperty("asset_name").GetString()!;
+                var softPath = new FSoftObjectPath(
+                    FName.FromString(asset, packageName),
+                    FName.FromString(asset, assetName),
+                    new FString(""));
+                var leafName = path.Split('.').Last();
+
+                SoftObjectPropertyData newSoft;
+                if (prop is SoftObjectPropertyData existing)
+                {
+                    existing.Value = softPath;
+                    newSoft = existing;
+                }
+                else
+                {
+                    newSoft = new SoftObjectPropertyData(FName.FromString(asset, leafName)) { Value = softPath };
+                    newSoft.PropertyTypeName = MakeTypeName(asset, newSoft.PropertyType);
+                    if (container != null)
+                    {
+                        int ridx = -1;
+                        for (int i = 0; i < container.Count; i++)
+                            if (ReferenceEquals(container[i], prop)) { ridx = i; break; }
+                        if (ridx >= 0) container[ridx] = newSoft;
+                        else container.Add(newSoft);
+                    }
+                    else
+                    {
+                        properties.Add(newSoft);
+                    }
+                }
+                Console.WriteLine($"    set_soft_ref: {path} -> {packageName}|{assetName}");
+                break;
+            }
+            
             case "set_import_ref":
             case "set_or_create_import_ref":
             {
@@ -1468,8 +1622,16 @@ class Program
                 if (prop is ObjectPropertyData objProp)
                     objProp.Value = FPackageIndex.FromRawIndex(0);
                 else if (prop is SoftObjectPropertyData softProp)
+                {
+                    // Soft paths serialize through the asset's soft-path list;
+                    // constructing the null path with raw name indices produced
+                    // a stale list index on write (read back as the old ref).
+                    // Use the same name-resolution as set_soft_ref.
                     softProp.Value = new FSoftObjectPath(
-                        new FTopLevelAssetPath(new FName(asset, 0), new FName(asset, 0)), null);
+                        FName.FromString(asset, "None"),
+                        FName.FromString(asset, "None"),
+                        new FString(""));
+                }
                 break;
             }
             
@@ -1546,11 +1708,26 @@ class Program
                         patch.GetProperty("asset_name").GetString()!,
                         addCdoImport);
                     
-                    var newEntry = new ObjectPropertyData(FName.FromString(asset, arr.Value.Length.ToString()))
+                    // Clone the last existing element and swap its Value — constructing
+                    // a property from scratch fabricates an FName that corrupts
+                    // unversioned (schema-driven) serialization on the client build.
+                    var last = arr.Value.Length > 0 ? arr.Value[arr.Value.Length - 1] : null;
+                    PropertyData newEntry;
+                    if (last != null)
                     {
-                        Value = FPackageIndex.FromImport(importIdx - 1)
-                    };
-                    newEntry.PropertyTypeName = MakeTypeName(asset, newEntry.PropertyType);
+                        newEntry = (PropertyData)last.Clone();
+                        if (newEntry is ObjectPropertyData opd)
+                            opd.Value = FPackageIndex.FromImport(importIdx - 1);
+                    }
+                    else
+                    {
+                        var opd = new ObjectPropertyData(FName.FromString(asset, arr.Value.Length.ToString()))
+                        {
+                            Value = FPackageIndex.FromImport(importIdx - 1)
+                        };
+                        opd.PropertyTypeName = MakeTypeName(asset, opd.PropertyType);
+                        newEntry = opd;
+                    }
 
                     var list = new List<PropertyData>(arr.Value);
                     list.Add(newEntry);
@@ -1670,9 +1847,16 @@ class Program
                     {
                         foreach (var entry in mapValue.EnumerateObject())
                         {
-                            var keyProp = new NamePropertyData(new FName(asset, leafName, 0))
-                            { Value = FName.FromString(asset, entry.Name) };
-                            keyProp.PropertyTypeName = MakeTypeName(asset, keyProp.PropertyType);
+                            // Vanilla serializes LevelRequirementToBuy keys as
+                            // EnumPropertyData with the license name as the
+                            // enum VALUE (e.g. CL_Police). Property name must
+                            // stay the map's leaf name; writing the license
+                            // into the ctor arg corrupts the header.
+                            var keyProp = new EnumPropertyData(new FName(asset, leafName, 0))
+                            {
+                                Value = FName.FromString(asset, entry.Name),
+                                PropertyTypeName = MakeTypeName(asset, new FString("EnumProperty"))
+                            };
                             var valProp = new IntPropertyData(new FName(asset, leafName, 0))
                             { Value = entry.Value.GetInt32() };
                             valProp.PropertyTypeName = MakeTypeName(asset, valProp.PropertyType);
@@ -2171,6 +2355,7 @@ class Program
                 catch (Exception ex)
                 {
                     Console.WriteLine($"  Warning: RawExport DataTable conversion failed: {ex.Message}");
+                    Console.WriteLine(ex.StackTrace ?? "(no stack)");
                 }
             }
         }
