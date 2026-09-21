@@ -52,7 +52,10 @@ class CargoModBuilder(ModBuilder):
         self.items_path = os.path.abspath(items_path) if items_path else None
         self.items_furnitures_template = os.path.join(
             self.repo_root, "out", "Items_Furnitures.uasset")
+        self.buildings_furnitures_template = os.path.join(
+            self.repo_root, "out", "Buildings_Furnitures.uasset")
         self.items_output_dir: str | None = None
+        self.buildings_output_dir: str | None = None
         self.item_entries: list = []
         self.item_names: list[str] = []
         self.item_template_row = "Costume_ScareCrow_01"
@@ -130,6 +133,19 @@ class CargoModBuilder(ModBuilder):
                 self.fail("out/Items_Furnitures.uasset polluted with mod item "
                           "names — re-extract vanilla before building")
             self.log("  Items template pollution check: clean")
+
+        # Buildings_Furnitures ships as a FULL replacement too (vanilla 441
+        # + our furniture rows) — same pollution discipline.
+        if self.item_names and os.path.exists(self.buildings_furnitures_template):
+            with open(self.buildings_furnitures_template, "rb") as f:
+                buildings_data = f.read()
+            b_hits = [n for n in self.item_names if n.encode() in buildings_data]
+            if b_hits:
+                self.log(f"  POLLUTED TEMPLATE: {self.buildings_furnitures_template} "
+                         f"contains mod item names: {b_hits}")
+                self.fail("out/Buildings_Furnitures.uasset polluted with mod "
+                          "item names — re-extract vanilla before building")
+            self.log("  Buildings template pollution check: clean")
 
     # ── Config generation ──────────────────────────────────────────────
 
@@ -390,6 +406,43 @@ class CargoModBuilder(ModBuilder):
             "rows": rows,
         }
 
+    def _building_rows_config(self):
+        """Generate --add-rows config for the Buildings_Furnitures table.
+
+        The Build-placement flow is a two-table join: the Items row's
+        BuildingKey selects a row of the SAME name in
+        /Game/DataAsset/Buildings/Buildings_Furnitures, whose
+        Steps[0].StaticMeshes map supplies the placed mesh (the generic
+        _Common_InventoryProp_C actor has no mesh of its own). A missing
+        Buildings row = invisible furniture (v0.4.18 bug: Items rows only).
+
+        Template: Furniture_Drawer_02 (generic InventoryProp pattern). Each
+        furniture-type collectible gets a row keyed by its Items row name;
+        the cloned StaticMeshes entry is repointed to the collectible mesh.
+        NumSlots zeroed (drawer template carries 4 inventory slots).
+        """
+        rows = []
+        for entry in self.item_entries:
+            if entry.get("type", "furniture") == "item":
+                continue  # pure carryables have no BuildingKey → no Buildings row
+            mesh = entry["mesh_path"].rstrip("/")
+            asset_name = mesh.split("/")[-1]
+            rows.append({
+                "row_name": entry["row_name"],
+                "patches": [
+                    {"path": "Steps[0].StaticMeshes",
+                     "op": "set_map_entry_soft_object",
+                     "key": "StaticMesh",
+                     "package": mesh, "asset": asset_name},
+                    {"path": "ItemInventory.NumSlots", "op": "set", "value": 0},
+                ],
+            })
+        return {
+            "output_filename": "Buildings_Furnitures",
+            "template_row_match": {"RowName": "Furniture_Drawer_02"},
+            "rows": rows,
+        }
+
     def _composite_parent_config(self):
         """Generate --patch-export-props config for the parent CompositeDataTable.
 
@@ -617,6 +670,19 @@ class CargoModBuilder(ModBuilder):
             self.run_generic("--add-rows", config, self.items_furnitures_template,
                              items_dir, "add-item-rows")
 
+            # Step 2e: matching Buildings_Furnitures rows — the Build flow
+            # joins Items.BuildingKey → Buildings_Furnitures row for the
+            # placed mesh. Missing row = invisible placement (v0.4.18 bug).
+            if any(e.get("type", "furniture") != "item" for e in self.item_entries):
+                self.log_step("2e", "Add furniture rows to Buildings_Furnitures")
+                buildings_dir = os.path.join(self.build_dir, "buildings")
+                self.buildings_output_dir = buildings_dir
+                os.makedirs(buildings_dir)
+                config = self._building_rows_config()
+                self.run_generic("--add-rows", config,
+                                 self.buildings_furnitures_template,
+                                 buildings_dir, "add-building-rows")
+
         # Step: Add production config recipes
         self.log_step(3, "Add delivery point recipes")
         self.recipes_output_dir = os.path.join(self.build_dir, "recipes")
@@ -743,6 +809,15 @@ class CargoModBuilder(ModBuilder):
                 self.items_output_dir, "Items_Furnitures.uasset")
             self.stage_datatable(
                 child_asset, "Items_Furnitures", "DataAsset/Items")
+
+        # Buildings_Furnitures table (vanilla 441 rows + furniture-type
+        # collectibles) — supplies the placed mesh via Items.BuildingKey
+        # join. Full replacement, re-extracted per game version.
+        if self.item_entries and self.buildings_output_dir:
+            buildings_asset = os.path.join(
+                self.buildings_output_dir, "Buildings_Furnitures.uasset")
+            self.stage_datatable(
+                buildings_asset, "Buildings_Furnitures", "DataAsset/Buildings")
 
     def print_summary(self):
         self.log(f"  Cargos: {', '.join(self.cargo_names)}")

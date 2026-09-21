@@ -1132,6 +1132,7 @@ class Program
             foreach (var entry in arraySpec.GetProperty("entries").EnumerateArray())
             {
                 var newEntry = (StructPropertyData)templateEntry.Clone();
+                TransferPropertyNames(newEntry, asset);
                 if (entry.TryGetProperty("patches", out var patches))
                     ApplyPatches(newEntry.Value, patches, asset);
                 configList.Add(newEntry);
@@ -1150,6 +1151,84 @@ class Program
         Console.WriteLine($"Written: {outputFileName}.uasset + .uexp to {outputDir}");
     }
     
+    // ========================================================================
+    // Cross-asset FName transfer (for --patch-cdo-arrays template_source clones)
+    // ========================================================================
+    // An FName cloned from a template asset keeps the TEMPLATE's name-map
+    // index; serializing it into the target asset would write the WRONG name.
+    // Rebind every FName in a cloned property tree by string value —
+    // AddNameReference dedups, so existing names keep their index.
+    // Not remapped: FPackageIndex object refs (import tables differ per
+    // asset — cross-asset templates must not carry object references).
+    static FName TransferOrKeep(FName fname, UAsset asset)
+    {
+        if (fname == null || fname.IsDummy) return fname;
+        if (fname.Asset == null || ReferenceEquals(fname.Asset, asset)) return fname;
+        var val = fname.Value;
+        if (val == null) return fname;
+        return new FName(asset, val, fname.Number);
+    }
+
+    static void TransferPropertyNames(PropertyData prop, UAsset asset)
+    {
+        if (prop == null) return;
+        prop.Name = TransferOrKeep(prop.Name, asset);
+        if (prop.PropertyTypeName?.Nodes != null)
+        {
+            for (int i = 0; i < prop.PropertyTypeName.Nodes.Count; i++)
+            {
+                var node = prop.PropertyTypeName.Nodes[i];
+                node.Name = TransferOrKeep(node.Name, asset);
+                prop.PropertyTypeName.Nodes[i] = node;
+            }
+        }
+
+        switch (prop)
+        {
+            case StructPropertyData sp:
+                sp.StructType = TransferOrKeep(sp.StructType, asset);
+                if (sp.Value != null)
+                    foreach (var child in sp.Value) TransferPropertyNames(child, asset);
+                break;
+            case ArrayPropertyData ap:
+                ap.ArrayType = TransferOrKeep(ap.ArrayType, asset);
+                if (ap.Value != null)
+                    foreach (var child in ap.Value) TransferPropertyNames(child, asset);
+                break;
+            case MapPropertyData mp:
+                mp.KeyType = TransferOrKeep(mp.KeyType, asset);
+                mp.ValueType = TransferOrKeep(mp.ValueType, asset);
+                if (mp.Value != null)
+                {
+                    var newMap = new TMap<PropertyData, PropertyData>();
+                    foreach (var kvp in mp.Value)
+                    {
+                        TransferPropertyNames(kvp.Key, asset);
+                        TransferPropertyNames(kvp.Value, asset);
+                        newMap.Add(kvp.Key, kvp.Value);
+                    }
+                    mp.Value = newMap;
+                }
+                break;
+            case NamePropertyData np:
+                np.Value = TransferOrKeep(np.Value, asset);
+                break;
+            case EnumPropertyData ep:
+                ep.EnumType = TransferOrKeep(ep.EnumType, asset);
+                ep.Value = TransferOrKeep(ep.Value, asset);
+                break;
+            case SoftObjectPropertyData so:
+                // FSoftObjectPath/FTopLevelAssetPath are structs; AssetPath
+                // carries two FNames, SubPathString is a plain FString.
+                so.Value = new FSoftObjectPath(
+                    new FTopLevelAssetPath(
+                        TransferOrKeep(so.Value.AssetPath.PackageName, asset),
+                        TransferOrKeep(so.Value.AssetPath.AssetName, asset)),
+                    so.Value.SubPathString);
+                break;
+        }
+    }
+
     // ========================================================================
     // Property Patch Engine
     // ========================================================================
@@ -1406,6 +1485,44 @@ class Program
                 break;
             }
             
+            case "set_map_entry_soft_object":
+            {
+                // Replace the value of an EXISTING named map entry with a
+                // SoftObject path. Used for Buildings_Furnitures
+                // Steps[0].StaticMeshes (key "StaticMesh", value is a
+                // SoftObjectPropertyData inherited from the template row).
+                var prop = ResolveProperty(properties, path);
+                if (prop is MapPropertyData mapProp)
+                {
+                    var key = patch.GetProperty("key").GetString()!;
+                    var found = false;
+                    foreach (var kvp in mapProp.Value)
+                    {
+                        var keyName = kvp.Key.Name?.Value?.Value;
+                        var keyValue = (kvp.Key as NamePropertyData)?.Value?.Value?.Value;
+                        if ((keyName == key || keyValue == key) &&
+                            kvp.Value is SoftObjectPropertyData softVal)
+                        {
+                            softVal.Value = new FSoftObjectPath(
+                                new FTopLevelAssetPath(
+                                    FName.FromString(asset, patch.GetProperty("package").GetString()!),
+                                    FName.FromString(asset, patch.GetProperty("asset").GetString()!)),
+                                null);
+                            Console.WriteLine($"    Map entry '{path}[{key}]' -> {patch.GetProperty("package")}/{patch.GetProperty("asset")}");
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        var keys = string.Join(", ", mapProp.Value.Keys
+                            .Select(k => k.Name?.Value?.Value ?? "?"));
+                        Console.WriteLine($"    Warning: set_map_entry_soft_object: no entry '{key}' in {path} (keys: {keys})");
+                    }
+                }
+                break;
+            }
+            
             case "clear_array":
             {
                 var prop = ResolveProperty(properties, path);
@@ -1562,6 +1679,82 @@ class Program
                             mapProp.Value.Add(keyProp, valProp);
                         }
                     }
+                }
+                break;
+            }
+            
+            case "set_map_entries":
+            {
+                // Replace the contents of a MapPropertyData with explicit
+                // entries. Needed for Name->Enum maps (e.g.
+                // FMTVehicleDiffLockingState's Differentials map: diff
+                // component name -> EMTDiffLockStateType), which add_map_entry
+                // cannot write — it infers value types from existing Name/Str
+                // values only. Key/value property types are cloned from the
+                // map's first existing entry when present; fresh Name/Enum
+                // construction as fallback ('enum_type' names the enum).
+                var prop = ResolveProperty(properties, path);
+                if (prop is MapPropertyData mapProp)
+                {
+                    var leafName = path.Split('.').Last();
+                    var templateKey = mapProp.Value.Keys.FirstOrDefault();
+                    var templateVal = mapProp.Value.Values.FirstOrDefault();
+                    var enumTypeName = patch.TryGetProperty("enum_type", out var etProp) ? etProp.GetString() : null;
+                    if (enumTypeName == null && templateVal is EnumPropertyData ev0)
+                        enumTypeName = ev0.EnumType?.Value?.Value;
+
+                    var newMap = new TMap<PropertyData, PropertyData>();
+                    foreach (var entry in patch.GetProperty("entries").EnumerateObject())
+                    {
+                        var entryVal = entry.Value.GetString()!;
+                        PropertyData keyProp;
+                        if (templateKey is NamePropertyData nk)
+                        {
+                            keyProp = (NamePropertyData)nk.Clone();
+                            ((NamePropertyData)keyProp).Value = FName.FromString(asset, entry.Name);
+                        }
+                        else
+                        {
+                            keyProp = new NamePropertyData(new FName(asset, leafName, 0))
+                            {
+                                Value = FName.FromString(asset, entry.Name)
+                            };
+                            ((NamePropertyData)keyProp).PropertyTypeName = MakeTypeName(asset, keyProp.PropertyType);
+                        }
+
+                        PropertyData valProp;
+                        if (templateVal is EnumPropertyData ev)
+                        {
+                            valProp = (EnumPropertyData)ev.Clone();
+                            ((EnumPropertyData)valProp).Value = FName.FromString(asset, entryVal);
+                            if (enumTypeName != null)
+                                ((EnumPropertyData)valProp).EnumType = FName.FromString(asset, enumTypeName);
+                        }
+                        else if (templateVal is NamePropertyData nv)
+                        {
+                            valProp = (NamePropertyData)nv.Clone();
+                            ((NamePropertyData)valProp).Value = FName.FromString(asset, entryVal);
+                        }
+                        else
+                        {
+                            if (enumTypeName == null)
+                            {
+                                Console.WriteLine("    Error: set_map_entries needs 'enum_type' when the map has no existing enum value to infer from");
+                                break;
+                            }
+                            valProp = new EnumPropertyData(new FName(asset, leafName, 0))
+                            {
+                                EnumType = FName.FromString(asset, enumTypeName),
+                                Value = FName.FromString(asset, entryVal)
+                            };
+                            ((EnumPropertyData)valProp).PropertyTypeName = MakeTypeName(asset, valProp.PropertyType);
+                        }
+
+                        newMap.Add(keyProp, valProp);
+                    }
+                    mapProp.Value = newMap;
+                    var summary = string.Join(", ", newMap.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+                    Console.WriteLine($"    set_map_entries: {path} -> [{summary}]");
                 }
                 break;
             }
@@ -2273,6 +2466,18 @@ class Program
             VectorPropertyData vecProp => new { X = vecProp.Value.X, Y = vecProp.Value.Y, Z = vecProp.Value.Z },
             GameplayTagContainerPropertyData tagProp => ExtractGameplayTags(tagProp),
             GuidPropertyData guidProp => guidProp.Value.ToString("N"),
+            RichCurveKeyPropertyData curveKeyProp => new
+            {
+                interp_mode = curveKeyProp.Value.InterpMode.ToString(),
+                tangent_mode = curveKeyProp.Value.TangentMode.ToString(),
+                tangent_weight_mode = curveKeyProp.Value.TangentWeightMode.ToString(),
+                time = curveKeyProp.Value.Time,
+                value = curveKeyProp.Value.Value,
+                arrive_tangent = curveKeyProp.Value.ArriveTangent,
+                arrive_tangent_weight = curveKeyProp.Value.ArriveTangentWeight,
+                leave_tangent = curveKeyProp.Value.LeaveTangent,
+                leave_tangent_weight = curveKeyProp.Value.LeaveTangentWeight,
+            },
             _ => $"<{prop.GetType().Name}>"
         };
     }
