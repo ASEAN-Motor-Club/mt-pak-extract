@@ -51,16 +51,7 @@ class CargoModBuilder(ModBuilder):
         if not os.path.exists(self.recipes_path):
             self.fail(f"Recipes not found: {self.recipes_path}")
 
-        # Fail hard on missing templates: a silently-skipped template drops
-        # content from the shipped pak (Items/Buildings tables vanished once
-        # because out/<root> was incomplete). Build against a COMPLETE set.
-        for tp in (self.cargos_template, self.child_table_template,
-                   self.blueprint_template, self.items_furnitures_template,
-                   self.buildings_furnitures_template):
-            if not os.path.exists(tp):
-                self.fail(f"Template not found: {tp} (template_root="
-                          f"{self.template_root!r}) — re-extract it from the "
-                          "matching game pak")
+
 
         with open(self.recipes_path) as f:
             self.recipe_config = json.load(f)
@@ -71,6 +62,17 @@ class CargoModBuilder(ModBuilder):
             self.repo_root, self.template_root, "Items_Furnitures.uasset")
         self.buildings_furnitures_template = os.path.join(
             self.repo_root, self.template_root, "Buildings_Furnitures.uasset")
+
+        # Fail hard on missing templates: a silently-skipped template drops
+        # content from the shipped pak (Items/Buildings tables vanished once
+        # because out/<root> was incomplete). Build against a COMPLETE set.
+        for tp in (self.cargos_template, self.child_table_template,
+                   self.blueprint_template, self.items_furnitures_template,
+                   self.buildings_furnitures_template):
+            if not os.path.exists(tp):
+                self.fail(f"Template not found: {tp} (template_root="
+                          f"{self.template_root!r}) — re-extract it from the "
+                          "matching game pak")
         self.items_output_dir: str | None = None
         self.buildings_output_dir: str | None = None
         self.item_entries: list = []
