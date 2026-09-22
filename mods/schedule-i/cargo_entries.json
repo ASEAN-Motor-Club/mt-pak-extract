@@ -296,7 +296,7 @@
       "payment_multiplier": 2.0,
       "base_payment": 150,
       "spawn_probability": 0,
-      "mesh_path": "/Game/Objects/Mission/Delivery/Mesh/GlassBottles/GlassBottles",
+      "mesh_path": "/Game/Models/PolygonWestern/Meshes/Props/SM_Prop_Bottle_05",
       "mass_kg": 25,
       "blueprint_name": "MoonshineBottles",
       "blueprint_template": "out/SmallBox.uasset",
