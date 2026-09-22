@@ -918,12 +918,174 @@ class Program
         }
         
         asset.ResolveAncestries();
+        // WRITE_VERSIONED=1: clear PKG_UnversionedProperties before writing so the
+        // patched asset is serialized WITH property tags (versioned). The client
+        // engine reads both formats (server-cooked tables load fine in b1), so a
+        // versioned write sidesteps the unversioned schema-contract entirely.
+        if (Environment.GetEnvironmentVariable("WRITE_VERSIONED") == "1")
+        {
+            asset.PackageFlags &= ~EPackageFlags.PKG_UnversionedProperties;
+            Console.WriteLine("  WRITE_VERSIONED: cleared PKG_UnversionedProperties (tagged write)");
+            // Unversioned parses produce dummy FNames (names resolved via mappings,
+            // absent from the file's name map). A tagged write serializes each
+            // property NAME, so every dummy FName must be materialized into the
+            // name map first, else DummyFNameSerializationException.
+            int n = 0;
+            foreach (var prop in mainExport.Data) n += MaterializeNames(prop, asset);
+            // DataTableExport rows live in Table.Data (row structs), NOT Data.
+            if (mainExport is DataTableExport dte && dte.Table?.Data != null)
+            {
+                foreach (var row in dte.Table.Data)
+                {
+                    n += MaterializeNames(row, asset);
+                    n += MaterializeTypeNames(row, asset);
+                }
+            }
+            // Tagged writes also serialize each property's TYPE name tree
+            // ("ArrayProperty", inner types, struct types). Unversioned files
+            // never store these, so materialize them too.
+            foreach (var tn in EnginePropertyTypeNames) n += MaterializeNameString(asset, tn);
+            foreach (var prop in mainExport.Data) n += MaterializeTypeNames(prop, asset);
+            Console.WriteLine($"  WRITE_VERSIONED: materialized {n} names into name map");
+        }
         Directory.CreateDirectory(outputDir);
         var outputPath = Path.Combine(outputDir, $"{outputFileName}.uasset");
         asset.Write(outputPath);
         Console.WriteLine($"Written: {outputFileName}.uasset + {outputFileName}.uexp to {outputDir}");
     }
-    
+
+    static readonly string[] EnginePropertyTypeNames =
+    {
+        "ObjectProperty", "IntProperty", "FloatProperty", "BoolProperty", "ByteProperty",
+        "EnumProperty", "StructProperty", "ArrayProperty", "MapProperty", "NameProperty",
+        "StrProperty", "TextProperty", "DoubleProperty", "Int64Property", "Int32Property",
+        "Int16Property", "Int8Property", "UInt64Property", "UInt32Property", "UInt16Property",
+        "UInt8Property", "ClassProperty", "SoftObjectProperty", "SoftClassProperty",
+        "AssetObjectProperty", "AssetClassProperty", "DelegateProperty", "InterfaceProperty",
+        "MulticastDelegateProperty", "SetProperty", "None", "Generic"
+    };
+
+    static int MaterializeNameString(UAsset asset, string s)
+    {
+        if (string.IsNullOrEmpty(s)) return 0;
+        try { asset.SearchNameReference(new FString(s)); return 0; } // present
+        catch (NameMapOutOfRangeException) { }
+        FName.FromString(asset, s);
+        return 1;
+    }
+
+    // Materialize type-name FNames (dummy or unmapped) for tagged writes.
+    static int MaterializeTypeNames(PropertyData prop, UAsset asset)
+    {
+        int count = 0;
+        switch (prop)
+        {
+            case StructPropertyData spd:
+            {
+                int c;
+                if (spd.StructType != null) { spd.StructType = MaterializeFName(spd.StructType, asset, out c); count += c; }
+                foreach (var inner in spd.Value) count += MaterializeTypeNames(inner, asset);
+                break;
+            }
+            case ArrayPropertyData apd:
+            {
+                int c;
+                if (apd.ArrayType != null) { apd.ArrayType = MaterializeFName(apd.ArrayType, asset, out c); count += c; }
+                // Empty struct-typed arrays need an inner StructType for tagged
+                // writes; resolve it from the usmap schema and register it via
+                // ArrayStructTypeOverride (same mechanism ArrayPropertyData.Write
+                // falls back to).
+                if (apd.Value.Length == 0 && apd.ArrayType?.Value?.Value == "StructProperty"
+                    && asset.Mappings != null && !asset.ArrayStructTypeOverride.ContainsKey(apd.Name.Value.Value)
+                    && asset.Mappings.TryGetPropertyData<UsmapArrayData>(apd.Name, apd.Ancestry, asset, out var mArr)
+                    && mArr != null && mArr.InnerType is UsmapStructData uStr)
+                {
+                    asset.ArrayStructTypeOverride[apd.Name.Value.Value] = new FString(uStr.StructType);
+                    count++;
+                }
+                foreach (var inner in apd.Value.OfType<PropertyData>()) count += MaterializeTypeNames(inner, asset);
+                break;
+            }
+            case MapPropertyData mpd:
+            {
+                int c;
+                if (mpd.KeyType != null) { mpd.KeyType = MaterializeFName(mpd.KeyType, asset, out c); count += c; }
+                if (mpd.ValueType != null) { mpd.ValueType = MaterializeFName(mpd.ValueType, asset, out c); count += c; }
+                foreach (var kv in mpd.Value)
+                {
+                    if (kv.Key is PropertyData kp) count += MaterializeTypeNames(kp, asset);
+                    if (kv.Value is PropertyData vp) count += MaterializeTypeNames(vp, asset);
+                }
+                break;
+            }
+            case EnumPropertyData epd:
+            {
+                int c;
+                if (epd.EnumType != null) { epd.EnumType = MaterializeFName(epd.EnumType, asset, out c); count += c; }
+                break;
+            }
+            case BytePropertyData bpd:
+            {
+                int c;
+                if (bpd.EnumType != null) { bpd.EnumType = MaterializeFName(bpd.EnumType, asset, out c); count += c; }
+                break;
+            }
+            case RawStructPropertyData rsp:
+            {
+                int c;
+                if (rsp.StructType != null) { rsp.StructType = MaterializeFName(rsp.StructType, asset, out c); count += c; }
+                break;
+            }
+        }
+        return count;
+    }
+
+    // Re-register any dummy FName (unversioned parse) into the asset's name map.
+    // Returns the materialized FName; assign it back at the call site.
+    static FName MaterializeFName(FName fname, UAsset asset, out int count)
+    {
+        count = 0;
+        if (fname != null && fname.IsDummy && !string.IsNullOrEmpty(fname.Value?.Value))
+        {
+            var made = FName.FromString(asset, fname.Value.Value);
+            count = 1;
+            return made;
+        }
+        return fname;
+    }
+
+    static int MaterializeNames(PropertyData prop, UAsset asset)
+    {
+        int count = 0;
+        if (string.IsNullOrEmpty(prop.Name.Value?.Value) is false && prop.Name.IsDummy)
+        {
+            prop.Name = FName.FromString(asset, prop.Name.Value.Value);
+            count++;
+        }
+        if (prop is NamePropertyData npd && npd.Value?.IsDummy == true)
+        {
+            npd.Value = FName.FromString(asset, npd.Value.Value.Value);
+            count++;
+        }
+        // Enum values serialize as FNames in tagged writes.
+        if (prop is EnumPropertyData epd && epd.Value != null && epd.Value.IsDummy)
+        {
+            epd.Value = FName.FromString(asset, epd.Value.Value.Value);
+            count++;
+        }
+        if (prop is StructPropertyData spd)
+            foreach (var inner in spd.Value) count += MaterializeNames(inner, asset);
+        else if (prop is ArrayPropertyData apd)
+            foreach (var inner in apd.Value.OfType<PropertyData>()) count += MaterializeNames(inner, asset);
+        else if (prop is MapPropertyData mpd)
+            foreach (var kv in mpd.Value)
+            {
+                if (kv.Key is PropertyData kp) count += MaterializeNames(kp, asset);
+                if (kv.Value is PropertyData vp) count += MaterializeNames(vp, asset);
+            }
+        return count;
+    }
+
     // ========================================================================
     // --patch-named-exports: Patch properties on specific named exports
     // ========================================================================
