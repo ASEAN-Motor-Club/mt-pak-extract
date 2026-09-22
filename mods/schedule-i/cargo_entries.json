@@ -2,9 +2,15 @@
   "entries": [
     {
       "row_name": "Money",
-      "display_name": ["Money", "Stack"],
+      "display_name": [
+        "Money",
+        "Stack"
+      ],
       "cargo_type": "None",
-      "cargo_space_types": ["Flatbed", "Box"],
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
       "weight_min": 5,
       "weight_max": 10,
       "volume_size": 1,
@@ -24,9 +30,15 @@
     },
     {
       "row_name": "MoneyPallet",
-      "display_name": ["Money", "Pallet"],
+      "display_name": [
+        "Money",
+        "Pallet"
+      ],
       "cargo_type": "None",
-      "cargo_space_types": ["Flatbed", "Box"],
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
       "weight_min": 15,
       "weight_max": 30,
       "volume_size": 1,
@@ -46,9 +58,15 @@
     },
     {
       "row_name": "Moonshine",
-      "display_name": ["Moonshine", "Keg"],
+      "display_name": [
+        "Moonshine",
+        "Keg"
+      ],
       "cargo_type": "None",
-      "cargo_space_types": ["Flatbed", "Box"],
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
       "weight_min": 80,
       "weight_max": 100,
       "volume_size": 1,
@@ -68,9 +86,15 @@
     },
     {
       "row_name": "CocaLeavesPallet",
-      "display_name": ["Coca Leaves", "Pallet"],
+      "display_name": [
+        "Coca Leaves",
+        "Pallet"
+      ],
       "cargo_type": "None",
-      "cargo_space_types": ["Flatbed", "Box"],
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
       "weight_min": 150,
       "weight_max": 200,
       "volume_size": 1,
@@ -90,9 +114,14 @@
     },
     {
       "row_name": "CocaPaste",
-      "display_name": ["Coca", "Paste"],
+      "display_name": [
+        "Coca",
+        "Paste"
+      ],
       "cargo_type": "None",
-      "cargo_space_types": ["Dump"],
+      "cargo_space_types": [
+        "Dump"
+      ],
       "weight_min": 200,
       "weight_max": 400,
       "volume_size": 1,
@@ -114,9 +143,15 @@
     },
     {
       "row_name": "CocaineBricks",
-      "display_name": ["Cocaine", "Bricks"],
+      "display_name": [
+        "Cocaine",
+        "Bricks"
+      ],
       "cargo_type": "None",
-      "cargo_space_types": ["Flatbed", "Box"],
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
       "weight_min": 800,
       "weight_max": 1000,
       "volume_size": 1,
@@ -135,10 +170,72 @@
       "num_cargo_max": 6
     },
     {
-      "row_name": "HydrochloricAcid",
-      "display_name": ["Hydrochloric", "Acid"],
+      "row_name": "CocainePackets",
+      "display_name": [
+        "Cocaine",
+        "Packets"
+      ],
       "cargo_type": "None",
-      "cargo_space_types": ["Flatbed", "Box"],
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 20,
+      "weight_max": 40,
+      "volume_size": 1,
+      "payment_per_km": 500,
+      "payment_multiplier": 2.0,
+      "base_payment": 250,
+      "spawn_probability": 0,
+      "mesh_path": "/Game/Models/PolygonGangWarfare/Meshes/Props/SM_Prop_Packet_Stack_03",
+      "mass_kg": 30,
+      "blueprint_name": "CocainePackets",
+      "blueprint_template": "out/SmallBox.uasset",
+      "clone_old_name": "SmallBox",
+      "cargo_flags": 11,
+      "allow_stacking": true,
+      "num_cargo_min": 5,
+      "num_cargo_max": 15
+    },
+    {
+      "row_name": "CocaineBags",
+      "display_name": [
+        "Cocaine",
+        "Bags"
+      ],
+      "cargo_type": "None",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 5,
+      "weight_max": 15,
+      "volume_size": 1,
+      "payment_per_km": 1000,
+      "payment_multiplier": 2.0,
+      "base_payment": 500,
+      "spawn_probability": 0,
+      "mesh_path": "/Game/Models/PolygonGangWarfare/Meshes/Props/SM_Prop_Packet_02",
+      "mass_kg": 10,
+      "blueprint_name": "CocaineBags",
+      "blueprint_template": "out/SmallBox.uasset",
+      "clone_old_name": "SmallBox",
+      "cargo_flags": 11,
+      "allow_stacking": false,
+      "num_cargo_min": 2,
+      "num_cargo_max": 8
+    },
+    {
+      "row_name": "HydrochloricAcid",
+      "display_name": [
+        "Hydrochloric",
+        "Acid"
+      ],
+      "cargo_type": "None",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
       "weight_min": 200,
       "weight_max": 350,
       "volume_size": 1,
@@ -157,9 +254,14 @@
     },
     {
       "row_name": "Acetone",
-      "display_name": ["Acetone", "Barrel"],
+      "display_name": [
+        "Acetone",
+        "Barrel"
+      ],
       "cargo_type": "None",
-      "cargo_space_types": ["Tanker"],
+      "cargo_space_types": [
+        "Tanker"
+      ],
       "weight_min": 800,
       "weight_max": 800,
       "volume_size": 1,
@@ -175,6 +277,34 @@
       "allow_stacking": false,
       "num_cargo_min": 0,
       "num_cargo_max": 1
+    },
+    {
+      "row_name": "MoonshineBottles",
+      "display_name": [
+        "Moonshine",
+        "Bottles"
+      ],
+      "cargo_type": "None",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 20,
+      "weight_max": 30,
+      "volume_size": 1,
+      "payment_per_km": 300,
+      "payment_multiplier": 2.0,
+      "base_payment": 150,
+      "spawn_probability": 0,
+      "mesh_path": "/Game/Objects/Mission/Delivery/Mesh/GlassBottles/GlassBottles",
+      "mass_kg": 25,
+      "blueprint_name": "MoonshineBottles",
+      "blueprint_template": "out/SmallBox.uasset",
+      "clone_old_name": "SmallBox",
+      "cargo_flags": 11,
+      "allow_stacking": false,
+      "num_cargo_min": 4,
+      "num_cargo_max": 10
     }
   ]
 }

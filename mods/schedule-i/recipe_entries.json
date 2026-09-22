@@ -27,18 +27,6 @@
   ],
   "sinks": [
     {
-      "delivery_point": "Supermarket",
-      "template_path": "out/client/Supermarket.uasset",
-      "replace_production_configs": false,
-      "recipes": [
-        {
-          "cargo": "Moonshine",
-          "production_time": 600,
-          "hidden": false
-        }
-      ]
-    },
-    {
       "delivery_point": "GasStation",
       "template_path": "out/client/GasStation.uasset",
       "replace_production_configs": false,
@@ -122,9 +110,32 @@
       "recipes": [
         {
           "input_cargo": "CocaineBricks",
-          "input_count": 5,
+          "input_count": 1,
           "output_cargo": "Money",
-          "output_count": 30,
+          "output_count": 5,
+          "production_time": 120,
+          "hidden": false
+        },
+        {
+          "input_cargo": "CocaineBricks",
+          "input_count": 1,
+          "output_cargo": "CocainePackets",
+          "output_count": 5,
+          "production_time": 180,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "delivery_point": "CourierService",
+      "template_path": "out/client/CourierService.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {
+          "input_cargo": "CocainePackets",
+          "input_count": 1,
+          "output_cargo": "CocaineBags",
+          "output_count": 3,
           "production_time": 120,
           "hidden": false
         }
@@ -141,6 +152,44 @@
           "output_cargo": "Acetone",
           "output_count": 1,
           "production_time": 180,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "delivery_point": "Supermarket",
+      "template_path": "out/client/Supermarket.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {
+          "input_cargo": "Moonshine",
+          "input_count": 1,
+          "output_cargo": "MoonshineBottles",
+          "output_count": 5,
+          "production_time": 300,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "delivery_point": "ConstructionSite",
+      "template_path": "out/client/ConstructionSite.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {
+          "input_cargo": "CocainePackets",
+          "input_count": 1,
+          "output_cargo": "Money",
+          "output_count": 1,
+          "production_time": 180,
+          "hidden": false
+        },
+        {
+          "input_cargo": "CocainePackets",
+          "input_count": 1,
+          "output_cargo": "CocainePackets",
+          "output_count": 1,
+          "production_time": 1,
           "hidden": false
         }
       ]
@@ -176,6 +225,19 @@
     {
       "delivery_point": "Mine_IronOre",
       "template_path": "out/client/Mine_IronOre.uasset",
+      "recipes": [
+        {
+          "cargo": "Money",
+          "count": 1,
+          "production_time": 600,
+          "speed_multiplier": 2,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "delivery_point": "Factory_Toy",
+      "template_path": "out/client/Factory_Toy.uasset",
       "recipes": [
         {
           "cargo": "Money",
@@ -281,8 +343,27 @@
           "max_storage": 30
         },
         {
+          "cargo_key": "CocainePackets",
+          "max_storage": 100
+        },
+        {
           "cargo_key": "Money",
-          "max_storage": 40
+          "max_storage": 100
+        }
+      ]
+    },
+    {
+      "delivery_point": "CourierService",
+      "template_path": "out/client/CourierService.uasset",
+      "replace_storage": false,
+      "entries": [
+        {
+          "cargo_key": "CocainePackets",
+          "max_storage": 10
+        },
+        {
+          "cargo_key": "CocaineBags",
+          "max_storage": 10
         }
       ]
     },
@@ -307,6 +388,32 @@
         {
           "cargo_key": "HydrochloricAcid",
           "max_storage": 20
+        }
+      ]
+    },
+    {
+      "delivery_point": "Supermarket",
+      "template_path": "out/client/Supermarket.uasset",
+      "replace_storage": false,
+      "entries": [
+        {
+          "cargo_key": "MoonshineBottles",
+          "max_storage": 30
+        }
+      ]
+    },
+    {
+      "delivery_point": "ConstructionSite",
+      "template_path": "out/client/ConstructionSite.uasset",
+      "replace_storage": false,
+      "entries": [
+        {
+          "cargo_key": "CocainePackets",
+          "max_storage": 20
+        },
+        {
+          "cargo_key": "Money",
+          "max_storage": 40
         }
       ]
     }
@@ -385,8 +492,38 @@
       ]
     },
     {
+      "delivery_point": "Resident",
+      "template_path": "out/client/Resident.uasset",
+      "entries": [
+        {
+          "cargo_type": "None",
+          "cargo_key": "CocaineBags",
+          "payment_multiplier": 2.0,
+          "max_storage": 2
+        },
+        {
+          "cargo_type": "None",
+          "cargo_key": "MoonshineBottles",
+          "payment_multiplier": 1.2,
+          "max_storage": 3
+        }
+      ]
+    },
+    {
       "delivery_point": "Mine_IronOre",
       "template_path": "out/client/Mine_IronOre.uasset",
+      "entries": [
+        {
+          "cargo_type": "None",
+          "cargo_key": "Money",
+          "payment_multiplier": 1.0,
+          "max_storage": 25
+        }
+      ]
+    },
+    {
+      "delivery_point": "Factory_Toy",
+      "template_path": "out/client/Factory_Toy.uasset",
       "entries": [
         {
           "cargo_type": "None",

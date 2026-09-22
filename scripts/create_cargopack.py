@@ -506,7 +506,8 @@ class CargoModBuilder(ModBuilder):
 
     def _recipe_cdo_config(self, dp_name, recipes, storage_entries,
                           demand_entries=None, cdo_patches=None,
-                          replace_production_configs=False):
+                          replace_production_configs=False,
+                          replace_storage=True):
         """Generate --patch-cdo-arrays config for a delivery point."""
         arrays = []
 
@@ -572,7 +573,10 @@ class CargoModBuilder(ModBuilder):
                 "property_name": "StorageConfigs",
                 "template_source": os.path.join(
                     self.repo_root, self.template_root, "Factory_Toy.uasset"),
-                "replace": True,
+                # replace=True kills the DP's vanilla CargoType-keyed storage
+                # (CourierService: SmallPackage 50 / LargePackage 6). A storage
+                # section can opt into append mode via "replace_storage": false.
+                "replace": replace_storage,
                 "entries": entries,
             })
 
@@ -749,7 +753,8 @@ class CargoModBuilder(ModBuilder):
             return work_by_dp.setdefault(dp_name, {
                 "template": resolve_tp(template_entry), "recipes": [],
                 "storage": [], "demand": [], "cdo": None,
-                "replace_production_configs": template_entry.get("replace_production_configs", False)})
+                "replace_production_configs": template_entry.get("replace_production_configs", False),
+                "replace_storage": True})
 
         for section, mode in [("sources", "source"), ("sinks", "sink"),
                                ("transforms", "transform"),
@@ -763,6 +768,7 @@ class CargoModBuilder(ModBuilder):
         for dp in self.recipe_config.get("storage", []):
             dp_name = dp["delivery_point"]
             work = get_work(dp_name, dp)
+            work["replace_storage"] = dp.get("replace_storage", True)
             for entry in dp["entries"]:
                 work["storage"].append(entry)
 
@@ -807,7 +813,8 @@ class CargoModBuilder(ModBuilder):
                 dp_name, work["recipes"], work["storage"],
                 demand_entries=work["demand"] if work["demand"] else None,
                 cdo_patches=work["cdo"] if work["cdo"] else None,
-                replace_production_configs=work.get("replace_production_configs", False))
+                replace_production_configs=work.get("replace_production_configs", False),
+                replace_storage=work.get("replace_storage", True))
             self.run_generic("--patch-cdo-arrays", config,
                              template, self.recipes_output_dir,
                              f"recipes-{dp_name}")
@@ -838,6 +845,8 @@ class CargoModBuilder(ModBuilder):
             for dp in self.recipe_config.get(section, []):
                 all_dps.add(dp["delivery_point"])
         for dp in self.recipe_config.get("storage", []):
+            all_dps.add(dp["delivery_point"])
+        for dp in self.recipe_config.get("demand_configs", []):
             all_dps.add(dp["delivery_point"])
 
         for dp_name in all_dps:
