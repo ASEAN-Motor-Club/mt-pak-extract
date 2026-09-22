@@ -32,18 +32,26 @@ class CargoModBuilder(ModBuilder):
 
     def __init__(self, config_path, output_path, recipes_path,
                  compat_mods=None, cargos_template=None,
-                 blueprint_template=None, items_path=None):
+                 blueprint_template=None, items_path=None,
+                 template_root=None):
         super().__init__("cargo mod", config_path, output_path, compat_mods)
         self.recipes_path = os.path.abspath(recipes_path)
+        # Template root: directory (relative to repo root) holding the game
+        # templates to build against. Use "out/client" for player-facing builds
+        # and "out/server" for server-facing builds (client and server builds
+        # ship DIFFERENT vanilla assets for delivery points / cargo tables).
+        self.template_root = template_root or "out"
         self.cargos_template = cargos_template or os.path.join(
-            self.repo_root, "out", "Cargos.uasset")
+            self.repo_root, self.template_root, "Cargos.uasset")
         self.child_table_template = os.path.join(
-            self.repo_root, "out", "Cargos_Deprecated.uasset")
+            self.repo_root, self.template_root, "Cargos_Deprecated.uasset")
         self.blueprint_template = blueprint_template or os.path.join(
-            self.repo_root, "out", "SmallBox.uasset")
+            self.repo_root, self.template_root, "SmallBox.uasset")
 
         if not os.path.exists(self.recipes_path):
             self.fail(f"Recipes not found: {self.recipes_path}")
+
+
 
         with open(self.recipes_path) as f:
             self.recipe_config = json.load(f)
@@ -51,9 +59,20 @@ class CargoModBuilder(ModBuilder):
         # Optional custom-item rows (--items / mod.json configs[2])
         self.items_path = os.path.abspath(items_path) if items_path else None
         self.items_furnitures_template = os.path.join(
-            self.repo_root, "out", "Items_Furnitures.uasset")
+            self.repo_root, self.template_root, "Items_Furnitures.uasset")
         self.buildings_furnitures_template = os.path.join(
-            self.repo_root, "out", "Buildings_Furnitures.uasset")
+            self.repo_root, self.template_root, "Buildings_Furnitures.uasset")
+
+        # Fail hard on missing templates: a silently-skipped template drops
+        # content from the shipped pak (Items/Buildings tables vanished once
+        # because out/<root> was incomplete). Build against a COMPLETE set.
+        for tp in (self.cargos_template, self.child_table_template,
+                   self.blueprint_template, self.items_furnitures_template,
+                   self.buildings_furnitures_template):
+            if not os.path.exists(tp):
+                self.fail(f"Template not found: {tp} (template_root="
+                          f"{self.template_root!r}) — re-extract it from the "
+                          "matching game pak")
         self.items_output_dir: str | None = None
         self.buildings_output_dir: str | None = None
         self.item_entries: list = []
@@ -230,8 +249,10 @@ class CargoModBuilder(ModBuilder):
         for entry in self.config["entries"]:
             patches = [
                 {"path": "bDepcreated", "op": "set", "value": False},
-                {"path": "Name", "op": "set_localization_guid",
-                 "value": entry["display_name"][0]},
+                # NOTE: do NOT patch "Name" (string-table GUID FText). Client
+                # template rows have no Name property; creating one with a GUID
+                # absent from the client's StringTables/Cargo crashes the game
+                # during text resolution. Names display via Name2 (MTTextByTexts).
                 {"path": "Name2", "op": "set_display_name",
                  "value": entry["display_name"]},
                 {"path": "CargoType", "op": "set_enum",
@@ -269,8 +290,29 @@ class CargoModBuilder(ModBuilder):
                 {"path": "Fragile", "op": "set", "value": entry.get("fragile", 0)},
                 {"path": "CargoFlags", "op": "set",
                  "value": entry.get("cargo_flags", 11)},
-                {"path": "DumpCargoSurfaceMesh", "op": "null_ref"},
-                {"path": "DumpCargoSurfaceMaterial", "op": "null_ref"},
+                # Dump surface mesh/material: only meaningful for Dump-space
+                # cargos — the game projects this mesh+material over the dump
+                # bed volume (vanilla Coal/Sand/Limestone pattern). Leaving
+                # them null renders the cargo invisible in dump beds.
+                *(
+                    [
+                        {"path": "DumpCargoSurfaceMesh", "op": "set_import_ref",
+                         "class_package": "/Script/Engine",
+                         "class_name": "StaticMesh",
+                         "package_path": entry["dump_mesh_path"].rsplit("/", 1)[0],
+                         "asset_name": entry["dump_mesh_path"].rsplit("/", 1)[1]},
+                        {"path": "DumpCargoSurfaceMaterial", "op": "set_import_ref",
+                         "class_package": "/Script/Engine",
+                         "class_name": "MaterialInstanceConstant",
+                         "package_path": entry["dump_material_path"].rsplit("/", 1)[0],
+                         "asset_name": entry["dump_material_path"].rsplit("/", 1)[1]},
+                    ]
+                    if entry.get("dump_mesh_path") and entry.get("dump_material_path")
+                    else [
+                        {"path": "DumpCargoSurfaceMesh", "op": "null_ref"},
+                        {"path": "DumpCargoSurfaceMaterial", "op": "null_ref"},
+                    ]
+                ),
                 {"path": "bTimer", "op": "set", "value": False},
                 {"path": "bHoldingOffsetUsingItemBounds", "op": "set",
                  "value": False},
@@ -477,7 +519,7 @@ class CargoModBuilder(ModBuilder):
             arrays.append({
                 "property_name": "ProductionConfigs",
                 "template_source": os.path.join(
-                    self.repo_root, "out", "Factory_Toy.uasset"),
+                    self.repo_root, self.template_root, "Factory_Toy.uasset"),
                 "entries": entries,
                 "replace": replace_production_configs,
             })
@@ -506,7 +548,7 @@ class CargoModBuilder(ModBuilder):
             arrays.append({
                 "property_name": "DemandConfigs",
                 "template_source": os.path.join(
-                    self.repo_root, "out", "Resident.uasset"),
+                    self.repo_root, self.template_root, "Resident.uasset"),
                 "entries": entries,
             })
 
@@ -529,7 +571,7 @@ class CargoModBuilder(ModBuilder):
             arrays.append({
                 "property_name": "StorageConfigs",
                 "template_source": os.path.join(
-                    self.repo_root, "out", "Factory_Toy.uasset"),
+                    self.repo_root, self.template_root, "Factory_Toy.uasset"),
                 "replace": True,
                 "entries": entries,
             })
@@ -693,7 +735,15 @@ class CargoModBuilder(ModBuilder):
 
         def resolve_tp(entry):
             tp = entry["template_path"]
-            return tp if os.path.isabs(tp) else os.path.join(self.repo_root, tp)
+            if os.path.isabs(tp):
+                return tp
+            # Legacy configs may carry an "out/" or "out/client/" prefix; the
+            # active --template-root decides which build's templates are used.
+            for prefix in ("out/client/", "out/server/", "out/"):
+                if tp.startswith(prefix):
+                    tp = tp[len(prefix):]
+                    break
+            return os.path.join(self.repo_root, self.template_root, tp)
 
         def get_work(dp_name, template_entry):
             return work_by_dp.setdefault(dp_name, {
@@ -832,6 +882,9 @@ def main():
                         help="Base game Cargos.uasset template")
     parser.add_argument("--blueprint-template", default=None,
                         help="Base game SmallBox.uasset template")
+    parser.add_argument("--template-root", default=None,
+                        help="Template directory relative to repo root "
+                             "(e.g. out/client or out/server). Defaults to out.")
     parser.add_argument("--mod", default=None,
                         help="Mod directory (e.g. mods/schedule-i) to load mod.json from")
     parser.add_argument("--items", default=None,
@@ -860,6 +913,7 @@ def main():
         cargos_template=args.cargos_template,
         blueprint_template=args.blueprint_template,
         items_path=items_path,
+        template_root=args.template_root,
     )
     builder.build()
 

@@ -48,6 +48,8 @@ class Program
         bool patchExportMode = args.Contains("--patch-export-props");
         bool patchNamedExportsMode = args.Contains("--patch-named-exports");
         bool dumpMode = args.Contains("--dump");
+        bool ptProbe = args.Contains("--ptprobe");
+        int ptIdx = Array.IndexOf(args, "--ptprobe");
         
         Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--patch-export-props ...] [--patch-named-exports ...] [--dump ...] [path/to/asset.uasset]");
         Console.WriteLine();
@@ -64,6 +66,50 @@ class Program
         
         PatchMappingsForVersion();
         
+        if (ptProbe)
+        {
+            var asset = new UAsset(args[ptIdx + 1], EngineVersion.VER_UE5_5, Mappings);
+            void Walk(PropertyData d, string path)
+            {
+                if (d == null) return;
+                string dname = d.Name == null ? "" : (d.Name.Value?.Value ?? "");
+                if (path.EndsWith("ParentTables", StringComparison.Ordinal) || dname == "ParentTables")
+                {
+                    Console.WriteLine($"PT {path}: type={d.GetType().Name}");
+                    if (d is ArrayPropertyData ap)
+                    {
+                        Console.WriteLine($"  count={ap.Value.Length} elemType={(ap.Value.Length>0?ap.Value[0].GetType().Name:"n/a")}");
+                        foreach (var e in ap.Value)
+                        {
+                            string en = e.Name == null ? "?" : (e.Name.Value?.Value ?? "?");
+                            string ev;
+                            if (e is ObjectPropertyData o) ev = o.Value?.Index.ToString() ?? "null";
+                            else ev = e.GetType().Name;
+                            Console.WriteLine($"  elem {e.GetType().Name} name={en} val={ev}");
+                        }
+                    }
+                }
+                if (d is StructPropertyData sd) foreach (var c in sd.Value) Walk(c, path + "." + (c.Name == null ? "?" : c.Name.Value?.Value ?? "?"));
+                if (d is ArrayPropertyData ap2 && ap2.Value.Length > 0 && ap2.Value[0] is StructPropertyData) foreach (var c in ap2.Value) Walk((PropertyData)c, path + "[]");
+            }
+            foreach (var ex in asset.Exports)
+            {
+                Console.WriteLine($"EXPORT {ex.ObjectName.Value} type={ex.GetType().Name}");
+                System.Collections.Generic.IEnumerable<PropertyData> props = null;
+                if (ex is UAssetAPI.ExportTypes.NormalExport ne) props = ne.Data;
+                else if (ex is UAssetAPI.ExportTypes.DataTableExport dte) props = null;
+                if (props != null) foreach (var p in props)
+                {
+                    string pn = p.Name == null ? "?" : (p.Name.Value?.Value ?? "?");
+                    Console.WriteLine($"  PROP {pn}: {p.GetType().Name}");
+                    Walk(p, pn);
+                }
+                else Console.WriteLine($"  (no generic Data accessor)");
+            }
+            Console.WriteLine("=== parenttables probe done ===");
+            return;
+        }
+
         if (batchMapsMode)
         {
             ProcessBatchMaps();
@@ -119,6 +165,71 @@ class Program
             var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
             var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
             PatchNamedExports(configPath, templatePath, outputDir);
+        }
+        else if (args.Contains("--roundtrip"))
+        {
+            var idx = Array.IndexOf(args, "--roundtrip");
+            var rtPath = args.ElementAtOrDefault(idx + 1) ?? Path.Combine(RootDir, "Cargos.uasset");
+            if (!Path.IsPathRooted(rtPath)) rtPath = Path.Combine(RootDir, rtPath);
+            var outRt = args.ElementAtOrDefault(idx + 2) ?? rtPath + ".rt.uasset";
+            var a = new UAsset(rtPath, EngineVersion.VER_UE5_5, Mappings);
+            a.Write(outRt);
+            var orig = File.ReadAllBytes(rtPath);
+            var redo = File.ReadAllBytes(outRt);
+            Console.WriteLine($"orig={orig.Length} rewritten={redo.Length} identical={orig.SequenceEqual(redo)}");
+            if (!orig.SequenceEqual(redo))
+            {
+                int n = Math.Min(orig.Length, redo.Length);
+                for (int i = 0; i < n; i++)
+                    if (orig[i] != redo[i])
+                    {
+                        Console.WriteLine($"first-diff at byte {i} (0x{i:X}): orig=0x{orig[i]:X2} rewritten=0x{redo[i]:X2}");
+                        break;
+                    }
+                if (orig.Length != redo.Length)
+                    Console.WriteLine($"length differs: {orig.Length} vs {redo.Length}");
+            }
+            return;
+        }
+        else if (args.Contains("--textprobe"))
+        {
+            var idx = Array.IndexOf(args, "--textprobe");
+            var path = args.ElementAtOrDefault(idx + 1) ?? Path.Combine(RootDir, "Cargos_ScheduleI.uasset");
+            if (!Path.IsPathRooted(path)) path = Path.Combine(RootDir, path);
+            var a = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+            var dt = FindDataTable(a);
+            if (dt == null) { Console.WriteLine("no datatable"); return; }
+            foreach (var row in dt.Table.Data)
+            {
+                var spd = row as StructPropertyData;
+                if (spd == null) continue;
+                var rowName = spd.Name?.Value?.Value ?? "?";
+                foreach (var prop in spd.Value)
+                {
+                    if (prop is TextPropertyData tp && (prop.Name.Value.Value == "Name"))
+                    {
+                        Console.WriteLine($"row={rowName} Name: Flags={tp.Flags} Hist={tp.HistoryType} NS={(tp.Namespace?.Value == null ? "<null>" : tp.Namespace.Value)} Key/Value={(tp.Value == null || tp.Value.Value == null ? "<null>" : tp.Value.Value)} Invariant={(tp.CultureInvariantString == null || tp.CultureInvariantString.Value == null ? "<null>" : tp.CultureInvariantString.Value)}");
+                    }
+                    if (prop.Name.Value.Value == "Name2" && prop is StructPropertyData n2)
+                    {
+                        foreach (var sp in n2.Value)
+                        {
+                            if (sp.Name.Value.Value == "Texts" && sp is ArrayPropertyData arr)
+                            {
+                                foreach (var el in arr.Value)
+                                {
+                                    if (el is TextPropertyData t2)
+                                        Console.WriteLine($"row={rowName} Name2.Texts: Flags={t2.Flags} Hist={t2.HistoryType} NS={(t2.Namespace?.Value == null ? "<null>" : t2.Namespace.Value)} Key={(t2.Value == null || t2.Value.Value == null ? "<null>" : t2.Value.Value)} Invariant={(t2.CultureInvariantString == null || t2.CultureInvariantString.Value == null ? "<null>" : t2.CultureInvariantString.Value)}");
+                                }
+                            }
+                            if (sp.Name.Value.Value == "Pattern" && sp is TextPropertyData pat)
+                                Console.WriteLine($"row={rowName} Pattern: Flags={pat.Flags} Hist={pat.HistoryType} NS={(pat.Namespace?.Value == null ? "<null>" : pat.Namespace.Value)} Key={(pat.Value == null || pat.Value.Value == null ? "<null>" : pat.Value.Value)} Invariant={(pat.CultureInvariantString == null || pat.CultureInvariantString.Value == null ? "<null>" : pat.CultureInvariantString.Value)}");
+                        }
+                    }
+                }
+                break; // template row only
+            }
+            return;
         }
         else if (dumpMode)
         {
@@ -807,12 +918,174 @@ class Program
         }
         
         asset.ResolveAncestries();
+        // WRITE_VERSIONED=1: clear PKG_UnversionedProperties before writing so the
+        // patched asset is serialized WITH property tags (versioned). The client
+        // engine reads both formats (server-cooked tables load fine in b1), so a
+        // versioned write sidesteps the unversioned schema-contract entirely.
+        if (Environment.GetEnvironmentVariable("WRITE_VERSIONED") == "1")
+        {
+            asset.PackageFlags &= ~EPackageFlags.PKG_UnversionedProperties;
+            Console.WriteLine("  WRITE_VERSIONED: cleared PKG_UnversionedProperties (tagged write)");
+            // Unversioned parses produce dummy FNames (names resolved via mappings,
+            // absent from the file's name map). A tagged write serializes each
+            // property NAME, so every dummy FName must be materialized into the
+            // name map first, else DummyFNameSerializationException.
+            int n = 0;
+            foreach (var prop in mainExport.Data) n += MaterializeNames(prop, asset);
+            // DataTableExport rows live in Table.Data (row structs), NOT Data.
+            if (mainExport is DataTableExport dte && dte.Table?.Data != null)
+            {
+                foreach (var row in dte.Table.Data)
+                {
+                    n += MaterializeNames(row, asset);
+                    n += MaterializeTypeNames(row, asset);
+                }
+            }
+            // Tagged writes also serialize each property's TYPE name tree
+            // ("ArrayProperty", inner types, struct types). Unversioned files
+            // never store these, so materialize them too.
+            foreach (var tn in EnginePropertyTypeNames) n += MaterializeNameString(asset, tn);
+            foreach (var prop in mainExport.Data) n += MaterializeTypeNames(prop, asset);
+            Console.WriteLine($"  WRITE_VERSIONED: materialized {n} names into name map");
+        }
         Directory.CreateDirectory(outputDir);
         var outputPath = Path.Combine(outputDir, $"{outputFileName}.uasset");
         asset.Write(outputPath);
         Console.WriteLine($"Written: {outputFileName}.uasset + {outputFileName}.uexp to {outputDir}");
     }
-    
+
+    static readonly string[] EnginePropertyTypeNames =
+    {
+        "ObjectProperty", "IntProperty", "FloatProperty", "BoolProperty", "ByteProperty",
+        "EnumProperty", "StructProperty", "ArrayProperty", "MapProperty", "NameProperty",
+        "StrProperty", "TextProperty", "DoubleProperty", "Int64Property", "Int32Property",
+        "Int16Property", "Int8Property", "UInt64Property", "UInt32Property", "UInt16Property",
+        "UInt8Property", "ClassProperty", "SoftObjectProperty", "SoftClassProperty",
+        "AssetObjectProperty", "AssetClassProperty", "DelegateProperty", "InterfaceProperty",
+        "MulticastDelegateProperty", "SetProperty", "None", "Generic"
+    };
+
+    static int MaterializeNameString(UAsset asset, string s)
+    {
+        if (string.IsNullOrEmpty(s)) return 0;
+        try { asset.SearchNameReference(new FString(s)); return 0; } // present
+        catch (NameMapOutOfRangeException) { }
+        FName.FromString(asset, s);
+        return 1;
+    }
+
+    // Materialize type-name FNames (dummy or unmapped) for tagged writes.
+    static int MaterializeTypeNames(PropertyData prop, UAsset asset)
+    {
+        int count = 0;
+        switch (prop)
+        {
+            case StructPropertyData spd:
+            {
+                int c;
+                if (spd.StructType != null) { spd.StructType = MaterializeFName(spd.StructType, asset, out c); count += c; }
+                foreach (var inner in spd.Value) count += MaterializeTypeNames(inner, asset);
+                break;
+            }
+            case ArrayPropertyData apd:
+            {
+                int c;
+                if (apd.ArrayType != null) { apd.ArrayType = MaterializeFName(apd.ArrayType, asset, out c); count += c; }
+                // Empty struct-typed arrays need an inner StructType for tagged
+                // writes; resolve it from the usmap schema and register it via
+                // ArrayStructTypeOverride (same mechanism ArrayPropertyData.Write
+                // falls back to).
+                if (apd.Value.Length == 0 && apd.ArrayType?.Value?.Value == "StructProperty"
+                    && asset.Mappings != null && !asset.ArrayStructTypeOverride.ContainsKey(apd.Name.Value.Value)
+                    && asset.Mappings.TryGetPropertyData<UsmapArrayData>(apd.Name, apd.Ancestry, asset, out var mArr)
+                    && mArr != null && mArr.InnerType is UsmapStructData uStr)
+                {
+                    asset.ArrayStructTypeOverride[apd.Name.Value.Value] = new FString(uStr.StructType);
+                    count++;
+                }
+                foreach (var inner in apd.Value.OfType<PropertyData>()) count += MaterializeTypeNames(inner, asset);
+                break;
+            }
+            case MapPropertyData mpd:
+            {
+                int c;
+                if (mpd.KeyType != null) { mpd.KeyType = MaterializeFName(mpd.KeyType, asset, out c); count += c; }
+                if (mpd.ValueType != null) { mpd.ValueType = MaterializeFName(mpd.ValueType, asset, out c); count += c; }
+                foreach (var kv in mpd.Value)
+                {
+                    if (kv.Key is PropertyData kp) count += MaterializeTypeNames(kp, asset);
+                    if (kv.Value is PropertyData vp) count += MaterializeTypeNames(vp, asset);
+                }
+                break;
+            }
+            case EnumPropertyData epd:
+            {
+                int c;
+                if (epd.EnumType != null) { epd.EnumType = MaterializeFName(epd.EnumType, asset, out c); count += c; }
+                break;
+            }
+            case BytePropertyData bpd:
+            {
+                int c;
+                if (bpd.EnumType != null) { bpd.EnumType = MaterializeFName(bpd.EnumType, asset, out c); count += c; }
+                break;
+            }
+            case RawStructPropertyData rsp:
+            {
+                int c;
+                if (rsp.StructType != null) { rsp.StructType = MaterializeFName(rsp.StructType, asset, out c); count += c; }
+                break;
+            }
+        }
+        return count;
+    }
+
+    // Re-register any dummy FName (unversioned parse) into the asset's name map.
+    // Returns the materialized FName; assign it back at the call site.
+    static FName MaterializeFName(FName fname, UAsset asset, out int count)
+    {
+        count = 0;
+        if (fname != null && fname.IsDummy && !string.IsNullOrEmpty(fname.Value?.Value))
+        {
+            var made = FName.FromString(asset, fname.Value.Value);
+            count = 1;
+            return made;
+        }
+        return fname;
+    }
+
+    static int MaterializeNames(PropertyData prop, UAsset asset)
+    {
+        int count = 0;
+        if (string.IsNullOrEmpty(prop.Name.Value?.Value) is false && prop.Name.IsDummy)
+        {
+            prop.Name = FName.FromString(asset, prop.Name.Value.Value);
+            count++;
+        }
+        if (prop is NamePropertyData npd && npd.Value?.IsDummy == true)
+        {
+            npd.Value = FName.FromString(asset, npd.Value.Value.Value);
+            count++;
+        }
+        // Enum values serialize as FNames in tagged writes.
+        if (prop is EnumPropertyData epd && epd.Value != null && epd.Value.IsDummy)
+        {
+            epd.Value = FName.FromString(asset, epd.Value.Value.Value);
+            count++;
+        }
+        if (prop is StructPropertyData spd)
+            foreach (var inner in spd.Value) count += MaterializeNames(inner, asset);
+        else if (prop is ArrayPropertyData apd)
+            foreach (var inner in apd.Value.OfType<PropertyData>()) count += MaterializeNames(inner, asset);
+        else if (prop is MapPropertyData mpd)
+            foreach (var kv in mpd.Value)
+            {
+                if (kv.Key is PropertyData kp) count += MaterializeNames(kp, asset);
+                if (kv.Value is PropertyData vp) count += MaterializeNames(vp, asset);
+            }
+        return count;
+    }
+
     // ========================================================================
     // --patch-named-exports: Patch properties on specific named exports
     // ========================================================================
@@ -1385,6 +1658,49 @@ class Program
                 break;
             }
             
+            case "set_soft_ref":
+            {
+                // Vanilla-conformant soft object path (e.g. tire physics assets:
+                // /Game/Cars/Parts/Tire/<Name> + <Name>). No import-table entry
+                // is needed; the game resolves the package at use time. Writing
+                // a hard ObjectPropertyData here desyncs the UE5.5 unversioned
+                // header (schema type is FSoftObjectPath) and corrupts the row.
+                var (container, prop) = ResolvePropertyWithContainer(properties, path);
+                var packageName = patch.GetProperty("package_path").GetString()!;
+                var assetName = patch.GetProperty("asset_name").GetString()!;
+                var softPath = new FSoftObjectPath(
+                    FName.FromString(asset, packageName),
+                    FName.FromString(asset, assetName),
+                    new FString(""));
+                var leafName = path.Split('.').Last();
+
+                SoftObjectPropertyData newSoft;
+                if (prop is SoftObjectPropertyData existing)
+                {
+                    existing.Value = softPath;
+                    newSoft = existing;
+                }
+                else
+                {
+                    newSoft = new SoftObjectPropertyData(FName.FromString(asset, leafName)) { Value = softPath };
+                    newSoft.PropertyTypeName = MakeTypeName(asset, newSoft.PropertyType);
+                    if (container != null)
+                    {
+                        int ridx = -1;
+                        for (int i = 0; i < container.Count; i++)
+                            if (ReferenceEquals(container[i], prop)) { ridx = i; break; }
+                        if (ridx >= 0) container[ridx] = newSoft;
+                        else container.Add(newSoft);
+                    }
+                    else
+                    {
+                        properties.Add(newSoft);
+                    }
+                }
+                Console.WriteLine($"    set_soft_ref: {path} -> {packageName}|{assetName}");
+                break;
+            }
+            
             case "set_import_ref":
             case "set_or_create_import_ref":
             {
@@ -1468,8 +1784,16 @@ class Program
                 if (prop is ObjectPropertyData objProp)
                     objProp.Value = FPackageIndex.FromRawIndex(0);
                 else if (prop is SoftObjectPropertyData softProp)
+                {
+                    // Soft paths serialize through the asset's soft-path list;
+                    // constructing the null path with raw name indices produced
+                    // a stale list index on write (read back as the old ref).
+                    // Use the same name-resolution as set_soft_ref.
                     softProp.Value = new FSoftObjectPath(
-                        new FTopLevelAssetPath(new FName(asset, 0), new FName(asset, 0)), null);
+                        FName.FromString(asset, "None"),
+                        FName.FromString(asset, "None"),
+                        new FString(""));
+                }
                 break;
             }
             
@@ -1546,11 +1870,26 @@ class Program
                         patch.GetProperty("asset_name").GetString()!,
                         addCdoImport);
                     
-                    var newEntry = new ObjectPropertyData(FName.FromString(asset, arr.Value.Length.ToString()))
+                    // Clone the last existing element and swap its Value — constructing
+                    // a property from scratch fabricates an FName that corrupts
+                    // unversioned (schema-driven) serialization on the client build.
+                    var last = arr.Value.Length > 0 ? arr.Value[arr.Value.Length - 1] : null;
+                    PropertyData newEntry;
+                    if (last != null)
                     {
-                        Value = FPackageIndex.FromImport(importIdx - 1)
-                    };
-                    newEntry.PropertyTypeName = MakeTypeName(asset, newEntry.PropertyType);
+                        newEntry = (PropertyData)last.Clone();
+                        if (newEntry is ObjectPropertyData opd)
+                            opd.Value = FPackageIndex.FromImport(importIdx - 1);
+                    }
+                    else
+                    {
+                        var opd = new ObjectPropertyData(FName.FromString(asset, arr.Value.Length.ToString()))
+                        {
+                            Value = FPackageIndex.FromImport(importIdx - 1)
+                        };
+                        opd.PropertyTypeName = MakeTypeName(asset, opd.PropertyType);
+                        newEntry = opd;
+                    }
 
                     var list = new List<PropertyData>(arr.Value);
                     list.Add(newEntry);
@@ -1670,9 +2009,16 @@ class Program
                     {
                         foreach (var entry in mapValue.EnumerateObject())
                         {
-                            var keyProp = new NamePropertyData(new FName(asset, leafName, 0))
-                            { Value = FName.FromString(asset, entry.Name) };
-                            keyProp.PropertyTypeName = MakeTypeName(asset, keyProp.PropertyType);
+                            // Vanilla serializes LevelRequirementToBuy keys as
+                            // EnumPropertyData with the license name as the
+                            // enum VALUE (e.g. CL_Police). Property name must
+                            // stay the map's leaf name; writing the license
+                            // into the ctor arg corrupts the header.
+                            var keyProp = new EnumPropertyData(new FName(asset, leafName, 0))
+                            {
+                                Value = FName.FromString(asset, entry.Name),
+                                PropertyTypeName = MakeTypeName(asset, new FString("EnumProperty"))
+                            };
                             var valProp = new IntPropertyData(new FName(asset, leafName, 0))
                             { Value = entry.Value.GetInt32() };
                             valProp.PropertyTypeName = MakeTypeName(asset, valProp.PropertyType);
@@ -2171,6 +2517,7 @@ class Program
                 catch (Exception ex)
                 {
                     Console.WriteLine($"  Warning: RawExport DataTable conversion failed: {ex.Message}");
+                    Console.WriteLine(ex.StackTrace ?? "(no stack)");
                 }
             }
         }
