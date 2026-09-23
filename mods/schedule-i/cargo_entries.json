@@ -162,20 +162,11 @@
       "mesh_path": "/Game/Models/PolygonGangWarfare/Meshes/Props/SM_Prop_Packet_Stack_Large_01",
       "mass_kg": 900,
       "blueprint_name": "CocaineBricks",
-      "blueprint_template": "out/SmallBox.uasset",
-      "clone_old_name": "SmallBox",
+      "blueprint_template": "out/BoxPalletA.uasset",
+      "clone_old_name": "BoxPalletA",
       "cargo_flags": 11,
-      "allow_stacking": false,
       "num_cargo_min": 2,
-      "num_cargo_max": 6,
-      "extra_export_patches": [
-        {
-          "match_export": "Default__CocaineBricks_C",
-          "patches": [
-            {"path": "bCanPickup", "op": "remove"}
-          ]
-        }
-      ]
+      "num_cargo_max": 6
     },
     {
       "row_name": "CocainePackets",
