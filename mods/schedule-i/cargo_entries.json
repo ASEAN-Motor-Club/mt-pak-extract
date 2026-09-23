@@ -172,7 +172,7 @@
         {
           "match_export": "Default__CocaineBricks_C",
           "patches": [
-            {"path": "bCanPickup", "op": "set", "value": false}
+            {"path": "bCanPickup", "op": "remove"}
           ]
         }
       ]

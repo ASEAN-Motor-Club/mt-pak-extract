@@ -1597,6 +1597,25 @@ class Program
                 break;
             }
             
+            case "remove":
+            {
+                // Vanilla convention for "not hand-carryable": omit bCanPickup
+                // entirely (pallets/heavy cargo never serialize the bool; absence
+                // = class default False). A serialized False bool is a tag the
+                // vanilla loader never normally sees on these CDOs.
+                var prop = ResolveProperty(properties, path);
+                if (prop != null)
+                {
+                    properties.Remove(prop);
+                    Console.WriteLine($"    Removed property '{path}' ({prop.GetType().Name})");
+                }
+                else
+                {
+                    Console.WriteLine($"    remove: property '{path}' not present (no-op)");
+                }
+                break;
+            }
+            
             case "set_enum":
             {
                 var prop = ResolveProperty(properties, path);
