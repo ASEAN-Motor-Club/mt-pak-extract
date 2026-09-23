@@ -843,14 +843,23 @@ class Program
                 foreach (var exportPatch in epProp.EnumerateArray())
                 {
                     var matchClass = exportPatch.TryGetProperty("match_class", out var mcProp) ? mcProp.GetString() : null;
+                    // NOTE: match_class cannot match a Blueprint CDO whose
+                    // ClassIndex is an EXPORT link (GetExportClassType returns a
+                    // dummy index string) — use match_export (export ObjectName,
+                    // applied AFTER rename) for CDO targets, e.g. "Default__X_C".
+                    var meStr = exportPatch.TryGetProperty("match_export", out var meProp) ? meProp.GetString() : null;
+                    var matchExport = meStr;
                     
                     foreach (var export in asset.Exports)
                     {
                         if (export is NormalExport ne)
                         {
                             bool classMatch = matchClass == null || export.GetExportClassType()?.Value?.Value == matchClass;
-                            if (classMatch && exportPatch.TryGetProperty("patches", out var patches))
+                            bool nameMatch = matchExport == null || export.ObjectName.Value?.Value == matchExport;
+                            if (classMatch && nameMatch && exportPatch.TryGetProperty("patches", out var patches))
+                            {
                                 ApplyPatches(ne.Data, patches, asset);
+                            }
                         }
                     }
                 }
@@ -1559,7 +1568,7 @@ class Program
                         break;
                     case JsonValueKind.True:
                     case JsonValueKind.False:
-                        if (prop is BoolPropertyData bp) bp.Value = val.GetBoolean();
+                        if (prop is BoolPropertyData bp) { bp.Value = val.GetBoolean(); bp.IsZero = !val.GetBoolean(); }
                         break;
                     case JsonValueKind.String:
                         if (prop is StrPropertyData sp) sp.Value = FString.FromString(val.GetString());

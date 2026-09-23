@@ -167,7 +167,15 @@
       "cargo_flags": 11,
       "allow_stacking": false,
       "num_cargo_min": 2,
-      "num_cargo_max": 6
+      "num_cargo_max": 6,
+      "extra_export_patches": [
+        {
+          "match_export": "Default__CocaineBricks_C",
+          "patches": [
+            {"path": "bCanPickup", "op": "set", "value": false}
+          ]
+        }
+      ]
     },
     {
       "row_name": "CocainePackets",
