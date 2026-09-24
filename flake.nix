@@ -10,15 +10,20 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        overlays = [ (import rust-overlay) ];
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+    rust-overlay,
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
+        overlays = [(import rust-overlay)];
         pkgs = import nixpkgs {
           inherit system overlays;
         };
         rustToolchain = pkgs.rust-bin.stable.latest.default;
-        
+
         # Script to run both extraction and parsing
         extractScript = pkgs.writeShellApplication {
           name = "extract-assets";
@@ -28,7 +33,7 @@
             dotnet-sdk_8
             openssl
             pkg-config
-            gcc  # C linker (cc) for cargo + libstdc++.so.6 for Oodle
+            gcc # C linker (cc) for cargo + libstdc++.so.6 for Oodle
           ];
           text = ''
             set -euo pipefail
@@ -45,34 +50,34 @@
             # Step 1: Extract from PAK using Rust
             echo "Step 1: Extracting assets from PAK..."
             cargo run --release --quiet -- --config "$CONFIG"
-            
+
             # Step 2: Parse extracted assets using C#
             echo
             echo "Step 2: Parsing extracted assets..."
             cd csharp/UAssetTool
             dotnet run --configuration Release --verbosity quiet -- --batch
-            
+
             echo
             echo "=== Complete! Output in out/ ==="
             ls -1 ../../out/*_parsed.json 2>/dev/null || echo "No parsed files found"
           '';
         };
-        
+
         # Script to aggregate parsed data into SQLite
         aggregateScript = pkgs.writeShellApplication {
           name = "aggregate-to-sqlite";
           runtimeInputs = with pkgs; [
-            (python312.withPackages (ps: with ps; [ ]))
+            (python312.withPackages (ps: with ps; []))
           ];
           text = ''
             set -euo pipefail
-            
+
             echo "=== MotorTown Data Aggregation ==="
             echo "Aggregating parsed JSON into SQLite database..."
             echo
-            
+
             python3 scripts/aggregate_to_sqlite.py
-            
+
             echo
             echo "=== Database Export ==="
             if [ -f motortown.db ]; then
@@ -81,21 +86,21 @@
             fi
           '';
         };
-      in
-      {
+      in {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             rustToolchain
             pkg-config
             openssl
             dotnet-sdk_8
-            (python312.withPackages (ps: with ps; [
-              pip
-            ]))
+            (python312.withPackages (ps:
+              with ps; [
+                pip
+              ]))
             imagemagick
             librsvg
             sqlite
-            gcc.cc.lib  # libstdc++.so.6 for Oodle decompression at runtime
+            gcc.cc.lib # libstdc++.so.6 for Oodle decompression at runtime
           ];
 
           shellHook = ''
@@ -113,12 +118,12 @@
             echo "  cargo run -- --config X  - Extract assets from config file"
           '';
         };
-        
+
         apps.extract = {
           type = "app";
           program = "${extractScript}/bin/extract-assets";
         };
-        
+
         apps.aggregate = {
           type = "app";
           program = "${aggregateScript}/bin/aggregate-to-sqlite";
