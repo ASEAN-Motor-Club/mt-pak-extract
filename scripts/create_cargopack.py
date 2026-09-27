@@ -18,6 +18,8 @@ Usage:
 
 import argparse
 import json
+import shutil
+import subprocess
 import os
 
 from modbase import ModBuilder, add_common_args, load_mod_config, compute_output_path, resolve_game_version
@@ -204,6 +206,17 @@ class CargoModBuilder(ModBuilder):
                 }],
             }
 
+            # can_pickup: explicit False marks the cargo as NOT hand-carryable
+            # (bCanPickup=False on the CDO). match_export targets the CDO AFTER
+            # rename (match_class cannot match Blueprint CDOs).
+            if entry.get("can_pickup") is False:
+                asset_spec["export_patches"].append({
+                    "match_export": f"Default__{bp_name}_C",
+                    "patches": [
+                        {"path": "bCanPickup", "op": "set", "value": False},
+                    ],
+                })
+
             cargo_flags = entry.get("cargo_flags", 0)
             is_loadable = bool(cargo_flags & (1 | 2 | 8))
             if is_loadable:
@@ -246,6 +259,16 @@ class CargoModBuilder(ModBuilder):
         CompositeDataTable), which gets registered via ParentTables.
         """
         rows = []
+        composite_rows = []
+        # Dump-surface ref mode:
+        #   default / SI_DUMP_HARD -> hard import refs into REPLACEMENT Cargos_01
+        #     with use_existing_import (vanilla child already imports Coal/M_Coal;
+        #     zero import-table delta = vanilla merge behavior, refs render)
+        #   SI_DUMP_SOFT=1  -> child row, soft surface refs (boots, invisible)
+        #   default         -> child row, null refs + DumpPileActorClass soft ref
+        hard_c01 = not os.environ.get("SI_DUMP_SOFT")
+        ref_op = ("set_soft_object" if os.environ.get("SI_DUMP_SOFT")
+                  else "set_import_ref")
         for entry in self.config["entries"]:
             patches = [
                 {"path": "bDepcreated", "op": "set", "value": False},
@@ -294,19 +317,28 @@ class CargoModBuilder(ModBuilder):
                 # cargos — the game projects this mesh+material over the dump
                 # bed volume (vanilla Coal/Sand/Limestone pattern). Leaving
                 # them null renders the cargo invisible in dump beds.
-                *(
-                    [
-                        {"path": "DumpCargoSurfaceMesh", "op": "set_import_ref",
-                         "class_package": "/Script/Engine",
-                         "class_name": "StaticMesh",
-                         "package_path": entry["dump_mesh_path"].rsplit("/", 1)[0],
-                         "asset_name": entry["dump_mesh_path"].rsplit("/", 1)[1]},
-                        {"path": "DumpCargoSurfaceMaterial", "op": "set_import_ref",
-                         "class_package": "/Script/Engine",
-                         "class_name": "MaterialInstanceConstant",
-                         "package_path": entry["dump_material_path"].rsplit("/", 1)[0],
-                         "asset_name": entry["dump_material_path"].rsplit("/", 1)[1]},
-                    ]
+                # Dump-surface refs: see ref_op note above the loop.
+                *((
+                        ([dict({"path": "DumpCargoSurfaceMesh", "op": ref_op,
+                                "package_path": entry["dump_mesh_path"].rsplit("/", 1)[0],
+                                "asset_name": entry["dump_mesh_path"].rsplit("/", 1)[1],
+                                "use_existing_import": hard_c01,
+                                "dedupe_imports": True},
+                               **({"class_package": "/Script/Engine", "class_name": "StaticMesh"}
+                                  if ref_op == "set_import_ref" else {})),
+                          dict({"path": "DumpCargoSurfaceMaterial", "op": ref_op,
+                                "package_path": entry["dump_material_path"].rsplit("/", 1)[0],
+                                "asset_name": entry["dump_material_path"].rsplit("/", 1)[1],
+                                "use_existing_import": hard_c01,
+                                "dedupe_imports": True},
+                               **({"class_package": "/Script/Engine", "class_name": "MaterialInstanceConstant"}
+                                  if ref_op == "set_import_ref" else {}))])
+                      + ([{"path": "DumpPileActorClass", "op": "set_soft_object",
+                           "package": entry.get("dump_pile_package",
+                                                "/Game/Objects/Mission/Delivery/DumpPile/Limestone"),
+                           "asset": entry.get("dump_pile_asset", "Limestone_C")}]
+                         if ref_op != "set_import_ref" else [])
+                    )
                     if entry.get("dump_mesh_path") and entry.get("dump_material_path")
                     else [
                         {"path": "DumpCargoSurfaceMesh", "op": "null_ref"},
@@ -326,14 +358,24 @@ class CargoModBuilder(ModBuilder):
                     "values": entry["cargo_space_types"],
                 })
 
-            rows.append({
+            row = {
                 "row_name": entry["row_name"],
                 "patches": patches,
-            })
+            }
+            # NOTE: rows must live in a CHILD table — the engine ignores
+            # composite inline rows. Rows with hard dump refs go into a
+            # REPLACEMENT vanilla Cargos_01 (step 2b1): its cook-native import
+            # table already holds Coal/M_Coal, and use_existing_import reuses
+            # those slots — zero import-table delta, vanilla merge behavior.
+            # Other rows stay in our Cargos_ScheduleI child (soft refs only).
+            has_hard_dump = any(
+                p.get("op") == "set_import_ref" for p in patches)
+            (composite_rows if has_hard_dump else rows).append(row)
 
         return {
             "output_filename": self.CHILD_TABLE_NAME,
             "rows": rows,
+            "composite_rows": composite_rows,
         }
 
     def _item_rows_config(self):
@@ -504,9 +546,54 @@ class CargoModBuilder(ModBuilder):
             ],
         }
 
+    def _copy_parent_class_assets(self, template: str, dest_dir: str, dp_name: str):
+        """Copy a DP template's BlueprintGeneratedClass parent assets next to
+        the patch output so UAssetAPI can resolve parent schemas at WRITE time.
+
+        The usmap lacks some game classes (e.g. Farm_Base__C); UAssetAPI then
+        falls back to reading the parent's .uasset from the template's own
+        directory. The patch op writes into a flat working dir, so without
+        this copy the parent lookup fails, the unversioned header skips
+        properties, and the written stream desyncs (client TArray crash).
+        """
+        try:
+            prebuilt = os.path.join(self.csharp_dir, "bin", "Release", "net8.0", "UAssetTool")
+            cmd = [prebuilt] if os.path.isfile(prebuilt) else ["dotnet", "run", "--configuration", "Release", "--verbosity", "quiet", "--"]
+            r = subprocess.run(cmd + ["--dump", os.path.abspath(template)],
+                               cwd=self.csharp_dir, capture_output=True, text=True)
+            dump = r.stdout or ""
+        except Exception as e:
+            self.log(f"  WARNING: parent-class scan failed for {dp_name}: {e}")
+            return
+        template_dir = os.path.dirname(os.path.abspath(template))
+        for line in dump.splitlines():
+            if "Class=BlueprintGeneratedClass" not in line:
+                continue
+            pkg = ""
+            for part in line.split(","):
+                part = part.strip()
+                if part.startswith("ClassPkg="):
+                    pkg = part[len("ClassPkg="):].strip()
+                    break
+            if not pkg:
+                continue
+            parent_name = pkg.rsplit("/", 1)[-1]
+            parent_asset = os.path.join(template_dir, parent_name + ".uasset")
+            if not os.path.isfile(parent_asset):
+                continue
+            if os.path.abspath(parent_asset) == os.path.abspath(template):
+                continue
+            os.makedirs(dest_dir, exist_ok=True)
+            for ext in (".uasset", ".uexp"):
+                src = os.path.join(template_dir, parent_name + ext)
+                if os.path.isfile(src):
+                    shutil.copy2(src, os.path.join(dest_dir, parent_name + ext))
+            self.log(f"  Copied parent class asset {parent_name} for {dp_name}")
+
     def _recipe_cdo_config(self, dp_name, recipes, storage_entries,
                           demand_entries=None, cdo_patches=None,
-                          replace_production_configs=False):
+                          replace_production_configs=False,
+                          replace_storage=True):
         """Generate --patch-cdo-arrays config for a delivery point."""
         arrays = []
 
@@ -572,7 +659,10 @@ class CargoModBuilder(ModBuilder):
                 "property_name": "StorageConfigs",
                 "template_source": os.path.join(
                     self.repo_root, self.template_root, "Factory_Toy.uasset"),
-                "replace": True,
+                # replace=True kills the DP's vanilla CargoType-keyed storage
+                # (CourierService: SmallPackage 50 / LargePackage 6). A storage
+                # section can opt into append mode via "replace_storage": false.
+                "replace": replace_storage,
                 "entries": entries,
             })
 
@@ -690,6 +780,32 @@ class CargoModBuilder(ModBuilder):
                          cloned_child, self.child_table_output_dir,
                          "add-cargo-rows-child")
 
+        # Step 2b1: rows carrying HARD dump refs (e.g. CocaPaste) are added to
+        # a REPLACEMENT vanilla Cargos_01 — the child table that already hosts
+        # all vanilla rows including dump rows with hard refs. Its cook-native
+        # import table already holds Coal/M_Coal; use_existing_import reuses
+        # those slots (zero import-table delta). No alignment, no new imports.
+        c01_staging = None
+        if config.get("composite_rows"):
+            self.log_step("2b1", "Add hard-ref dump rows to replacement Cargos_01")
+            c01_dir = os.path.join(self.build_dir, "cargos_01")
+            os.makedirs(c01_dir, exist_ok=True)
+            c01_template = os.path.join(self.repo_root, self.template_root,
+                                        "Cargos_01.uasset")
+            if not os.path.exists(c01_template):
+                c01_template = os.path.join(self.repo_root, "out",
+                                            "Cargos_01.uasset")
+            self.run_generic("--add-rows",
+                             {"output_filename": "Cargos_01",
+                              "rows": config["composite_rows"]},
+                             c01_template,
+                             c01_dir,
+                             "add-dump-rows-cargos01")
+            c01_staging = os.path.join(c01_dir, "Cargos_01.uasset")
+
+        # Step 2b2: (removed) import-table alignment — superseded by hosting
+        # hard-ref rows in a replacement Cargos_01 with zero import delta.
+
         # Step 2c: Patch parent CompositeDataTable to register child
         self.log_step("2c", "Register child in parent CompositeDataTable")
         self.cargos_output_dir = os.path.join(self.build_dir, "cargos")
@@ -699,6 +815,10 @@ class CargoModBuilder(ModBuilder):
         self.run_generic("--patch-export-props", parent_config,
                          cargos_template, self.cargos_output_dir,
                          "patch-composite-parent")
+
+        # Stage the replacement Cargos_01 (same DataAsset folder as Cargos).
+        if c01_staging and os.path.exists(c01_staging):
+            self.stage_asset(c01_staging, "DataAsset", name="Cargos_01")
 
         # Step 2d: custom item rows — appended to the Items_Furnitures child
         # table (the master Items composite already includes it as a parent;
@@ -749,7 +869,8 @@ class CargoModBuilder(ModBuilder):
             return work_by_dp.setdefault(dp_name, {
                 "template": resolve_tp(template_entry), "recipes": [],
                 "storage": [], "demand": [], "cdo": None,
-                "replace_production_configs": template_entry.get("replace_production_configs", False)})
+                "replace_production_configs": template_entry.get("replace_production_configs", False),
+                "replace_storage": True})
 
         for section, mode in [("sources", "source"), ("sinks", "sink"),
                                ("transforms", "transform"),
@@ -763,6 +884,7 @@ class CargoModBuilder(ModBuilder):
         for dp in self.recipe_config.get("storage", []):
             dp_name = dp["delivery_point"]
             work = get_work(dp_name, dp)
+            work["replace_storage"] = dp.get("replace_storage", True)
             for entry in dp["entries"]:
                 work["storage"].append(entry)
 
@@ -803,11 +925,13 @@ class CargoModBuilder(ModBuilder):
         # Process each delivery point
         for dp_name, work in work_by_dp.items():
             template = cloned_templates.get(dp_name, work["template"])
+            self._copy_parent_class_assets(template, self.recipes_output_dir, dp_name)
             config = self._recipe_cdo_config(
                 dp_name, work["recipes"], work["storage"],
                 demand_entries=work["demand"] if work["demand"] else None,
                 cdo_patches=work["cdo"] if work["cdo"] else None,
-                replace_production_configs=work.get("replace_production_configs", False))
+                replace_production_configs=work.get("replace_production_configs", False),
+                replace_storage=work.get("replace_storage", True))
             self.run_generic("--patch-cdo-arrays", config,
                              template, self.recipes_output_dir,
                              f"recipes-{dp_name}")
@@ -838,6 +962,8 @@ class CargoModBuilder(ModBuilder):
             for dp in self.recipe_config.get(section, []):
                 all_dps.add(dp["delivery_point"])
         for dp in self.recipe_config.get("storage", []):
+            all_dps.add(dp["delivery_point"])
+        for dp in self.recipe_config.get("demand_configs", []):
             all_dps.add(dp["delivery_point"])
 
         for dp_name in all_dps:
