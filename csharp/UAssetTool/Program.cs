@@ -863,7 +863,11 @@ class Program
                         if (export is NormalExport ne)
                         {
                             bool classMatch = matchClass == null || export.GetExportClassType()?.Value?.Value == matchClass;
-                            bool nameMatch = matchExport == null || export.ObjectName.Value?.Value == matchExport;
+                            // match_export supports a trailing '*' as an export-name prefix
+                            bool nameMatch = matchExport == null
+                                || (matchExport.EndsWith("*")
+                                    ? (export.ObjectName.Value?.Value ?? "").StartsWith(matchExport.TrimEnd('*'))
+                                    : export.ObjectName.Value?.Value == matchExport);
                             if (classMatch && nameMatch && exportPatch.TryGetProperty("patches", out var patches))
                             {
                                 ApplyPatches(ne.Data, patches, asset);
