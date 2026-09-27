@@ -222,6 +222,29 @@
           "production_time": 300
         }
       ]
+    },
+    {
+      "delivery_point": "Factory_Limestone_Drop",
+      "template_path": "Factory_Limestone_Drop.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {
+          "input_cargo": "Moonshine",
+          "input_count": 1,
+          "output_cargo": "Moonshine",
+          "output_count": 1,
+          "production_time": 1,
+          "hidden": false
+        },
+        {
+          "input_cargo": "Moonshine",
+          "input_count": 1,
+          "output_cargo": "Money",
+          "output_count": 1,
+          "production_time": 1,
+          "hidden": false
+        }
+      ]
     }
   ],
   "catalysts": [
@@ -453,6 +476,21 @@
         {
           "cargo_key": "Money",
           "max_storage": 40
+        }
+      ]
+    },
+    {
+      "delivery_point": "Factory_Limestone_Drop",
+      "template_path": "Factory_Limestone_Drop.uasset",
+      "replace_storage": false,
+      "entries": [
+        {
+          "cargo_key": "Moonshine",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "Money",
+          "max_storage": 50
         }
       ]
     }
