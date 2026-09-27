@@ -214,7 +214,6 @@
       "payment_multiplier": 2.0,
       "base_payment": 250,
       "spawn_probability": 0,
-      "mesh_path": "/Game/AssetsvilleTown/Meshes/StreetProps/SM_carton_box_pallete",
       "mass_kg": 30,
       "blueprint_name": "CocainePackets",
       "blueprint_template": "out/BoxPalletA.uasset",
@@ -222,8 +221,7 @@
       "cargo_flags": 11,
       "allow_stacking": false,
       "num_cargo_min": 5,
-      "num_cargo_max": 15,
-      "remove_merged_meshes": true
+      "num_cargo_max": 15
     },
     {
       "row_name": "CocaineBags",
