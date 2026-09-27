@@ -210,17 +210,6 @@ class CargoModBuilder(ModBuilder):
                 }],
             }
 
-            # can_pickup: explicit False marks the cargo as NOT hand-carryable
-            # (bCanPickup=False on the CDO). match_export targets the CDO AFTER
-            # rename (match_class cannot match Blueprint CDOs).
-            if entry.get("can_pickup") is False:
-                asset_spec["export_patches"].append({
-                    "match_export": f"Default__{bp_name}_C",
-                    "patches": [
-                        {"path": "bCanPickup", "op": "set", "value": False},
-                    ],
-                })
-
             cargo_flags = entry.get("cargo_flags", 0)
             is_loadable = bool(cargo_flags & (1 | 2 | 8))
             if is_loadable:
