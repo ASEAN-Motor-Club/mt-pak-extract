@@ -2,7 +2,7 @@
   "sources": [
     {
       "delivery_point": "Factory_Bottle",
-      "template_path": "out/client/Factory_Bottle.uasset",
+      "template_path": "Factory_Bottle.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -14,7 +14,7 @@
     },
     {
       "delivery_point": "CrudeOil_Supplier",
-      "template_path": "out/client/CrudeOil_Supplier.uasset",
+      "template_path": "CrudeOil_Supplier.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -26,7 +26,7 @@
     },
     {
       "delivery_point": "Farm_Hemp",
-      "template_path": "out/client/Farm_Hemp.uasset",
+      "template_path": "Farm_Hemp.uasset",
       "recipes": [
         {
           "cargo": "HempPallet",
@@ -40,7 +40,7 @@
   "sinks": [
     {
       "delivery_point": "GasStation",
-      "template_path": "out/client/GasStation.uasset",
+      "template_path": "GasStation.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -54,7 +54,7 @@
   "transforms": [
     {
       "delivery_point": "CrudeOil_Supplier",
-      "template_path": "out/client/CrudeOil_Supplier.uasset",
+      "template_path": "CrudeOil_Supplier.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -70,7 +70,7 @@
     },
     {
       "delivery_point": "Mine_CopperOre",
-      "template_path": "out/client/Mine_CopperOre.uasset",
+      "template_path": "Mine_CopperOre.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -85,7 +85,7 @@
     },
     {
       "delivery_point": "Farm_Sunflower",
-      "template_path": "out/client/Farm_Sunflower.uasset",
+      "template_path": "Farm_Sunflower.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -110,7 +110,7 @@
     },
     {
       "delivery_point": "Factory_Toy",
-      "template_path": "out/client/Factory_Toy.uasset",
+      "template_path": "Factory_Toy.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -133,7 +133,7 @@
     },
     {
       "delivery_point": "CourierService",
-      "template_path": "out/client/CourierService.uasset",
+      "template_path": "CourierService.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -148,7 +148,7 @@
     },
     {
       "delivery_point": "Refinery_Oil",
-      "template_path": "out/client/Refinery_Oil.uasset",
+      "template_path": "Refinery_Oil.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -163,7 +163,7 @@
     },
     {
       "delivery_point": "Supermarket",
-      "template_path": "out/client/Supermarket.uasset",
+      "template_path": "Supermarket.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -178,7 +178,7 @@
     },
     {
       "delivery_point": "Factory_Quicklime",
-      "template_path": "out/client/Factory_Quicklime.uasset",
+      "template_path": "Factory_Quicklime.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -193,7 +193,7 @@
     },
     {
       "delivery_point": "Farm_Hemp",
-      "template_path": "out/client/Farm_Hemp.uasset",
+      "template_path": "Farm_Hemp.uasset",
       "replace_production_configs": true,
       "recipes": [
         {
@@ -210,7 +210,7 @@
     },
     {
       "delivery_point": "Export_Harbor",
-      "template_path": "out/client/Export_Harbor.uasset",
+      "template_path": "Export_Harbor.uasset",
       "replace_production_configs": false,
       "recipes": [
         {
@@ -227,7 +227,7 @@
   "catalysts": [
     {
       "delivery_point": "Farm_Sunflower",
-      "template_path": "out/client/Farm_Sunflower.uasset",
+      "template_path": "Farm_Sunflower.uasset",
       "recipes": [
         {
           "cargo": "Money",
@@ -241,7 +241,7 @@
     },
     {
       "delivery_point": "Factory_Toy",
-      "template_path": "out/client/Factory_Toy.uasset",
+      "template_path": "Factory_Toy.uasset",
       "recipes": [
         {
           "cargo": "Money",
@@ -255,7 +255,7 @@
     },
     {
       "delivery_point": "Factory_Quicklime",
-      "template_path": "out/client/Factory_Quicklime.uasset",
+      "template_path": "Factory_Quicklime.uasset",
       "recipes": [
         {
           "cargo": "Money",
@@ -269,7 +269,7 @@
     },
     {
       "delivery_point": "Farm_Hemp",
-      "template_path": "out/client/Farm_Hemp.uasset",
+      "template_path": "Farm_Hemp.uasset",
       "recipes": [
         {
           "cargo": "Money",
@@ -285,7 +285,7 @@
   "storage": [
     {
       "delivery_point": "CrudeOil_Supplier",
-      "template_path": "out/client/CrudeOil_Supplier.uasset",
+      "template_path": "CrudeOil_Supplier.uasset",
       "replace_storage": false,
       "entries": [
         {
@@ -300,7 +300,7 @@
     },
     {
       "delivery_point": "Mine_CopperOre",
-      "template_path": "out/client/Mine_CopperOre.uasset",
+      "template_path": "Mine_CopperOre.uasset",
       "entries": [
         {
           "cargo_key": "CornPallet",
@@ -314,7 +314,7 @@
     },
     {
       "delivery_point": "Farm_Hemp",
-      "template_path": "out/client/Farm_Hemp.uasset",
+      "template_path": "Farm_Hemp.uasset",
       "entries": [
         {
           "cargo_key": "Kerosene",
@@ -337,7 +337,7 @@
     },
     {
       "delivery_point": "Farm_Sunflower",
-      "template_path": "out/client/Farm_Sunflower.uasset",
+      "template_path": "Farm_Sunflower.uasset",
       "entries": [
         {
           "cargo_key": "CocaPaste",
@@ -367,7 +367,7 @@
     },
     {
       "delivery_point": "Factory_Toy",
-      "template_path": "out/client/Factory_Toy.uasset",
+      "template_path": "Factory_Toy.uasset",
       "entries": [
         {
           "cargo_key": "CocaineBricks",
@@ -385,7 +385,7 @@
     },
     {
       "delivery_point": "CourierService",
-      "template_path": "out/client/CourierService.uasset",
+      "template_path": "CourierService.uasset",
       "replace_storage": false,
       "entries": [
         {
@@ -400,7 +400,7 @@
     },
     {
       "delivery_point": "Refinery_Oil",
-      "template_path": "out/client/Refinery_Oil.uasset",
+      "template_path": "Refinery_Oil.uasset",
       "entries": [
         {
           "cargo_key": "CrudeOil",
@@ -414,7 +414,7 @@
     },
     {
       "delivery_point": "Factory_Bottle",
-      "template_path": "out/client/Factory_Bottle.uasset",
+      "template_path": "Factory_Bottle.uasset",
       "entries": [
         {
           "cargo_key": "HydrochloricAcid",
@@ -424,7 +424,7 @@
     },
     {
       "delivery_point": "Supermarket",
-      "template_path": "out/client/Supermarket.uasset",
+      "template_path": "Supermarket.uasset",
       "replace_storage": false,
       "entries": [
         {
@@ -435,7 +435,7 @@
     },
     {
       "delivery_point": "Factory_Quicklime",
-      "template_path": "out/client/Factory_Quicklime.uasset",
+      "template_path": "Factory_Quicklime.uasset",
       "replace_storage": false,
       "entries": [
         {
@@ -460,7 +460,7 @@
   "demand_configs": [
     {
       "delivery_point": "Mine_CopperOre",
-      "template_path": "out/client/Mine_CopperOre.uasset",
+      "template_path": "Mine_CopperOre.uasset",
       "entries": [
         {
           "cargo_type": "None",
@@ -472,7 +472,7 @@
     },
     {
       "delivery_point": "Supermarket",
-      "template_path": "out/client/Supermarket.uasset",
+      "template_path": "Supermarket.uasset",
       "entries": [
         {
           "cargo_type": "None",
@@ -484,7 +484,7 @@
     },
     {
       "delivery_point": "GasStation",
-      "template_path": "out/client/GasStation.uasset",
+      "template_path": "GasStation.uasset",
       "entries": [
         {
           "cargo_type": "None",
@@ -496,7 +496,7 @@
     },
     {
       "delivery_point": "Export_Harbor",
-      "template_path": "out/client/Export_Harbor.uasset",
+      "template_path": "Export_Harbor.uasset",
       "entries": [
         {
           "cargo_type": "None",
@@ -508,7 +508,7 @@
     },
     {
       "delivery_point": "Farm_Hemp",
-      "template_path": "out/client/Farm_Hemp.uasset",
+      "template_path": "Farm_Hemp.uasset",
       "entries": [
         {
           "cargo_type": "None",
@@ -521,7 +521,7 @@
     },
     {
       "delivery_point": "Farm_Sunflower",
-      "template_path": "out/client/Farm_Sunflower.uasset",
+      "template_path": "Farm_Sunflower.uasset",
       "entries": [
         {
           "cargo_type": "None",
@@ -533,7 +533,7 @@
     },
     {
       "delivery_point": "Resident",
-      "template_path": "out/client/Resident.uasset",
+      "template_path": "Resident.uasset",
       "entries": [
         {
           "cargo_type": "None",
@@ -551,7 +551,7 @@
     },
     {
       "delivery_point": "Factory_Toy",
-      "template_path": "out/client/Factory_Toy.uasset",
+      "template_path": "Factory_Toy.uasset",
       "entries": [
         {
           "cargo_type": "None",
@@ -563,7 +563,7 @@
     },
     {
       "delivery_point": "Factory_Quicklime",
-      "template_path": "out/client/Factory_Quicklime.uasset",
+      "template_path": "Factory_Quicklime.uasset",
       "entries": [
         {
           "cargo_type": "None",
