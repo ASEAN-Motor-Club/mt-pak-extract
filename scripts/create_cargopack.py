@@ -237,6 +237,20 @@ class CargoModBuilder(ModBuilder):
                     imp_repl["replace_all"] = True
                 asset_spec["import_replacements"] = [imp_repl]
 
+            # Merged-component removal: BoxPalletA-style templates carry several
+            # SM_MERGED_StaticMeshActor_* render components (the template's own
+            # stacked boxes). A mesh_path swap re-targets the ROOT component only,
+            # so the old boxes keep rendering and clip with the new mesh. This
+            # patch strips StaticMesh from the merged components so ONLY the
+            # swapped root mesh renders.
+            if entry.get("remove_merged_meshes"):
+                asset_spec["export_patches"].append({
+                    "match_export": "SM_MERGED_*",
+                    "patches": [
+                        {"path": "StaticMesh", "op": "remove"},
+                    ],
+                })
+
             # Pass through extra export patches (e.g. position adjustments)
             if "extra_export_patches" in entry:
                 asset_spec["export_patches"].extend(entry["extra_export_patches"])

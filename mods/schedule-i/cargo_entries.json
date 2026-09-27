@@ -275,7 +275,8 @@
       "cargo_flags": 11,
       "allow_stacking": false,
       "num_cargo_min": 0,
-      "num_cargo_max": 1
+      "num_cargo_max": 1,
+      "remove_merged_meshes": true
     },
     {
       "row_name": "Acetone",
@@ -356,7 +357,8 @@
       "allow_stacking": false,
       "num_cargo_min": 0,
       "num_cargo_max": 1,
-      "base_payment": 0
+      "base_payment": 0,
+      "remove_merged_meshes": true
     }
   ]
 }
