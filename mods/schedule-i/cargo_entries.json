@@ -237,7 +237,7 @@
       "weight_min": 5,
       "weight_max": 15,
       "volume_size": 1,
-      "payment_per_km": 3000,
+      "payment_per_km": 5000,
       "payment_multiplier": 1.0,
       "base_payment": 500,
       "spawn_probability": 0,
@@ -249,7 +249,8 @@
       "cargo_flags": 11,
       "allow_stacking": false,
       "num_cargo_min": 2,
-      "num_cargo_max": 8
+      "num_cargo_max": 8,
+      "payment_sqrt_ratio": 0.0
     },
     {
       "row_name": "HydrochloricAcid",
