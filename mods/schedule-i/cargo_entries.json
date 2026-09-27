@@ -218,7 +218,7 @@
       "blueprint_template": "out/BoxPalletA.uasset",
       "clone_old_name": "BoxPalletA",
       "cargo_flags": 11,
-      "allow_stacking": true,
+      "allow_stacking": false,
       "num_cargo_min": 5,
       "num_cargo_max": 15
     },
