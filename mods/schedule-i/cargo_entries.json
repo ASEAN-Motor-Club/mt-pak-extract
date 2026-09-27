@@ -284,8 +284,7 @@
     {
       "row_name": "Acetone",
       "display_name": [
-        "Acetone",
-        "Barrel"
+        "Acetone"
       ],
       "cargo_type": "None",
       "cargo_space_types": [
