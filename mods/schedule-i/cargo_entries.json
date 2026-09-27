@@ -221,9 +221,7 @@
       "cargo_flags": 11,
       "allow_stacking": false,
       "num_cargo_min": 5,
-      "num_cargo_max": 15,
-      "mesh_path": "/Game/Models/PolygonGangWarfare/Meshes/Props/SM_Prop_CardboardBox_02",
-      "remove_merged_meshes": true
+      "num_cargo_max": 15
     },
     {
       "row_name": "CocaineBags",
