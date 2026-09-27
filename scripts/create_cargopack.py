@@ -1002,6 +1002,17 @@ class CargoModBuilder(ModBuilder):
             self.stage_datatable(
                 buildings_asset, "Buildings_Furnitures", "DataAsset/Buildings")
 
+        # Motorpedia help articles: when the mod carries help_articles.json,
+        # patch the vanilla Helps DataTable (culture-invariant FText rows) and
+        # stage it so the CLIENT pak ships the in-game guide articles.
+        help_cfg = os.path.join(
+            os.path.dirname(self.config_path), "help_articles.json")
+        if os.path.isfile(help_cfg):
+            from help_articles import stage_helps
+            assert self.pak_staging is not None
+            stage_helps(self.repo_root, help_cfg, self.template_root,
+                        self.pak_staging)
+
     def print_summary(self):
         self.log(f"  Cargos: {', '.join(self.cargo_names)}")
 
