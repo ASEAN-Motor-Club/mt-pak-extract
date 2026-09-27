@@ -183,7 +183,7 @@
       "recipes": [
         {
           "input_cargos": {
-            "CocaineBase": 2
+            "CocaineBase": 1
           },
           "output_cargo": "CocaineBricks",
           "output_count": 1,

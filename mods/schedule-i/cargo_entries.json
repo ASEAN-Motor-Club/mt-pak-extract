@@ -192,8 +192,7 @@
       "clone_old_name": "BoxPalletA",
       "cargo_flags": 11,
       "num_cargo_min": 2,
-      "num_cargo_max": 6,
-      "can_pickup": false
+      "num_cargo_max": 6
     },
     {
       "row_name": "CocainePackets",
@@ -221,8 +220,7 @@
       "cargo_flags": 11,
       "allow_stacking": true,
       "num_cargo_min": 5,
-      "num_cargo_max": 15,
-      "can_pickup": false
+      "num_cargo_max": 15
     },
     {
       "row_name": "CocaineBags",
@@ -277,8 +275,7 @@
       "cargo_flags": 11,
       "allow_stacking": false,
       "num_cargo_min": 0,
-      "num_cargo_max": 1,
-      "can_pickup": false
+      "num_cargo_max": 1
     },
     {
       "row_name": "Acetone",
@@ -359,8 +356,7 @@
       "allow_stacking": false,
       "num_cargo_min": 0,
       "num_cargo_max": 1,
-      "base_payment": 0,
-      "can_pickup": false
+      "base_payment": 0
     }
   ]
 }

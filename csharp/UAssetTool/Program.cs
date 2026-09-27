@@ -47,6 +47,7 @@ class Program
         bool patchRowsMode = args.Contains("--patch-rows");
         bool patchExportMode = args.Contains("--patch-export-props");
         bool patchNamedExportsMode = args.Contains("--patch-named-exports");
+        bool alignImportsMode = args.Contains("--align-imports");
         bool dumpMode = args.Contains("--dump");
         bool ptProbe = args.Contains("--ptprobe");
         int ptIdx = Array.IndexOf(args, "--ptprobe");
@@ -165,6 +166,13 @@ class Program
             var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
             var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
             PatchNamedExports(configPath, templatePath, outputDir);
+        }
+        else if (alignImportsMode)
+        {
+            var idx = Array.IndexOf(args, "--align-imports");
+            AlignImports(args.ElementAtOrDefault(idx + 1) ?? Path.Combine(RootDir, "Cargos.uasset"),
+                         args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "child.uasset"),
+                         args.ElementAtOrDefault(idx + 3) ?? RootDir);
         }
         else if (args.Contains("--roundtrip"))
         {
@@ -843,14 +851,23 @@ class Program
                 foreach (var exportPatch in epProp.EnumerateArray())
                 {
                     var matchClass = exportPatch.TryGetProperty("match_class", out var mcProp) ? mcProp.GetString() : null;
+                    // NOTE: match_class cannot match a Blueprint CDO whose
+                    // ClassIndex is an EXPORT link (GetExportClassType returns a
+                    // dummy index string) — use match_export (export ObjectName,
+                    // applied AFTER rename) for CDO targets, e.g. "Default__X_C".
+                    var meStr = exportPatch.TryGetProperty("match_export", out var meProp) ? meProp.GetString() : null;
+                    var matchExport = meStr;
                     
                     foreach (var export in asset.Exports)
                     {
                         if (export is NormalExport ne)
                         {
                             bool classMatch = matchClass == null || export.GetExportClassType()?.Value?.Value == matchClass;
-                            if (classMatch && exportPatch.TryGetProperty("patches", out var patches))
+                            bool nameMatch = matchExport == null || export.ObjectName.Value?.Value == matchExport;
+                            if (classMatch && nameMatch && exportPatch.TryGetProperty("patches", out var patches))
+                            {
                                 ApplyPatches(ne.Data, patches, asset);
+                            }
                         }
                     }
                 }
@@ -952,6 +969,152 @@ class Program
         var outputPath = Path.Combine(outputDir, $"{outputFileName}.uasset");
         asset.Write(outputPath);
         Console.WriteLine($"Written: {outputFileName}.uasset + {outputFileName}.uexp to {outputDir}");
+    }
+
+    // --align-imports: Rebuild a child DataTable's import table so it is a
+    // superset of the composite's, with shared imports at IDENTICAL indices.
+    // The engine's CompositeDataTable merge resolves copied child-row import
+    // indices against the composite's import table; child tables whose imports
+    // are ordered differently produce garbage refs (client TArray crash,
+    // 2026-09-25 bisect). Every import reference in the child (export headers,
+    // row properties, recursively through struct/array/map/set containers) is
+    // remapped; child-only imports are appended after the composite set.
+    static string ImportKey(UAsset a, Import imp)
+    {
+        string outer = "0";
+        int oi = imp.OuterIndex != null ? imp.OuterIndex.Index : 0;
+        if (oi < 0)
+        {
+            int i = -oi - 1;
+            var list = a.Imports;
+            if (i >= 0 && i < list.Count)
+            {
+                var cur = list[i];
+                int guard = 0;
+                while (cur.OuterIndex != null && cur.OuterIndex.Index < 0 && guard++ < 16)
+                {
+                    int j = -cur.OuterIndex.Index - 1;
+                    if (j < 0 || j >= list.Count) break;
+                    cur = list[j];
+                }
+                outer = cur.ObjectName.Value != null ? (cur.ObjectName.Value.Value ?? "") : "";
+            }
+        }
+        string s(FName f) => f.Value != null ? (f.Value.Value ?? "") : "";
+        return s(imp.ClassPackage) + "|" + s(imp.ClassName) + "|" + s(imp.ObjectName) + "|" + outer;
+    }
+
+    static Import CloneImportFor(UAsset child, Import imp, int outerIndex)
+    {
+        string s(FName f) => f.Value != null ? (f.Value.Value ?? "") : "";
+        return new Import(
+            new FName(child, s(imp.ClassPackage)),
+            new FName(child, s(imp.ClassName)),
+            new FPackageIndex(outerIndex),
+            new FName(child, s(imp.ObjectName)),
+            false);
+    }
+
+    static void WalkRemapProps(IEnumerable<PropertyData> props, Func<int, int> map)
+    {
+        foreach (var p in props)
+        {
+            switch (p)
+            {
+                case ObjectPropertyData opd:
+                    if (opd.Value != null && opd.Value.Index < 0)
+                        opd.Value = new FPackageIndex(map(opd.Value.Index));
+                    break;
+                case StructPropertyData spd:
+                    WalkRemapProps(spd.Value, map);
+                    break;
+                case ArrayPropertyData apd:
+                    if (apd.Value != null) WalkRemapProps(apd.Value, map);
+                    break;
+                case MapPropertyData mpd:
+                    if (mpd.Value != null)
+                    {
+                        foreach (var kv in mpd.Value)
+                        {
+                            if (kv.Key != null) WalkRemapProps(new[] { kv.Key }, map);
+                            if (kv.Value != null) WalkRemapProps(new[] { kv.Value }, map);
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+
+    static void AlignImports(string compPath, string childPath, string outputDir)
+    {
+        if (!Path.IsPathRooted(compPath)) compPath = Path.Combine(RootDir, compPath);
+        if (!Path.IsPathRooted(childPath)) childPath = Path.Combine(RootDir, childPath);
+        var comp = new UAsset(compPath, EngineVersion.VER_UE5_5, Mappings);
+        var child = new UAsset(childPath, EngineVersion.VER_UE5_5, Mappings);
+        Console.WriteLine($"Aligning imports: child={Path.GetFileName(childPath)} ({child.Imports.Count}) -> composite={Path.GetFileName(compPath)} ({comp.Imports.Count})");
+
+        var compKeyToIdx = new Dictionary<string, int>();
+        for (int i = 0; i < comp.Imports.Count; i++)
+        {
+            var k = ImportKey(comp, comp.Imports[i]);
+            if (!compKeyToIdx.ContainsKey(k)) compKeyToIdx[k] = i;
+        }
+
+        // New table = composite imports verbatim (same order => outer chains stay valid)
+        var newImports = new List<Import>();
+        foreach (var ci in comp.Imports)
+            newImports.Add(CloneImportFor(child, ci, ci.OuterIndex != null ? ci.OuterIndex.Index : 0));
+
+        // Map child imports: shared keys -> composite index; child-only -> appended
+        var remap = new int[child.Imports.Count];
+        int next = newImports.Count;
+        for (int i = 0; i < child.Imports.Count; i++)
+        {
+            var k = ImportKey(child, child.Imports[i]);
+            if (compKeyToIdx.TryGetValue(k, out var ci))
+            {
+                remap[i] = ci;
+            }
+            else
+            {
+                var oldImp = child.Imports[i];
+                int newOuter = 0;
+                if (oldImp.OuterIndex != null && oldImp.OuterIndex.Index < 0)
+                {
+                    int j = -oldImp.OuterIndex.Index - 1;
+                    newOuter = (j >= 0 && j < remap.Length && j < i) ? -(remap[j] + 1) : oldImp.OuterIndex.Index;
+                }
+                newImports.Add(CloneImportFor(child, oldImp, newOuter));
+                remap[i] = next++;
+            }
+        }
+
+        int MapRef(int idx)
+        {
+            if (idx >= 0) return idx;
+            int old = -idx - 1;
+            if (old >= 0 && old < remap.Length) return -(remap[old] + 1);
+            return idx;
+        }
+
+        foreach (var exp in child.Exports)
+        {
+            if (exp.ClassIndex != null) exp.ClassIndex = new FPackageIndex(MapRef(exp.ClassIndex.Index));
+            if (exp.SuperIndex != null) exp.SuperIndex = new FPackageIndex(MapRef(exp.SuperIndex.Index));
+            if (exp.TemplateIndex != null) exp.TemplateIndex = new FPackageIndex(MapRef(exp.TemplateIndex.Index));
+            if (exp.OuterIndex != null && exp.OuterIndex.Index < 0)
+                exp.OuterIndex = new FPackageIndex(MapRef(exp.OuterIndex.Index));
+            if (exp is NormalExport ne && ne.Data != null) WalkRemapProps(ne.Data, MapRef);
+            if (exp is DataTableExport dte && dte.Table != null && dte.Table.Data != null)
+                foreach (var row in dte.Table.Data) WalkRemapProps(row.Value, MapRef);
+        }
+
+        child.Imports = newImports;
+        Directory.CreateDirectory(outputDir);
+        var baseName = Path.GetFileNameWithoutExtension(childPath);
+        var outPath = Path.Combine(outputDir, baseName + ".uasset");
+        child.Write(outPath);
+        Console.WriteLine($"Written: {baseName}.uasset (+ .uexp) to {outputDir} — imports now {newImports.Count} (composite-aligned)");
     }
 
     static readonly string[] EnginePropertyTypeNames =
@@ -1559,7 +1722,7 @@ class Program
                         break;
                     case JsonValueKind.True:
                     case JsonValueKind.False:
-                        if (prop is BoolPropertyData bp) bp.Value = val.GetBoolean();
+                        if (prop is BoolPropertyData bp) { bp.Value = val.GetBoolean(); bp.IsZero = !val.GetBoolean(); }
                         break;
                     case JsonValueKind.String:
                         if (prop is StrPropertyData sp) sp.Value = FString.FromString(val.GetString());
@@ -1584,6 +1747,25 @@ class Program
                             Console.WriteLine($"    [type-probe] cannot set string on '{path}': {prop.GetType().Name}");
                         }
                         break;
+                }
+                break;
+            }
+            
+            case "remove":
+            {
+                // Vanilla convention for "not hand-carryable": omit bCanPickup
+                // entirely (pallets/heavy cargo never serialize the bool; absence
+                // = class default False). A serialized False bool is a tag the
+                // vanilla loader never normally sees on these CDOs.
+                var prop = ResolveProperty(properties, path);
+                if (prop != null)
+                {
+                    properties.Remove(prop);
+                    Console.WriteLine($"    Removed property '{path}' ({prop.GetType().Name})");
+                }
+                else
+                {
+                    Console.WriteLine($"    remove: property '{path}' not present (no-op)");
                 }
                 break;
             }
@@ -1706,14 +1888,61 @@ class Program
             {
                 var (container, prop) = ResolvePropertyWithContainer(properties, path);
                 var addCdoImport = patch.TryGetProperty("add_cdo_import", out var cdoFlag) && cdoFlag.GetBoolean();
-                var (_, importIdx) = AddImportChain(asset,
-                    patch.GetProperty("class_package").GetString()!,
-                    patch.GetProperty("class_name").GetString()!,
-                    patch.GetProperty("package_path").GetString()!,
-                    patch.GetProperty("asset_name").GetString()!,
-                    addCdoImport);
-                var pkgIdx = FPackageIndex.FromImport(importIdx - 1);
-                
+                int importIdx2;
+                if (patch.TryGetProperty("use_existing_import", out var ueFlag) && ueFlag.GetBoolean())
+                {
+                    // Reference an existing import by (class_name, asset_name) —
+                    // never append anything (zero import-table delta).
+                    string dAsset = patch.GetProperty("asset_name").GetString()!;
+                    string dClass = patch.GetProperty("class_name").GetString()!;
+                    int found = -1;
+                    for (int i = 0; i < asset.Imports.Count; i++)
+                    {
+                        var ast = asset.Imports[i];
+                        if (ast.ClassName.Value?.Value == dClass
+                            && ast.ObjectName.Value?.Value == dAsset)
+                        { found = i + 1; break; }
+                    }
+                    if (found < 0)
+                        throw new InvalidDataException($"use_existing_import: no import {dClass} '{dAsset}'");
+                    importIdx2 = found;
+                    Console.WriteLine($"  use_existing_import: import [{found}] = {dClass} '{dAsset}'");
+                }
+                else
+                {
+                    var (_, importIdx) = AddImportChain(asset,
+                        patch.GetProperty("class_package").GetString()!,
+                        patch.GetProperty("class_name").GetString()!,
+                        patch.GetProperty("package_path").GetString()!,
+                        patch.GetProperty("asset_name").GetString()!,
+                        addCdoImport);
+                    // dedupe_imports: reuse existing imports for the same object
+                    // instead of appending duplicates.
+                    importIdx2 = importIdx;
+                    if (patch.TryGetProperty("dedupe_imports", out var ddFlag) && ddFlag.GetBoolean())
+                {
+                    string dPkg = patch.GetProperty("package_path").GetString()!;
+                    string dAsset = patch.GetProperty("asset_name").GetString()!;
+                    string dClass = patch.GetProperty("class_name").GetString()!;
+                    for (int i = 0; i + 1 < asset.Imports.Count; i++)
+                    {
+                        var pkg = asset.Imports[i];
+                        var ast = asset.Imports[i + 1];
+                        if (pkg.ClassName.Value?.Value == "Package"
+                            && pkg.ObjectName.Value?.Value == dPkg
+                            && ast.ClassName.Value?.Value == dClass
+                            && ast.ObjectName.Value?.Value == dAsset
+                            && ast.OuterIndex != null && ast.OuterIndex.Index == -(i + 1))
+                        {
+                            importIdx2 = i + 2;
+                            Console.WriteLine($"  dedupe_imports: reusing import [{importIdx2}] for {dPkg}/{dAsset}");
+                            break;
+                        }
+                    }
+                    }
+                }
+                var pkgIdx = FPackageIndex.FromImport(importIdx2 - 1);
+
                 if (prop is ObjectPropertyData objProp)
                 {
                     objProp.Value = pkgIdx;
