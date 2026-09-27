@@ -300,7 +300,7 @@ class CargoModBuilder(ModBuilder):
                  "value": entry["payment_per_km"]},
                 {"path": "PaymentPer1KmMultiplierByMaxWeight",
                  "op": "set", "value": entry.get("payment_multiplier", 2.0)},
-                {"path": "PaymentSqrtRatio", "op": "set", "value": 1.0},
+                {"path": "PaymentSqrtRatio", "op": "set", "value": entry.get("payment_sqrt_ratio", 1.0)},
                 # 0.7.19+: ActorClass is a SoftObjectPropertyData (FSoftObjectPath
                 # with PackageName+AssetName), NOT an import reference — writing an
                 # ObjectPropertyData here silently breaks class resolution and every

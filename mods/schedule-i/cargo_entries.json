@@ -249,7 +249,8 @@
       "cargo_flags": 11,
       "allow_stacking": false,
       "num_cargo_min": 2,
-      "num_cargo_max": 8
+      "num_cargo_max": 8,
+      "payment_sqrt_ratio": 0.0
     },
     {
       "row_name": "HydrochloricAcid",
