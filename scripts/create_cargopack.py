@@ -124,7 +124,11 @@ class CargoModBuilder(ModBuilder):
             for dp in self.recipe_config.get(section, []):
                 tp = dp.get("template_path")
                 if tp:
-                    templates.add(os.path.join(self.repo_root, tp))
+                    for prefix in ("out/client/", "out/server/", "out/"):
+                        if tp.startswith(prefix):
+                            tp = tp[len(prefix):]
+                            break
+                    templates.add(os.path.join(self.repo_root, self.template_root, tp))
         polluted = []
         for tp in sorted(templates):
             if not os.path.exists(tp):
