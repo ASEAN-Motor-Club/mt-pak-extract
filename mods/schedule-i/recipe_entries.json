@@ -245,44 +245,6 @@
           "hidden": false
         }
       ]
-    },
-    {
-      "delivery_point": "Factory_Furniture",
-      "template_path": "Factory_Furniture.uasset",
-      "replace_production_configs": false,
-      "recipes": [
-        {
-          "input_cargo": "CocaineBricks",
-          "input_count": 1,
-          "output_cargo": "Money",
-          "output_count": 3,
-          "production_time": 120,
-          "hidden": false
-        },
-        {
-          "input_cargo": "CocaineBricks",
-          "input_count": 1,
-          "output_cargo": "CocainePackets",
-          "output_count": 3,
-          "production_time": 180,
-          "hidden": false
-        }
-      ]
-    },
-    {
-      "delivery_point": "Store_Furniture",
-      "template_path": "Store_Furniture.uasset",
-      "replace_production_configs": false,
-      "recipes": [
-        {
-          "input_cargo": "CocainePackets",
-          "input_count": 1,
-          "output_cargo": "CocaineBags",
-          "output_count": 5,
-          "production_time": 120,
-          "hidden": false
-        }
-      ]
     }
   ],
   "catalysts": [
