@@ -35,6 +35,18 @@
         }
       ],
       "replace_production_configs": true
+    },
+    {
+      "delivery_point": "Mine_LimestoneRockQuarry",
+      "template_path": "Mine_LimestoneRockQuarry.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {
+          "cargo": "PhosphorusRock",
+          "production_time": 120,
+          "hidden": false
+        }
+      ]
     }
   ],
   "sinks": [
@@ -157,22 +169,11 @@
           "output_cargo": "Acetone",
           "output_count": 1,
           "production_time": 180,
-          "hidden": false
-        }
-      ]
-    },
-    {
-      "delivery_point": "Supermarket",
-      "template_path": "Supermarket.uasset",
-      "replace_production_configs": false,
-      "recipes": [
-        {
-          "input_cargo": "Moonshine",
-          "input_count": 1,
-          "output_cargo": "MoonshineBottles",
-          "output_count": 5,
-          "production_time": 300,
-          "hidden": false
+          "hidden": false,
+          "output_cargos": {
+            "Acetone": 1,
+            "AnhydrousAmmonia": 1
+          }
         }
       ]
     },
@@ -188,6 +189,17 @@
           "output_cargo": "CocaineBricks",
           "output_count": 3,
           "production_time": 600
+        },
+        {
+          "input_cargos": {
+            "Pseudoephedrine": 1,
+            "Phosphorus": 1,
+            "AnhydrousAmmonia": 1
+          },
+          "output_cargo": "MethBase",
+          "output_count": 2,
+          "production_time": 900,
+          "hidden": false
         }
       ]
     },
@@ -241,6 +253,92 @@
           "input_count": 1,
           "output_cargo": "Money",
           "output_count": 1,
+          "production_time": 120,
+          "hidden": false
+        },
+        {
+          "input_cargos": {
+            "PhosphorusRock": 1
+          },
+          "output_cargo": "Phosphorus",
+          "output_count": 1,
+          "production_time": 120,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "delivery_point": "Supermarket",
+      "template_path": "Supermarket.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {
+          "input_cargo": "Money",
+          "input_count": 500,
+          "output_cargo": "Pseudoephedrine",
+          "output_count": 1,
+          "production_time": 60,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "delivery_point": "Factory_Furniture",
+      "template_path": "Factory_Furniture.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {
+          "input_cargo": "MethBase",
+          "input_count": 1,
+          "output_cargo": "HiddenMethBed",
+          "output_count": 2,
+          "production_time": 300,
+          "hidden": false
+        },
+        {
+          "input_cargo": "MethBase",
+          "input_count": 1,
+          "output_cargo": "HiddenMethSofa",
+          "output_count": 2,
+          "production_time": 300,
+          "hidden": false
+        },
+        {
+          "input_cargo": "MethBase",
+          "input_count": 1,
+          "output_cargo": "HiddenMethArmchair",
+          "output_count": 2,
+          "production_time": 300,
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "delivery_point": "Store_Furniture",
+      "template_path": "Store_Furniture.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {
+          "input_cargo": "HiddenMethBed",
+          "input_count": 1,
+          "output_cargo": "CrystalMeth",
+          "output_count": 2,
+          "production_time": 120,
+          "hidden": false
+        },
+        {
+          "input_cargo": "HiddenMethSofa",
+          "input_count": 1,
+          "output_cargo": "CrystalMeth",
+          "output_count": 2,
+          "production_time": 120,
+          "hidden": false
+        },
+        {
+          "input_cargo": "HiddenMethArmchair",
+          "input_count": 1,
+          "output_cargo": "CrystalMeth",
+          "output_count": 2,
           "production_time": 120,
           "hidden": false
         }
@@ -432,6 +530,10 @@
         {
           "cargo_key": "Acetone",
           "max_storage": 15
+        },
+        {
+          "cargo_key": "AnhydrousAmmonia",
+          "max_storage": 50
         }
       ]
     },
@@ -453,6 +555,14 @@
         {
           "cargo_key": "MoonshineBottles",
           "max_storage": 30
+        },
+        {
+          "cargo_key": "Money",
+          "max_storage": 500
+        },
+        {
+          "cargo_key": "Pseudoephedrine",
+          "max_storage": 50
         }
       ]
     },
@@ -476,6 +586,22 @@
         {
           "cargo_key": "Money",
           "max_storage": 40
+        },
+        {
+          "cargo_key": "Pseudoephedrine",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "Phosphorus",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "AnhydrousAmmonia",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "MethBase",
+          "max_storage": 50
         }
       ]
     },
@@ -490,6 +616,82 @@
         },
         {
           "cargo_key": "Money",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "PhosphorusRock",
+          "max_storage": 200
+        },
+        {
+          "cargo_key": "Phosphorus",
+          "max_storage": 50
+        }
+      ]
+    },
+    {
+      "delivery_point": "Mine_LimestoneRockQuarry",
+      "template_path": "Mine_LimestoneRockQuarry.uasset",
+      "replace_storage": false,
+      "entries": [
+        {
+          "cargo_key": "PhosphorusRock",
+          "max_storage": 200
+        }
+      ]
+    },
+    {
+      "delivery_point": "LimestoneRockDrop",
+      "template_path": "LimestoneRockDrop.uasset",
+      "replace_storage": false,
+      "entries": [
+        {
+          "cargo_key": "PhosphorusRock",
+          "max_storage": 200
+        }
+      ]
+    },
+    {
+      "delivery_point": "Factory_Furniture",
+      "template_path": "Factory_Furniture.uasset",
+      "replace_storage": false,
+      "entries": [
+        {
+          "cargo_key": "MethBase",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "HiddenMethBed",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "HiddenMethSofa",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "HiddenMethArmchair",
+          "max_storage": 50
+        }
+      ]
+    },
+    {
+      "delivery_point": "Store_Furniture",
+      "template_path": "Store_Furniture.uasset",
+      "replace_storage": false,
+      "entries": [
+        {
+          "cargo_key": "HiddenMethBed",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "HiddenMethSofa",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "HiddenMethArmchair",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "CrystalMeth",
           "max_storage": 50
         }
       ]
@@ -584,6 +786,12 @@
           "cargo_key": "MoonshineBottles",
           "payment_multiplier": 1.2,
           "max_storage": 3
+        },
+        {
+          "cargo_type": "None",
+          "cargo_key": "CrystalMeth",
+          "payment_multiplier": 2.0,
+          "max_storage": 2
         }
       ]
     },

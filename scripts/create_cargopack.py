@@ -690,7 +690,10 @@ class CargoModBuilder(ModBuilder):
                 input_map = dict(recipe["input_cargos"])
             else:
                 input_map = {recipe["input_cargo"]: recipe.get("input_count", 1)}
-            output_map = {recipe["output_cargo"]: recipe.get("output_count", 1)}
+            if "output_cargos" in recipe:
+                output_map = dict(recipe["output_cargos"])
+            else:
+                output_map = {recipe["output_cargo"]: recipe.get("output_count", 1)}
             production_time = recipe["production_time"]
             hidden = recipe.get("hidden", False)
             speed_mult = recipe.get("speed_multiplier", 1)

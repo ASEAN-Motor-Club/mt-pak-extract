@@ -360,6 +360,251 @@
       "num_cargo_max": 1,
       "base_payment": 0,
       "remove_merged_meshes": true
+    },
+    {
+      "row_name": "Pseudoephedrine",
+      "display_name": [
+        "Pseudoephedrine"
+      ],
+      "cargo_type": "None",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 5,
+      "weight_max": 10,
+      "volume_size": 1,
+      "payment_per_km": 200,
+      "payment_multiplier": 1.0,
+      "base_payment": 300,
+      "spawn_probability": 0,
+      "mesh_path": "/Game/Models/PolygonApocalypse/Meshes/Props/SM_Prop_CardboardBox_01",
+      "mass_kg": 8,
+      "blueprint_name": "Pseudoephedrine",
+      "blueprint_template": "out/SmallBox.uasset",
+      "clone_old_name": "SmallBox",
+      "cargo_flags": 11,
+      "allow_stacking": false,
+      "num_cargo_min": 5,
+      "num_cargo_max": 15
+    },
+    {
+      "row_name": "PhosphorusRock",
+      "display_name": [
+        "Phosphorus",
+        "Rock"
+      ],
+      "cargo_type": "None",
+      "cargo_space_types": [
+        "Dump"
+      ],
+      "weight_min": 200,
+      "weight_max": 400,
+      "volume_size": 1,
+      "payment_per_km": 150,
+      "payment_multiplier": 2.0,
+      "base_payment": 200,
+      "spawn_probability": 0,
+      "mass_kg": 300,
+      "blueprint_name": "PhosphorusRock",
+      "blueprint_template": "out/VolumeTypeCargo_Limestone.uasset",
+      "clone_old_name": "VolumeTypeCargo_Limestone",
+      "cargo_flags": 10,
+      "allow_stacking": false,
+      "num_cargo_min": 1,
+      "num_cargo_max": 1
+    },
+    {
+      "row_name": "Phosphorus",
+      "display_name": [
+        "Phosphorus"
+      ],
+      "cargo_type": "None",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 200,
+      "weight_max": 400,
+      "volume_size": 1,
+      "payment_per_km": 400,
+      "payment_multiplier": 2.0,
+      "base_payment": 400,
+      "spawn_probability": 0,
+      "mesh_path": "/Game/Env/Meshes/Refinery/SM_Refinery_OilBarrel_Pallet_03",
+      "mass_kg": 800,
+      "blueprint_name": "Phosphorus",
+      "blueprint_template": "out/BoxPalletA.uasset",
+      "clone_old_name": "BoxPalletA",
+      "cargo_flags": 10,
+      "allow_stacking": false,
+      "remove_merged_meshes": true,
+      "num_cargo_min": 5,
+      "num_cargo_max": 15
+    },
+    {
+      "row_name": "AnhydrousAmmonia",
+      "display_name": [
+        "Anhydrous",
+        "Ammonia"
+      ],
+      "cargo_type": "None",
+      "cargo_space_types": [
+        "Tanker"
+      ],
+      "weight_min": 200,
+      "weight_max": 400,
+      "volume_size": 1,
+      "payment_per_km": 400,
+      "payment_multiplier": 2.0,
+      "base_payment": 400,
+      "spawn_probability": 0,
+      "mass_kg": 500,
+      "blueprint_name": "AnhydrousAmmonia",
+      "blueprint_template": "out/VolumeTypeCargo_Sand.uasset",
+      "clone_old_name": "VolumeTypeCargo_Sand",
+      "cargo_flags": 10,
+      "allow_stacking": false,
+      "num_cargo_min": 1,
+      "num_cargo_max": 1
+    },
+    {
+      "row_name": "MethBase",
+      "display_name": [
+        "Meth",
+        "Base"
+      ],
+      "cargo_type": "None",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 200,
+      "weight_max": 400,
+      "volume_size": 1,
+      "payment_per_km": 2500,
+      "payment_multiplier": 1.0,
+      "base_payment": 1000,
+      "spawn_probability": 0,
+      "mesh_path": "/Game/Env/Meshes/Refinery/SM_Refinery_OilBarrel_Pallet_02",
+      "mass_kg": 800,
+      "blueprint_name": "MethBase",
+      "blueprint_template": "out/BoxPalletA.uasset",
+      "clone_old_name": "BoxPalletA",
+      "cargo_flags": 10,
+      "allow_stacking": false,
+      "remove_merged_meshes": true,
+      "num_cargo_min": 5,
+      "num_cargo_max": 15
+    },
+    {
+      "row_name": "CrystalMeth",
+      "display_name": [
+        "Crystal",
+        "Meth"
+      ],
+      "cargo_type": "None",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 5,
+      "weight_max": 15,
+      "volume_size": 1,
+      "payment_per_km": 4000,
+      "payment_multiplier": 1.0,
+      "base_payment": 1000,
+      "spawn_probability": 0,
+      "mesh_path": "/Game/Models/PolygonGangWarfare/Meshes/Props/SM_Prop_Packet_05",
+      "mass_kg": 10,
+      "blueprint_name": "CrystalMeth",
+      "blueprint_template": "out/CheeseBox.uasset",
+      "clone_old_name": "CheeseBox",
+      "cargo_flags": 11,
+      "allow_stacking": false,
+      "num_cargo_min": 10,
+      "num_cargo_max": 25
+    },
+    {
+      "row_name": "HiddenMethBed",
+      "display_name": [
+        "Bed",
+        "with hidden CrystalMeth"
+      ],
+      "cargo_type": "Furniture",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 50,
+      "weight_max": 80,
+      "volume_size": 1,
+      "payment_per_km": 3000,
+      "payment_multiplier": 1.0,
+      "base_payment": 800,
+      "spawn_probability": 0,
+      "mass_kg": 60,
+      "blueprint_name": "HiddenMethBed",
+      "blueprint_template": "out/Bed_01.uasset",
+      "clone_old_name": "Bed_01",
+      "cargo_flags": 10,
+      "allow_stacking": false,
+      "num_cargo_min": 2,
+      "num_cargo_max": 6
+    },
+    {
+      "row_name": "HiddenMethSofa",
+      "display_name": [
+        "Sofa",
+        "with hidden CrystalMeth"
+      ],
+      "cargo_type": "Furniture",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 60,
+      "weight_max": 100,
+      "volume_size": 1,
+      "payment_per_km": 3000,
+      "payment_multiplier": 1.0,
+      "base_payment": 800,
+      "spawn_probability": 0,
+      "mass_kg": 80,
+      "blueprint_name": "HiddenMethSofa",
+      "blueprint_template": "out/Sofa_01.uasset",
+      "clone_old_name": "Sofa_01",
+      "cargo_flags": 10,
+      "allow_stacking": false,
+      "num_cargo_min": 2,
+      "num_cargo_max": 6
+    },
+    {
+      "row_name": "HiddenMethArmchair",
+      "display_name": [
+        "Armchair",
+        "with hidden CrystalMeth"
+      ],
+      "cargo_type": "Furniture",
+      "cargo_space_types": [
+        "Flatbed",
+        "Box"
+      ],
+      "weight_min": 30,
+      "weight_max": 50,
+      "volume_size": 1,
+      "payment_per_km": 3000,
+      "payment_multiplier": 1.0,
+      "base_payment": 800,
+      "spawn_probability": 0,
+      "mass_kg": 40,
+      "blueprint_name": "HiddenMethArmchair",
+      "blueprint_template": "out/Sofa_04.uasset",
+      "clone_old_name": "Sofa_04",
+      "cargo_flags": 10,
+      "allow_stacking": false,
+      "num_cargo_min": 2,
+      "num_cargo_max": 6
     }
   ]
 }
