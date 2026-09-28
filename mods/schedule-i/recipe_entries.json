@@ -42,7 +42,7 @@
       "replace_production_configs": false,
       "recipes": [
         {
-          "cargo": "PhosphorusRock",
+          "cargo": "Phosphorus",
           "production_time": 120,
           "hidden": false
         }
@@ -255,17 +255,9 @@
           "output_count": 1,
           "production_time": 120,
           "hidden": false
-        },
-        {
-          "input_cargos": {
-            "PhosphorusRock": 1
-          },
-          "output_cargo": "Phosphorus",
-          "output_count": 1,
-          "production_time": 120,
-          "hidden": false
         }
-      ]
+      ],
+      "storage": []
     },
     {
       "delivery_point": "Supermarket",
@@ -603,7 +595,8 @@
           "cargo_key": "MethBase",
           "max_storage": 50
         }
-      ]
+      ],
+      "storage": []
     },
     {
       "delivery_point": "Factory_Limestone_Drop",
@@ -617,38 +610,10 @@
         {
           "cargo_key": "Money",
           "max_storage": 50
-        },
-        {
-          "cargo_key": "PhosphorusRock",
-          "max_storage": 200
-        },
-        {
-          "cargo_key": "Phosphorus",
-          "max_storage": 50
         }
-      ]
-    },
-    {
-      "delivery_point": "Mine_LimestoneRockQuarry",
-      "template_path": "Mine_LimestoneRockQuarry.uasset",
-      "replace_storage": false,
-      "entries": [
-        {
-          "cargo_key": "PhosphorusRock",
-          "max_storage": 200
-        }
-      ]
-    },
-    {
-      "delivery_point": "LimestoneRockDrop",
-      "template_path": "LimestoneRockDrop.uasset",
-      "replace_storage": false,
-      "entries": [
-        {
-          "cargo_key": "PhosphorusRock",
-          "max_storage": 200
-        }
-      ]
+      ],
+      "recipes": [],
+      "storage": []
     },
     {
       "delivery_point": "Factory_Furniture",
