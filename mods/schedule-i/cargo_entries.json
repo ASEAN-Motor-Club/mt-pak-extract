@@ -389,32 +389,6 @@
       "num_cargo_max": 15
     },
     {
-      "row_name": "PhosphorusRock",
-      "display_name": [
-        "Phosphorus",
-        "Rock"
-      ],
-      "cargo_type": "None",
-      "cargo_space_types": [
-        "Dump"
-      ],
-      "weight_min": 200,
-      "weight_max": 400,
-      "volume_size": 1,
-      "payment_per_km": 150,
-      "payment_multiplier": 2.0,
-      "base_payment": 200,
-      "spawn_probability": 0,
-      "mass_kg": 300,
-      "blueprint_name": "PhosphorusRock",
-      "blueprint_template": "out/VolumeTypeCargo_Limestone.uasset",
-      "clone_old_name": "VolumeTypeCargo_Limestone",
-      "cargo_flags": 10,
-      "allow_stacking": false,
-      "num_cargo_min": 1,
-      "num_cargo_max": 1
-    },
-    {
       "row_name": "Phosphorus",
       "display_name": [
         "Phosphorus"
@@ -531,7 +505,7 @@
         "Bed",
         "with hidden CrystalMeth"
       ],
-      "cargo_type": "Furniture",
+      "cargo_type": "None",
       "cargo_space_types": [
         "Flatbed",
         "Box"
@@ -550,7 +524,8 @@
       "cargo_flags": 10,
       "allow_stacking": false,
       "num_cargo_min": 2,
-      "num_cargo_max": 6
+      "num_cargo_max": 6,
+      "mesh_path": "/Game/Models/PolygonMilitary/Meshes/Props/SM_Prop_Bed_Small_01"
     },
     {
       "row_name": "HiddenMethSofa",
@@ -558,7 +533,7 @@
         "Sofa",
         "with hidden CrystalMeth"
       ],
-      "cargo_type": "Furniture",
+      "cargo_type": "None",
       "cargo_space_types": [
         "Flatbed",
         "Box"
@@ -577,7 +552,8 @@
       "cargo_flags": 10,
       "allow_stacking": false,
       "num_cargo_min": 2,
-      "num_cargo_max": 6
+      "num_cargo_max": 6,
+      "mesh_path": "/Game/AssetsvilleTown/Meshes/InteriorProps/House/SM_Sofa_01"
     },
     {
       "row_name": "HiddenMethArmchair",
@@ -585,7 +561,7 @@
         "Armchair",
         "with hidden CrystalMeth"
       ],
-      "cargo_type": "Furniture",
+      "cargo_type": "None",
       "cargo_space_types": [
         "Flatbed",
         "Box"
@@ -604,7 +580,8 @@
       "cargo_flags": 10,
       "allow_stacking": false,
       "num_cargo_min": 2,
-      "num_cargo_max": 6
+      "num_cargo_max": 6,
+      "mesh_path": "/Game/AssetsvilleTown/Meshes/InteriorProps/House/SM_sofa_05"
     }
   ]
 }
