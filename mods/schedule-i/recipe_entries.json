@@ -183,10 +183,10 @@
       "recipes": [
         {
           "input_cargos": {
-            "CocaineBase": 1
+            "CocaineBase": 2
           },
           "output_cargo": "CocaineBricks",
-          "output_count": 1,
+          "output_count": 3,
           "production_time": 600
         }
       ]
