@@ -266,6 +266,7 @@
     "MotorTown/Content/Cars/Models/Zino/Zino",
     "MotorTown/Content/Cars/Models/Zydro/Zydro",
     "MotorTown/Content/Cars/Models/Zydro/Zydro_Police",
-    "MotorTown/Content/Models/PolygonPoliceStation/Meshes/Props/SM_Prop_Box_01"
+    "MotorTown/Content/Models/PolygonPoliceStation/Meshes/Props/SM_Prop_Box_01",
+    "MotorTown/Content/DataLayers/Jeju_World_WP/Delivery"
   ]
 }
