@@ -35,7 +35,7 @@ class CargoModBuilder(ModBuilder):
     def __init__(self, config_path, output_path, recipes_path,
                  compat_mods=None, cargos_template=None,
                  blueprint_template=None, items_path=None,
-                 template_root=None):
+                 template_root=None, flavor=None):
         super().__init__("cargo mod", config_path, output_path, compat_mods)
         self.recipes_path = os.path.abspath(recipes_path)
         # Template root: directory (relative to repo root) holding the game
@@ -43,6 +43,12 @@ class CargoModBuilder(ModBuilder):
         # and "out/server" for server-facing builds (client and server builds
         # ship DIFFERENT vanilla assets for delivery points / cargo tables).
         self.template_root = template_root or "out"
+        # Build flavor: 'client' or 'server'. Drives the provenance gate and
+        # the post-build flavor canary. Default template root per flavor so
+        # --flavor alone picks the right tree.
+        self.build_flavor = flavor
+        if flavor and not template_root:
+            self.template_root = os.path.join("out", flavor)
         self.cargos_template = cargos_template or os.path.join(
             self.repo_root, self.template_root, "Cargos.uasset")
         self.child_table_template = os.path.join(
@@ -52,8 +58,6 @@ class CargoModBuilder(ModBuilder):
 
         if not os.path.exists(self.recipes_path):
             self.fail(f"Recipes not found: {self.recipes_path}")
-
-
 
         with open(self.recipes_path) as f:
             self.recipe_config = json.load(f)
@@ -191,8 +195,7 @@ class CargoModBuilder(ModBuilder):
 
             template = entry.get("blueprint_template",
                                  self.blueprint_template)
-            template = os.path.join(self.repo_root, template) \
-                if not os.path.isabs(template) else template
+            template = self.tpl(template)
             template_name = os.path.splitext(os.path.basename(template))[0]
 
             asset_spec = {
@@ -552,6 +555,26 @@ class CargoModBuilder(ModBuilder):
                 },
             ],
         }
+
+    def tpl(self, path: str) -> str:
+        """Resolve a template path against the template trees.
+
+        Config entries may carry legacy repo-root-relative paths like
+        "out/Bed_01.uasset" or "out/server/Toy_Boxes.uasset". Blueprint clone
+        bases ALWAYS come from the client-flavor tree (out/client): they are
+        materialized by prior client builds and the server pak has always
+        shipped client-flavor clone bases from the root out/ tree (proven).
+        DP templates (template_path) go through resolve_tp()/template_root
+        instead, so server builds get server-flavor DPs.
+        """
+        if os.path.isabs(path):
+            return path
+        parts = path.replace(os.sep, "/").split("/", 2)
+        if parts[0] == "out" and len(parts) >= 2:
+            rest = "/".join(parts[2:]) if parts[1] in ("client", "server") \
+                else "/".join(parts[1:])
+            return os.path.join(self.repo_root, "out", "client", rest)
+        return os.path.join(self.repo_root, path)
 
     def _copy_parent_class_assets(self, template: str, dest_dir: str, dp_name: str):
         """Copy a DP template's BlueprintGeneratedClass parent assets next to
@@ -1021,6 +1044,10 @@ def main():
     parser.add_argument("--template-root", default=None,
                         help="Template directory relative to repo root "
                              "(e.g. out/client or out/server). Defaults to out.")
+    parser.add_argument("--flavor", default=None, choices=["client", "server"],
+                        help="Build flavor (client|server). Defaults the "
+                             "template root to out/<flavor> and enables the "
+                             "provenance gate + flavor canary.")
     parser.add_argument("--mod", default=None,
                         help="Mod directory (e.g. mods/schedule-i) to load mod.json from")
     parser.add_argument("--items", default=None,
@@ -1050,7 +1077,13 @@ def main():
         blueprint_template=args.blueprint_template,
         items_path=items_path,
         template_root=args.template_root,
+        flavor=args.flavor,
     )
+    if args.mod:
+        mod = load_mod_config(args.mod)
+        builder.mod_config = mod
+        builder.output_path = compute_output_path(
+            mod, resolve_game_version(), flavor=args.flavor)
     builder.build()
 
 

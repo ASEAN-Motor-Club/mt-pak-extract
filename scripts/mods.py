@@ -109,7 +109,7 @@ def cmd_build(args):
         print(f"Error: Build script not found: {script_path}", file=sys.stderr)
         sys.exit(1)
 
-    output_path = compute_output_path(mod, game_ver)
+    output_path = compute_output_path(mod, game_ver, flavor=getattr(args, "flavor", None))
     os.makedirs(mod["builds_dir"], exist_ok=True)
 
     cmd = [sys.executable, script_path, "--mod", mod_dir]
@@ -134,6 +134,8 @@ def cmd_build(args):
         if len(mod["configs"]) > 1:
             cmd.extend(["--recipes", mod["configs"][1]])
         cmd.extend(["--output", output_path])
+        if args.flavor:
+            cmd.extend(["--flavor", args.flavor])
         if args.template_root:
             cmd.extend(["--template-root", args.template_root])
         if args.compat_mod:
@@ -254,6 +256,11 @@ def main():
     sub_build.add_argument("--template-root", default=None,
                            help="Template dir for cargo mods: out/client or "
                                 "out/server (defaults to the mod's config)")
+    sub_build.add_argument("--flavor", default=None, choices=["client", "server"],
+                           help="Build flavor: 'client' (unversioned, player-facing) "
+                                "or 'server' (tagged, matches vanilla server cook). "
+                                "Sets build_flavor + template root for the "
+                                "provenance gate. --template-root overrides.")
     sub_build.add_argument("--cost", type=int, default=None,
                            help="Decal cost (for decal mods)")
     sub_build.set_defaults(func=cmd_build)

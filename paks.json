@@ -1,0 +1,15 @@
+{
+  "_comment": "Known game paks per game version. Bootstrap + build gates verify against this table. Client paks are unversioned cooks (large); server paks are tagged cooks (smaller). md5s recorded from wt-0719 originals.",
+  "0.7.19": {
+    "client": {
+      "path": "/var/lib/hermes-agent/workspace/amc-server/mt-pak-extract-wt-0719/client-0.7.19.pak",
+      "md5": "452104f1bff51f20a8e3ce41221f57c1",
+      "size": 3208135346
+    },
+    "server": {
+      "path": "/var/lib/hermes-agent/workspace/amc-server/mt-pak-extract-wt-0719/server-0.7.19.pak",
+      "md5": "20e4da77e1f26c0a2ad60dbd7d724f88",
+      "size": 1508101360
+    }
+  }
+}

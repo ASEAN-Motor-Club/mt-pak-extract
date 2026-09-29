@@ -1,6 +1,6 @@
 use std::fs::{self, File};
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use aes::cipher::KeyInit;
 use aes::Aes256;
@@ -209,8 +209,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let config: Config = serde_json::from_str(&config_content)?;
 
         // Create output directory
-        let out_dir = Path::new("out");
-        fs::create_dir_all(out_dir)?;
+        // Output dir: OUT_DIR env override (flavor trees, e.g. out/server),
+        // default "out".
+        let out_dir = std::env::var("OUT_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("out"));
+        fs::create_dir_all(&out_dir)?;
 
         println!(
             "Extracting {} assets to {}/",

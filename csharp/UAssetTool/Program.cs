@@ -2919,7 +2919,9 @@ class Program
     
     static void ProcessBatch()
     {
-        var outDir = Path.Combine(RootDir!, "out");
+        // OUT_DIR env override (flavor trees, e.g. out/server), default "out".
+        var outDir = Path.Combine(RootDir!,
+            Environment.GetEnvironmentVariable("OUT_DIR") ?? "out");
         var manifestPath = Path.Combine(outDir, "manifest.json");
         if (!File.Exists(manifestPath))
         {
