@@ -265,6 +265,14 @@
       "replace_production_configs": false,
       "recipes": [
         {
+          "input_cargo": "Moonshine",
+          "input_count": 1,
+          "output_cargo": "MoonshineBottles",
+          "output_count": 5,
+          "production_time": 300,
+          "hidden": false
+        },
+        {
           "input_cargo": "Money",
           "input_count": 1,
           "output_cargo": "Pseudoephedrine",
@@ -313,26 +321,32 @@
         {
           "input_cargo": "HiddenMethBed",
           "input_count": 1,
-          "output_cargo": "CrystalMeth",
-          "output_count": 2,
           "production_time": 120,
-          "hidden": false
+          "hidden": false,
+          "output_cargos": {
+            "CrystalMeth": 2,
+            "Money": 2
+          }
         },
         {
           "input_cargo": "HiddenMethSofa",
           "input_count": 1,
-          "output_cargo": "CrystalMeth",
-          "output_count": 2,
           "production_time": 120,
-          "hidden": false
+          "hidden": false,
+          "output_cargos": {
+            "CrystalMeth": 2,
+            "Money": 2
+          }
         },
         {
           "input_cargo": "HiddenMethArmchair",
           "input_count": 1,
-          "output_cargo": "CrystalMeth",
-          "output_count": 2,
           "production_time": 120,
-          "hidden": false
+          "hidden": false,
+          "output_cargos": {
+            "CrystalMeth": 2,
+            "Money": 2
+          }
         }
       ]
     }
@@ -550,11 +564,11 @@
         },
         {
           "cargo_key": "Money",
-          "max_storage": 500
+          "max_storage": 10
         },
         {
           "cargo_key": "Pseudoephedrine",
-          "max_storage": 50
+          "max_storage": 10
         }
       ]
     },
@@ -657,6 +671,10 @@
         },
         {
           "cargo_key": "CrystalMeth",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "Money",
           "max_storage": 50
         }
       ]
@@ -781,6 +799,23 @@
           "cargo_key": "CocaineBase",
           "payment_multiplier": 1.0,
           "max_storage": 30
+        }
+      ]
+    }
+  ],
+  "cdo_patches": [
+    {
+      "delivery_point": "Supermarket",
+      "template_path": "Supermarket.uasset",
+      "patches": [
+        {
+          "path": "DestinationTypes",
+          "op": "set_enum_array",
+          "enum_type": "EDeliveryMissionPointType",
+          "values": [
+            "Errand",
+            "Factory"
+          ]
         }
       ]
     }
