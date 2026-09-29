@@ -152,7 +152,7 @@
           "input_cargo": "CocainePackets",
           "input_count": 1,
           "output_cargo": "CocaineBags",
-          "output_count": 5,
+          "output_count": 1,
           "production_time": 120,
           "hidden": false
         }
