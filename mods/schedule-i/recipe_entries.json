@@ -706,7 +706,7 @@
           "cargo_type": "None",
           "cargo_key": "Moonshine",
           "payment_multiplier": 1.5,
-          "max_storage": 20
+          "max_storage": 5
         }
       ]
     },
@@ -718,7 +718,7 @@
           "cargo_type": "None",
           "cargo_key": "Moonshine",
           "payment_multiplier": 1.2,
-          "max_storage": 20
+          "max_storage": 5
         }
       ]
     },
