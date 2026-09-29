@@ -266,7 +266,7 @@
       "recipes": [
         {
           "input_cargo": "Money",
-          "input_count": 500,
+          "input_count": 1,
           "output_cargo": "Pseudoephedrine",
           "output_count": 1,
           "production_time": 60,
