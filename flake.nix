@@ -47,8 +47,12 @@
             # Set LD_LIBRARY_PATH for Oodle (needs libstdc++.so.6)
             export LD_LIBRARY_PATH="${pkgs.gcc.cc.lib}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
+            # OUT_DIR overrides the extraction target (flavor trees, e.g.
+            # out/server); default "out". Honor it in both pipeline steps.
+            export OUT_DIR="''${OUT_DIR:-out}"
+
             # Step 1: Extract from PAK using Rust
-            echo "Step 1: Extracting assets from PAK..."
+            echo "Step 1: Extracting assets from PAK (OUT_DIR=$OUT_DIR)..."
             cargo run --release --quiet -- --config "$CONFIG"
 
             # Step 2: Parse extracted assets using C#
@@ -86,6 +90,18 @@
             fi
           '';
         };
+
+        # Pipeline bootstrap: verify game paks against paks.json (md5 + size),
+        # repoint MotorTown-Windows.pak, extract+parse into out/<flavor>/, and
+        # write provenance.json for the build gates.
+        bootstrapScript = pkgs.writeShellApplication {
+          name = "bootstrap-pipeline";
+          runtimeInputs = with pkgs; [ python3 ];
+          text = ''
+            set -euo pipefail
+            exec python3 ${toString ./scripts/bootstrap.py} "$@"
+          '';
+        };
       in {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
@@ -112,6 +128,7 @@
             echo "  .NET: $(dotnet --version)"
             echo ""
             echo "Commands:"
+            echo "  nix run .#bootstrap -- <ver> client|server  Verify paks + provenance"
             echo "  nix run .#extract        - Extract all assets from assets.json"
             echo "  nix run .#aggregate      - Aggregate JSON to SQLite database"
             echo "  cargo run -- --list      - List available DataAssets"
@@ -127,6 +144,11 @@
         apps.aggregate = {
           type = "app";
           program = "${aggregateScript}/bin/aggregate-to-sqlite";
+        };
+
+        apps.bootstrap = {
+          type = "app";
+          program = "${bootstrapScript}/bin/bootstrap-pipeline";
         };
       }
     );

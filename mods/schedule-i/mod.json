@@ -10,5 +10,9 @@
     "recipe_entries.json",
     "item_entries.json"
   ],
-  "extra_args": {}
+  "extra_args": {},
+  "expected_sizes": {
+    "client": 719429,
+    "server": 1151780
+  }
 }

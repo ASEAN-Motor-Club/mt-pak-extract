@@ -14,6 +14,7 @@ subclass ModBuilder and implement only their type-specific logic.
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -80,20 +81,26 @@ def load_mod_config(mod_dir: str) -> dict:
 
 
 def compute_output_path(mod: dict, game_version: str = None,
-                        compat_suffix: str = None) -> str:
+                        compat_suffix: str = None,
+                        flavor: str = None) -> str:
     """Compute the output PAK path from mod metadata and game version.
 
-    Format: {prefix}{display_name}_v{mod_version}_{game_version}[_{compat_suffix}]_P.pak
+    Format: {prefix}{display_name}_v{mod_version}_{game_version}[_{flavor}][_{compat_suffix}]_P.pak
     Example: zzz_ASEAN_PoliceTyres_v0.1.9_0.7.18+1_MoreTuningCompat_P.pak
+             Schedule_I_v0.7.3_0.7.19_CLIENT_P.pak
     """
     if game_version is None:
         game_version = resolve_game_version()
 
     prefix = mod.get("prefix", "")
-    display_name = mod["display_name"]
-    mod_version = mod["version"]
+    display_name = mod.get("display_name")
+    mod_version = mod.get("version")
+    if not display_name or not mod_version:
+        raise ValueError(f"mod.json missing display_name/version for {mod}")
 
     parts = [f"{prefix}{display_name}_v{mod_version}_{game_version}"]
+    if flavor:
+        parts.append(flavor.upper())
     if compat_suffix:
         parts.append(compat_suffix)
     filename = "_".join(parts) + "_P.pak"
@@ -275,7 +282,7 @@ class ModBuilder:
             self.fail(f"mod_pack failed:\n{result.stderr}")
 
     def verify_pak(self):
-        """List PAK contents for verification using mod_explore."""
+        """List PAK contents + run flavor canary using mod_explore/UAssetTool."""
         mod_explore = os.path.join(self.repo_root, "target", "release", "mod_explore")
         if os.path.isfile(mod_explore) and os.path.isfile(self.output_path):
             print(f"\n--- PAK contents ---")
@@ -283,6 +290,136 @@ class ModBuilder:
                 [mod_explore, self.output_path, "--list"],
                 capture_output=False,
             )
+        self.flavor_canary()
+
+    # ── Flavor canary ──────────────────────────────────────────────────
+
+    CANARY_ASSET = "MotorTown/Content/Objects/Mission/Delivery/DeliveryPoint/Supermarket"
+
+    def flavor_canary(self):
+        """Post-build check: extract a DP from the built pak and assert its
+        cook flavor matches the build flavor (client=unversioned, server=tagged).
+
+        Catches both provenance failure modes on the artifact itself:
+          - server-cooked bytes shipped in a client pak (DP prompts die), and
+          - WRITE_VERSIONED=1 leaking into a client build.
+        Skipped for builds without build_flavor set.
+        """
+        flavor = getattr(self, "build_flavor", None)
+        if not flavor:
+            return
+        uasset_tool = os.path.join(
+            self.csharp_dir, "bin", "Release", "net8.0", "UAssetTool")
+        mod_explore = os.path.join(self.repo_root, "target", "release", "mod_explore")
+        if not (os.path.isfile(uasset_tool) and os.path.isfile(mod_explore)):
+            print("  Flavor canary: SKIPPED (tools not built)")
+            return
+        if not os.path.isfile(self.output_path):
+            return
+
+        expected = "HasUnversioned=True" if flavor == "client" else "HasUnversioned=False"
+        tmpdir = os.path.join(self.build_dir or tempfile.gettempdir(), "canary")
+        os.makedirs(tmpdir, exist_ok=True)
+        base = os.path.basename(self.CANARY_ASSET)
+        for ext in ("uasset", "uexp"):
+            r = subprocess.run(
+                [mod_explore, self.output_path, "--extract",
+                 f"{self.CANARY_ASSET}.{ext}"],
+                capture_output=True, text=True, cwd=self.repo_root)
+            src = os.path.join(self.repo_root, "mod_out", f"{base}.{ext}")
+            if not os.path.exists(src):
+                print(f"  Flavor canary: SKIPPED ({base}.{ext} not in pak)")
+                return
+            os.replace(src, os.path.join(tmpdir, f"{base}.{ext}"))
+        r = subprocess.run(
+            [uasset_tool, "--dump", os.path.join(tmpdir, f"{base}.uasset")],
+            capture_output=True, text=True, cwd=self.csharp_dir)
+        m = re.search(r"HasUnversioned=(True|False)", r.stdout)
+        if not m:
+            print(f"  Flavor canary: UNREADABLE (dump failed) — inspect manually")
+            return
+        if m.group(0) != expected:
+            self.fail(
+                f"Flavor canary FAILED: {base} is {m.group(0)}, expected {expected}\n"
+                f"  The {flavor} pak contains wrong-flavor template bytes. "
+                f"Re-bootstrap and rebuild."
+            )
+        print(f"  Flavor canary: OK ({base} {m.group(0)} as expected for {flavor})")
+
+    # ── Provenance gates ───────────────────────────────────────────────
+
+    def check_provenance(self, flavor: str | None = None):
+        """Fail the build if the template-root tree lacks valid provenance.
+
+        Reads <template_root>/provenance.json (written by scripts/bootstrap.py)
+        and asserts it exists and references a pak recorded in paks.json.
+        If `flavor` is given, also assert the provenance flavor matches.
+
+        The gate is skipped when:
+          - SKIP_PROVENANCE_CHECK=1 is set (explicit opt-out for exploration), or
+          - the builder sets self.skip_provenance_check = True (mod types that
+            don't ship game-template assets, e.g. decals/fonts).
+        """
+        if os.environ.get("SKIP_PROVENANCE_CHECK") == "1":
+            print("  Provenance check: SKIPPED (SKIP_PROVENANCE_CHECK=1)")
+            return
+        if getattr(self, "skip_provenance_check", False):
+            print("  Provenance check: SKIPPED (builder opt-out)")
+            return
+
+        prov_path = os.path.join(self.template_root, "provenance.json")
+        if not os.path.isfile(prov_path):
+            self.fail(
+                f"No provenance manifest at {prov_path}.\n"
+                f"  Templates in '{self.template_root}' are unverified — a polluted\n"
+                f"  tree (e.g. server-cooked bytes in a client tree) ships broken paks.\n"
+                f"  Fix: nix run .#bootstrap -- <game_version> client|server"
+            )
+        try:
+            with open(prov_path) as f:
+                prov = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            self.fail(f"Cannot read provenance manifest {prov_path}: {e}")
+
+        required = ("flavor", "game_version", "source_pak_md5", "source_pak_size")
+        missing = [k for k in required if k not in prov]
+        if missing:
+            self.fail(f"Provenance manifest {prov_path} missing fields: {missing}")
+
+        if flavor and prov["flavor"] != flavor:
+            self.fail(
+                f"Template provenance flavor is '{prov['flavor']}' but this build "
+                f"requires '{flavor}'. Bootstrap the right tree: "
+                f"nix run .#bootstrap -- {prov.get('game_version')} {flavor}"
+            )
+
+        # The recorded source pak must still exist and match paks.json.
+        paks_json = os.path.join(self.repo_root, "paks.json")
+        if os.path.isfile(paks_json):
+            with open(paks_json) as f:
+                table = json.load(f)
+            gv = prov.get("game_version")
+            entry = table.get(gv, {}).get(prov["flavor"])
+            if entry:
+                if entry.get("md5") != prov.get("source_pak_md5"):
+                    self.fail(
+                        f"Provenance md5 ({prov.get('source_pak_md5')}) does not match "
+                        f"paks.json ({entry.get('md5')}) for {gv} {prov['flavor']}. "
+                        f"Re-bootstrap: nix run .#bootstrap -- {gv} {prov['flavor']}"
+                    )
+                src_path = entry.get("path", "")
+                if src_path and not os.path.isabs(src_path):
+                    src_path = os.path.join(self.repo_root, src_path)
+                if src_path and os.path.isfile(src_path):
+                    actual = os.path.getsize(src_path)
+                    if actual != entry.get("size"):
+                        self.fail(
+                            f"Source pak {src_path} size changed ({actual} vs "
+                            f"{entry.get('size')}). Re-bootstrap."
+                        )
+
+        print(f"  Provenance check: OK (flavor={prov['flavor']}, "
+              f"game={prov['game_version']}, md5={prov['source_pak_md5'][:12]}…)")
 
     # ── Compat mod support ─────────────────────────────────────────────
 
@@ -424,6 +561,15 @@ class ModBuilder:
         """
         print(f"\n=== Building {self.name} ===")
 
+        flavor = getattr(self, "build_flavor", None)
+        self.check_provenance(flavor)
+        if flavor == "client" and os.environ.get("WRITE_VERSIONED") == "1":
+            self.fail(
+                "WRITE_VERSIONED=1 is set but this is a CLIENT build.\n"
+                "  Client paks must ship unversioned (WRITE_VERSIONED unset) —\n"
+                "  tagged writes crash the game client (DP interaction dies)."
+            )
+
         with tempfile.TemporaryDirectory(prefix=f"modpack_{self.name}_") as build_dir:
             self.build_dir = build_dir
             self.init_staging()
@@ -448,6 +594,76 @@ class ModBuilder:
             self.verify_pak()
         else:
             self.fail(f"Output PAK not created: {self.output_path}")
+
+        self.check_output_gates()
+
+    def check_output_gates(self):
+        """Post-build gates: size band + file-set regression vs prior builds.
+
+        - Size band: fails if mod.json declares
+          `expected_sizes: {client|server: bytes}` and the output differs by
+          more than 25%; otherwise warns when the pak is >40% smaller than the
+          largest prior pak for the same flavor (silent under-build detector).
+        - File set: warns if the newest prior pak of the same flavor shipped
+          files this build dropped (only files, never sizes).
+        Both gates only apply when build_flavor is set.
+        """
+        flavor = getattr(self, "build_flavor", None)
+        if not flavor or not os.path.isfile(self.output_path):
+            return
+        size = os.path.getsize(self.output_path)
+
+        # Explicit expectation from mod.json.
+        expected = (getattr(self, "mod_config", None) or {}).get(
+            "expected_sizes", {}).get(flavor)
+        if expected:
+            if abs(size - expected) > expected * 0.25:
+                self.fail(
+                    f"Output size {size:,} is >25% off the expected "
+                    f"{flavor} size {expected:,}. Likely under/over-built — "
+                    f"check the build log for failed staging steps."
+                )
+            print(f"  Size gate: OK ({size:,} bytes, expected ≈{expected:,})")
+
+        # File-set diff vs newest prior pak of the same flavor.
+        builds_dir = os.path.dirname(self.output_path)
+        fname = os.path.basename(self.output_path)
+        prior = []
+        if os.path.isdir(builds_dir):
+            for f in os.listdir(builds_dir):
+                if not f.endswith("_P.pak") or f == fname:
+                    continue
+                if flavor == "client" and "SERVER" in f.upper():
+                    continue
+                if flavor == "server" and "CLIENT" in f.upper():
+                    continue
+                p = os.path.join(builds_dir, f)
+                if os.path.getmtime(p) < os.path.getmtime(self.output_path):
+                    prior.append((os.path.getmtime(p), p, os.path.getsize(p)))
+        if not prior:
+            return
+        prior.sort()
+        prev_path, prev_size = prior[-1][1], prior[-1][2]
+
+        # Largest prior same-flavor pak: strong under-build signal.
+        largest = max(s for _, _, s in prior)
+        if largest > 0 and size < largest * 0.6:
+            print(f"  Size gate: WARNING — output {size:,} is <60% of the "
+                  f"largest prior {flavor} pak ({largest:,}). Verify content.")
+
+        mod_explore = os.path.join(self.repo_root, "target", "release", "mod_explore")
+        if os.path.isfile(mod_explore):
+            def listing(pak):
+                r = subprocess.run([mod_explore, pak, "--list"],
+                                   capture_output=True, text=True)
+                return {ln for ln in r.stdout.splitlines() if ln.endswith(".uasset")}
+            new_files, old_files = listing(self.output_path), listing(prev_path)
+            dropped = old_files - new_files
+            if dropped:
+                print(f"  File-set gate: WARNING — {len(dropped)} file(s) shipped in "
+                      f"{os.path.basename(prev_path)} but not this build:")
+                for f in sorted(dropped)[:10]:
+                    print(f"    - {f}")
 
     # ── Subclass hooks ─────────────────────────────────────────────────
 
