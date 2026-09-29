@@ -490,7 +490,8 @@
           "cargo_key": "Money",
           "max_storage": 25
         }
-      ]
+      ],
+      "replace_storage": false
     },
     {
       "delivery_point": "Factory_Toy",
