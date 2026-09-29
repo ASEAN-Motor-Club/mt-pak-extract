@@ -272,13 +272,12 @@
       "mesh_path": "/Game/Env/Meshes/Refinery/SM_Refinery_OilBarrel_Pallet_01",
       "mass_kg": 410,
       "blueprint_name": "HydrochloricAcid",
-      "blueprint_template": "out/BoxPalletA.uasset",
-      "clone_old_name": "BoxPalletA",
+      "blueprint_template": "out/BoxPalleteC.uasset",
+      "clone_old_name": "BoxPalleteC",
       "cargo_flags": 11,
       "allow_stacking": false,
       "num_cargo_min": 0,
-      "num_cargo_max": 1,
-      "remove_merged_meshes": true
+      "num_cargo_max": 1
     },
     {
       "row_name": "Acetone",
@@ -352,14 +351,13 @@
       "mesh_path": "/Game/Env/Meshes/Refinery/SM_Refinery_OilBarrel_Pallet_01",
       "mass_kg": 800,
       "blueprint_name": "LiquidCocaine",
-      "blueprint_template": "out/BoxPalletA.uasset",
-      "clone_old_name": "BoxPalletA",
+      "blueprint_template": "out/BoxPalleteC.uasset",
+      "clone_old_name": "BoxPalleteC",
       "cargo_flags": 10,
       "allow_stacking": false,
       "num_cargo_min": 0,
       "num_cargo_max": 1,
-      "base_payment": 0,
-      "remove_merged_meshes": true
+      "base_payment": 0
     },
     {
       "row_name": "Pseudoephedrine",
@@ -408,11 +406,10 @@
       "mesh_path": "/Game/Env/Meshes/Refinery/SM_Refinery_OilBarrel_Pallet_03",
       "mass_kg": 800,
       "blueprint_name": "Phosphorus",
-      "blueprint_template": "out/BoxPalletA.uasset",
-      "clone_old_name": "BoxPalletA",
+      "blueprint_template": "out/BoxPalleteC.uasset",
+      "clone_old_name": "BoxPalleteC",
       "cargo_flags": 10,
       "allow_stacking": false,
-      "remove_merged_meshes": true,
       "num_cargo_min": 5,
       "num_cargo_max": 15
     },
@@ -463,11 +460,10 @@
       "mesh_path": "/Game/Env/Meshes/Refinery/SM_Refinery_OilBarrel_Pallet_02",
       "mass_kg": 800,
       "blueprint_name": "MethBase",
-      "blueprint_template": "out/BoxPalletA.uasset",
-      "clone_old_name": "BoxPalletA",
+      "blueprint_template": "out/BoxPalleteC.uasset",
+      "clone_old_name": "BoxPalleteC",
       "cargo_flags": 10,
       "allow_stacking": false,
-      "remove_merged_meshes": true,
       "num_cargo_min": 5,
       "num_cargo_max": 15
     },
