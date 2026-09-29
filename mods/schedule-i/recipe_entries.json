@@ -431,7 +431,7 @@
       "entries": [
         {
           "cargo_key": "CornPallet",
-          "max_storage": 20
+          "max_storage": 40
         },
         {
           "cargo_key": "Moonshine",
@@ -445,7 +445,7 @@
       "entries": [
         {
           "cargo_key": "Kerosene",
-          "max_storage": 20
+          "max_storage": 50
         },
         {
           "cargo_key": "QuicklimePallet",
@@ -472,11 +472,11 @@
         },
         {
           "cargo_key": "Acetone",
-          "max_storage": 15
+          "max_storage": 100
         },
         {
           "cargo_key": "HydrochloricAcid",
-          "max_storage": 15
+          "max_storage": 50
         },
         {
           "cargo_key": "CocaineBase",
@@ -489,6 +489,10 @@
         {
           "cargo_key": "Money",
           "max_storage": 25
+        },
+        {
+          "cargo_key": "LiquidCocaine",
+          "max_storage": 40
         }
       ],
       "replace_storage": false
@@ -518,11 +522,11 @@
       "entries": [
         {
           "cargo_key": "CocainePackets",
-          "max_storage": 5
+          "max_storage": 10
         },
         {
           "cargo_key": "CocaineBags",
-          "max_storage": 10
+          "max_storage": 20
         }
       ]
     },
@@ -532,11 +536,11 @@
       "entries": [
         {
           "cargo_key": "CrudeOil",
-          "max_storage": 10
+          "max_storage": 50
         },
         {
           "cargo_key": "Acetone",
-          "max_storage": 15
+          "max_storage": 100
         },
         {
           "cargo_key": "AnhydrousAmmonia",
@@ -584,7 +588,7 @@
         },
         {
           "cargo_key": "CocaineBricks",
-          "max_storage": 20
+          "max_storage": 50
         },
         {
           "cargo_key": "CocainePackets",
