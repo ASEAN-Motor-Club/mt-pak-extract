@@ -271,14 +271,6 @@
           "output_count": 5,
           "production_time": 300,
           "hidden": false
-        },
-        {
-          "input_cargo": "Money",
-          "input_count": 1,
-          "output_cargo": "Pseudoephedrine",
-          "output_count": 1,
-          "production_time": 60,
-          "hidden": false
         }
       ]
     },
@@ -347,6 +339,21 @@
             "CrystalMeth": 2,
             "Money": 2
           }
+        }
+      ]
+    },
+    {
+      "delivery_point": "Warehouse",
+      "template_path": "Warehouse.uasset",
+      "replace_production_configs": false,
+      "recipes": [
+        {
+          "input_cargo": "Money",
+          "input_count": 1,
+          "output_cargo": "Pseudoephedrine",
+          "output_count": 1,
+          "production_time": 60,
+          "hidden": false
         }
       ]
     }
@@ -804,25 +811,27 @@
           "cargo_key": "CocaineBase",
           "payment_multiplier": 1.0,
           "max_storage": 30
+        },
+        {
+          "cargo_type": "None",
+          "cargo_key": "Pseudoephedrine",
+          "payment_multiplier": 1.0,
+          "max_storage": 30
+        }
+      ]
+    },
+    {
+      "delivery_point": "Warehouse",
+      "template_path": "Warehouse.uasset",
+      "entries": [
+        {
+          "cargo_type": "None",
+          "cargo_key": "Money",
+          "payment_multiplier": 1.0,
+          "max_storage": 40
         }
       ]
     }
   ],
-  "cdo_patches": [
-    {
-      "delivery_point": "Supermarket",
-      "template_path": "Supermarket.uasset",
-      "patches": [
-        {
-          "path": "DestinationTypes",
-          "op": "set_enum_array",
-          "enum_type": "EDeliveryMissionPointType",
-          "values": [
-            "Errand",
-            "Factory"
-          ]
-        }
-      ]
-    }
-  ]
+  "cdo_patches": []
 }

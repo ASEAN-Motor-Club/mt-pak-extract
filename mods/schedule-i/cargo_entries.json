@@ -383,8 +383,11 @@
       "clone_old_name": "SmallBox",
       "cargo_flags": 11,
       "allow_stacking": false,
-      "num_cargo_min": 5,
-      "num_cargo_max": 15
+      "num_cargo_min": 1,
+      "num_cargo_max": 15,
+      "gameplay_tags": [
+        "Cargo.FoodIngredients"
+      ]
     },
     {
       "row_name": "Phosphorus",
