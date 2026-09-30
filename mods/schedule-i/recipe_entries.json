@@ -690,6 +690,21 @@
           "max_storage": 50
         }
       ]
+    },
+    {
+      "delivery_point": "Warehouse",
+      "template_path": "Warehouse.uasset",
+      "replace_storage": false,
+      "entries": [
+        {
+          "cargo_key": "Pseudoephedrine",
+          "max_storage": 10
+        },
+        {
+          "cargo_key": "Money",
+          "max_storage": 10
+        }
+      ]
     }
   ],
   "demand_configs": [
