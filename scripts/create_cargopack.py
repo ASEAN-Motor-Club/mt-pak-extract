@@ -316,15 +316,7 @@ class CargoModBuilder(ModBuilder):
                  "package": "None", "asset": "None"},
                 {"path": "BasePayment", "op": "set",
                  "value": entry.get("base_payment", 0)},
-                # gameplay_tags knob (strategy C): tag the cargo row so tag-query
-                # based DestinationCargoLimits entries can match it.
-                *([{"path": "GameplayTags", "op": "add_gameplay_tags",
-                    "tags": entry["gameplay_tags"]}]
-                  if entry.get("gameplay_tags") else
-                  [{"path": "GameplayTags", "op": "clear_tags"}]),
-                *([{"path": "GameplayTags", "op": "add_gameplay_tags",
-                    "tags": entry["gameplay_tags"]}]
-                  if entry.get("gameplay_tags") else []),
+                {"path": "GameplayTags", "op": "clear_tags"},
                 {"path": "bAllowStacking", "op": "set",
                  "value": entry.get("allow_stacking", False)},
                 {"path": "bUseDamage", "op": "set", "value": False},

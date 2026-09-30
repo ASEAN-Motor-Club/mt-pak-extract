@@ -833,5 +833,21 @@
       ]
     }
   ],
-  "cdo_patches": []
+  "cdo_patches": [
+    {
+      "delivery_point": "Supermarket",
+      "template_path": "Supermarket.uasset",
+      "patches": [
+        {
+          "path": "DestinationTypes",
+          "op": "set_enum_array",
+          "enum_type": "EDeliveryMissionPointType",
+          "values": [
+            "Errand",
+            "Factory"
+          ]
+        }
+      ]
+    }
+  ]
 }
