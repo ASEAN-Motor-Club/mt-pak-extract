@@ -188,7 +188,7 @@
           },
           "output_cargo": "CocaineBricks",
           "output_count": 3,
-          "production_time": 600
+          "production_time": 120
         },
         {
           "input_cargos": {
@@ -198,7 +198,7 @@
           },
           "output_cargo": "MethBase",
           "output_count": 2,
-          "production_time": 900,
+          "production_time": 120,
           "hidden": false
         }
       ]
