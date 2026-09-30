@@ -107,7 +107,7 @@
           },
           "output_cargo": "CocaineBase",
           "output_count": 2,
-          "production_time": 600
+          "production_time": 300
         },
         {
           "input_cargos": {
@@ -116,7 +116,7 @@
           },
           "output_cargo": "LiquidCocaine",
           "output_count": 2,
-          "production_time": 600
+          "production_time": 300
         }
       ]
     },
@@ -215,7 +215,7 @@
           },
           "output_cargo": "CocaPaste",
           "output_count": 2,
-          "production_time": 600,
+          "production_time": 300,
           "hidden": false
         }
       ]
