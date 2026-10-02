@@ -317,6 +317,14 @@ class CargoModBuilder(ModBuilder):
                 {"path": "BasePayment", "op": "set",
                  "value": entry.get("base_payment", 0)},
                 {"path": "GameplayTags", "op": "clear_tags"},
+                # Optional gameplay tags (Cargo.* / DeliveryPoint.*): needed
+                # when a destination DP's DestinationCargoLimits queries a
+                # cargo tag - e.g. Warehouse accepts ANY(Cargo.WarehouseStore);
+                # Money shipped nowhere until it carried that tag (0.7.7
+                # furniture-store money fix).
+                *(([{"path": "GameplayTags", "op": "add_gameplay_tags",
+                     "tags": entry["gameplay_tags"]}]
+                   if entry.get("gameplay_tags") else [])),
                 {"path": "bAllowStacking", "op": "set",
                  "value": entry.get("allow_stacking", False)},
                 {"path": "bUseDamage", "op": "set", "value": False},

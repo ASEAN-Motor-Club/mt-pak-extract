@@ -26,7 +26,10 @@
       "cargo_flags": 11,
       "allow_stacking": true,
       "num_cargo_min": 10,
-      "num_cargo_max": 20
+      "num_cargo_max": 20,
+      "gameplay_tags": [
+        "Cargo.WarehouseStore"
+      ]
     },
     {
       "row_name": "MoneyPallet",
@@ -54,7 +57,10 @@
       "cargo_flags": 11,
       "allow_stacking": true,
       "num_cargo_min": 5,
-      "num_cargo_max": 10
+      "num_cargo_max": 10,
+      "gameplay_tags": [
+        "Cargo.WarehouseStore"
+      ]
     },
     {
       "row_name": "Moonshine",
