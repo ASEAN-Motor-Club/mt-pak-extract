@@ -733,6 +733,36 @@ class Program
                 }
             }
             
+            // 2.5 Collect protected strings: import_replacements targets must NOT
+            // be mangled by rename/namemap steps (a template mesh named like the
+            // clone source, e.g. SM_Sofa_01 inside Sofa_01, would get renamed to
+            // SM_<NewName>, a mesh that does not exist in the game paks).
+            var protectedNames = new HashSet<string>();
+            if (spec.TryGetProperty("import_replacements", out var irPropEarly))
+            {
+                foreach (var replacement in irPropEarly.EnumerateArray())
+                {
+                    var pkg = replacement.GetProperty("new_package_path").GetString()!;
+                    var nm = replacement.GetProperty("new_name").GetString()!;
+                    protectedNames.Add(pkg);
+                    protectedNames.Add(nm);
+                    // Also protect the CURRENT paths/names of the imports that
+                    // match this replacement (step 5 re-targets them).
+                    var mc = replacement.GetProperty("match_class").GetString()!;
+                    var mn = replacement.TryGetProperty("match_name", out var mnE) ? mnE.GetString() : null;
+                    for (int i = 0; i < asset.Imports.Count; i++)
+                    {
+                        if (asset.Imports[i].ClassName.Value.Value != mc) continue;
+                        if (mn != null && asset.Imports[i].ObjectName.Value.Value != mn) continue;
+                        protectedNames.Add(asset.Imports[i].ObjectName.Value.Value);
+                        int pkgIdx = asset.Imports[i].OuterIndex.Index < 0
+                            ? -asset.Imports[i].OuterIndex.Index - 1 : -1;
+                        if (pkgIdx >= 0 && pkgIdx < asset.Imports.Count)
+                            protectedNames.Add(asset.Imports[pkgIdx].ObjectName.Value.Value);
+                    }
+                }
+            }
+
             // 3. Rename imports
             if (renameImports)
             {
@@ -740,7 +770,7 @@ class Program
                 {
                     var imp = asset.Imports[i];
                     var impName = imp.ObjectName.Value.Value;
-                    if (impName.Contains(oldExportName) || impName.Contains(oldName))
+                    if (!protectedNames.Contains(impName) && (impName.Contains(oldExportName) || impName.Contains(oldName)))
                     {
                         var newImpName = impName.Replace(oldExportName, newName).Replace(oldName, newName);
                         imp.ObjectName = fnameNumber >= 0
@@ -762,6 +792,8 @@ class Program
                     replaced = replaced.Replace(oldExportName, newName);
                 if (entry != oldName && entry.Contains(oldName))
                     replaced = replaced.Replace(oldName, newName);
+                if (protectedNames.Contains(entry) || protectedNames.Contains(replaced))
+                    continue;
                 if (replaced != entry)
                 {
                     asset.SetNameReference(ni, FString.FromString(replaced));
