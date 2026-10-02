@@ -863,6 +863,20 @@
           ]
         }
       ]
+    },
+    {
+      "delivery_point": "Warehouse",
+      "template_path": "Warehouse.uasset",
+      "patches": [
+        {
+          "path": "DestinationTypes",
+          "op": "set_enum_array",
+          "enum_type": "EDeliveryMissionPointType",
+          "values": [
+            "Errand"
+          ]
+        }
+      ]
     }
   ]
 }

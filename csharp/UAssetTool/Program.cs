@@ -1825,10 +1825,38 @@ class Program
             
             case "set_enum_array":
             {
-                var prop = ResolveProperty(properties, path);
-                if (prop is ArrayPropertyData arr)
-                    SetEnumArray(arr, patch.GetProperty("values"), asset,
+                var (containerE, propE) = ResolvePropertyWithContainer(properties, path);
+                if (propE is ArrayPropertyData arrE)
+                {
+                    SetEnumArray(arrE, patch.GetProperty("values"), asset,
                         patch.GetProperty("enum_type").GetString()!);
+                }
+                else if (containerE != null && propE == null)
+                {
+                    // Property missing on this CDO: create it (vanilla Warehouse
+                    // has no DestinationTypes). Appending at the end of the
+                    // property list is safe for versioned headers (linear scan).
+                    var leafName = path.Split('.').Last();
+                    var enumTypeName = patch.GetProperty("enum_type").GetString()!;
+                    var arrNew = new ArrayPropertyData(FName.FromString(asset, leafName))
+                    {
+                        PropertyTypeName = MakeTypeName(asset, new FString("ArrayProperty")),
+                    };
+                    var list = new List<PropertyData>();
+                    foreach (var val in patch.GetProperty("values").EnumerateArray())
+                    {
+                        var enumProp = new EnumPropertyData(FName.FromString(asset, leafName))
+                        {
+                            Value = FName.FromString(asset, enumTypeName + "::" + val.GetString()),
+                            PropertyTypeName = MakeTypeName(asset, new FString("EnumProperty")),
+                        };
+                        enumProp.EnumType = new FName(asset, enumTypeName);
+                        list.Add(enumProp);
+                    }
+                    arrNew.Value = list.ToArray();
+                    containerE.Add(arrNew);
+                    Console.WriteLine("  Created missing property " + leafName + " (enum array, " + list.Count + " entries)");
+                }
                 break;
             }
             
