@@ -285,7 +285,11 @@
           "output_cargo": "HiddenMethBed",
           "output_count": 2,
           "production_time": 300,
-          "hidden": false
+          "hidden": false,
+          "output_cargos": {
+            "HiddenMethBed": 2,
+            "Money": 2
+          }
         },
         {
           "input_cargo": "MethBase",
@@ -293,7 +297,11 @@
           "output_cargo": "HiddenMethSofa",
           "output_count": 2,
           "production_time": 300,
-          "hidden": false
+          "hidden": false,
+          "output_cargos": {
+            "HiddenMethSofa": 2,
+            "Money": 2
+          }
         },
         {
           "input_cargo": "MethBase",
@@ -301,7 +309,11 @@
           "output_cargo": "HiddenMethArmchair",
           "output_count": 2,
           "production_time": 300,
-          "hidden": false
+          "hidden": false,
+          "output_cargos": {
+            "HiddenMethArmchair": 2,
+            "Money": 2
+          }
         }
       ]
     },
@@ -316,8 +328,7 @@
           "production_time": 120,
           "hidden": false,
           "output_cargos": {
-            "CrystalMeth": 2,
-            "Money": 2
+            "CrystalMeth": 2
           }
         },
         {
@@ -326,8 +337,7 @@
           "production_time": 120,
           "hidden": false,
           "output_cargos": {
-            "CrystalMeth": 2,
-            "Money": 2
+            "CrystalMeth": 2
           }
         },
         {
@@ -336,8 +346,7 @@
           "production_time": 120,
           "hidden": false,
           "output_cargos": {
-            "CrystalMeth": 2,
-            "Money": 2
+            "CrystalMeth": 2
           }
         }
       ]
@@ -660,6 +669,10 @@
         },
         {
           "cargo_key": "HiddenMethArmchair",
+          "max_storage": 50
+        },
+        {
+          "cargo_key": "Money",
           "max_storage": 50
         }
       ]
