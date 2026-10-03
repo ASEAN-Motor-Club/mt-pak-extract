@@ -317,9 +317,9 @@
       "weight_min": 20,
       "weight_max": 30,
       "volume_size": 1,
-      "payment_per_km": 300,
+      "payment_per_km": 2500,
       "payment_multiplier": 2.0,
-      "base_payment": 150,
+      "base_payment": 250,
       "spawn_probability": 0,
       "mesh_path": "/Game/Models/PolygonWestern/Meshes/Props/SM_Prop_Bottle_05",
       "mass_kg": 25,
@@ -329,7 +329,8 @@
       "cargo_flags": 11,
       "allow_stacking": false,
       "num_cargo_min": 4,
-      "num_cargo_max": 10
+      "num_cargo_max": 10,
+      "payment_sqrt_ratio": 0.0
     },
     {
       "row_name": "LiquidCocaine",
@@ -372,7 +373,7 @@
       "weight_min": 5,
       "weight_max": 10,
       "volume_size": 1,
-      "payment_per_km": 200,
+      "payment_per_km": 400,
       "payment_multiplier": 1.0,
       "base_payment": 300,
       "spawn_probability": 0,
