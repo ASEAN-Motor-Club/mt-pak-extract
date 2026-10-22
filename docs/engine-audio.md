@@ -27,7 +27,30 @@ Notes:
   a cue-path override therefore affects all three. 50HP-only isolation needs a
   per-engine DataAsset (mechanism works, see import-append caveat).
 
-## The codec wall
+## SOLVED (2026-10-22): the format is BINKA, encoded with RAD Video Tools
+
+Analysis of a working community mod (`Z_TehsSoundPack_P.pak`, Nexus #21) settled it:
+
+- Teh's pak overrides **the same three wave files we targeted**
+  (`Cars/Parts/Engine/Sound/I4Sport/482826/482850/482874`) - the path strategy was right.
+- Their replacement waves are **BINKA** (RAD Bink Audio): ubulk begins with the `SEEK`
+  seek-table tag followed by ~213 compressed frames of ~690 bytes each, 48 kHz mono.
+  Vanilla is BINKA too, so the engine only decodes Bink Audio - PCM/OGG/ADPCM attempts
+  could never work regardless of packaging.
+- Their asset metadata matches ours field-for-field, with one corrected field: the
+  `ABEU` blob word at +20 = **ubulk size + 13** (we had left the vanilla value stale).
+  Remaining fields behave as we modelled: +8 sample rate, +12 total samples, trailing
+  bulk sizes = ubulk length.
+
+### Producing BINKA audio
+Bink Audio has no open encoder in ffmpeg (decoder only). Two routes:
+1. **RAD Video Tools** (free, Windows only, radgametools.com) - the tool every game-audio
+   modder uses; encodes WAV -> Bink Audio. Then extract the audio frames from the
+   resulting file and assemble the wave asset (metadata recipe above).
+2. Write a Bink Audio encoder (algorithm documented; reference implementation exists in
+   libbink) - viable but multi-hour with quality tuning.
+
+## The codec wall (historical)
 
 - Every vanilla `SoundWave` in MotorTown is **BINKA** (RAD Bink Audio) —
   proprietary, no public encoder exists.
