@@ -1,0 +1,11 @@
+{
+  "name": "engine-13b-v6-test",
+  "display_name": "ASEAN_TestEngine",
+  "version": "0.1.0",
+  "type": "engine",
+  "prefix": "zzz_",
+  "script": "mods/engine-13b-v6-test/build.sh",
+  "configs": ["add_row.json", "engine_clone.json", "cue_clone.json", "cue_patch.json"],
+  "compat_suffix": "",
+  "extra_args": {}
+}
