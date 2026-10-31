@@ -1,0 +1,15 @@
+{
+  "new_name": "Test_13bV6_180HP",
+  "old_name": "FordSmalBlock302_V8_5L_180HP",
+  "new_path": "/Game/Cars/Parts/Engine",
+  "rename_exports": false,
+  "rename_imports": false,
+  "import_replacements": [
+    {
+      "match_class": "SoundCue",
+      "match_name": "SC_V8Engine",
+      "new_package_path": "/Game/Cars/Parts/Engine/Sound/13bV8/SC_V8Engine",
+      "new_name": "SC_V8Engine"
+    }
+  ]
+}
