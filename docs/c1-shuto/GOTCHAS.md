@@ -302,3 +302,156 @@ Result: `unhide components=75 actors=75`, pak 171,503,387 B.
 **Lesson:** any pass that hides actors must be scoped by the actor's *current* mesh
 ownership, not by actor class or by which actors were present before the repoint.
 Always re-run `--owners` after any such pass.
+
+---
+
+## 25. Checker textures = material shaders never compiled (Nahimic crashes ShaderCompileWorker)
+
+**Symptom:** every surface without a texture renders the engine default checker;
+`M_C1_*.uexp` cooks to ~3.6 KB with zero shader-map strings.
+
+**Root cause (proven, not inferred):** `ShaderCompileWorker.exe` crashes with
+`0xc0000005` on the cook box. Windows Event Log, Application, id 1000:
+`Faulting module name: NahimicOSD.dll` (`C:\ProgramData\A-Volute\...\NahimicOSD.dll`),
+then again in `ntdll.dll`. Nahimic (A-Volute audio OSD, MSI boards) injects into
+every process. With SCW dead, no material ever compiles, and both editor and cook
+log `Failed to compile Material for platform PCD3D_SM5, Default Material will be
+used in game` + `Cooking a material resource ... doesn't have a valid ShaderMap`.
+
+**Diagnosis recipe:**
+- `strings M_X.uexp | grep -cE "VertexFactory|BasePass|FMaterialShaderMap"` —
+  a compiled master has >0 (NS `M_NS_Base_v2` = 23, ours = 0). File size alone is
+  not proof; a simple compiled material can be ~11 KB, a failed one ~3.6 KB.
+- `Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddHours(-3)}`
+  filtered on `ShaderCompileWorker` gives the faulting module.
+
+**Fix:** stop the injectors before any cook/compile:
+`sc stop NahimicService` + `taskkill /F /IM NahimicSvc64.exe` (also `NahimicSvc32.exe`)
+via an elevated scheduled task (`/ru <user> /rl highest /it`). Restore afterwards
+with `sc start NahimicService` if the user wants the audio OSD back.
+
+**Second lesson — python-authored masters can be permanently uncompilable.**
+Recompiling the three original `M_C1_Surface*` masters in an interactive editor
+session never produced a shader map even with SCW healthy. Rebuilding them from
+scratch in the same editor session worked first try (`M_C1_Tex2` 11,176 B /
+`M_C1_TexMasked2` 18,481 B, 14 shader strings, `M_C1_Tex2` parent confirmed in
+instances). Lesson: if a master will not compile, recreate it rather than repair it,
+and repoint the instances (`parent` property + `update_material_instance`).
+
+**Editor interaction facts that cost rounds:**
+- `-ExecutePythonScript` quits the editor the moment the script returns — a tick
+  callback cannot keep it alive. Use `-ExecCmds="py <file>"` when the editor must
+  stay open (compiles finish, then save in a tick callback).
+- GUI editor launched from sshd lands in session 0 and dies with
+  `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`. It only gets a window via
+  `schtasks ... /it`, landing in the same SessionId as `explorer`.
+- `Material.Expressions` is protected in Python (`cannot be read`) — you cannot
+  dump a graph that way.
+
+## 26. Do NOT trust `EditorStaticMeshLibrary.get_num_uv_channels` in a commandlet (it returns 0)
+
+**False alarm that cost hours (2026-11-02)**: the OBJ-imported meshes appeared to have
+**zero UV channels**, which "explained" flat textures. It was an API artefact.
+
+- `unreal.EditorStaticMeshLibrary.get_num_uv_channels(mesh, lod)` is **deprecated** in
+  5.5 and returns **0** when called from `-run=pythonscript` (commandlet), where
+  `StaticMeshEditorSubsystem` is unavailable (`get_editor_subsystem(...)` → None).
+- In a real editor session (GUI via schtasks `/it`), `unreal.StaticMeshEditorSubsystem
+  .get_num_uv_channels(mesh, 0)` returns the truth: **1 UV channel** for the shipped
+  `c5_18` and for Blender-exported FBX imports. UVs were never missing.
+- Rule: any editor-subsystem-dependent query must run in a GUI editor session, never in
+  a commandlet. If a probe returns a suspicious zero/nil, validate it against a
+  known-good asset **in the same process** before drawing conclusions.
+- Data point that also came out of this: the FBX round-trip reproduces the OBJ import
+  exactly — bounds `565620 × 625280 × 29594`, 133 static materials — so Blender OBJ→FBX
+  is a valid import path (Blender 5.2 `export_scene.fbx` uses `axis_forward`/`axis_up`,
+  not `forward_axis`/`up_axis`; `wm.obj_import` DOES use `forward_axis`/`up_axis`).
+- `InterchangeGenericMeshPipeline.import_vertex_attributes` is **not** the UV switch —
+  flipping it (even on the saved `/Interchange/Pipelines/DefaultAssetsPipeline`) changes
+  nothing about UV import. `InterchangeGenericAssetsPipeline.mesh_pipeline` is read-only
+  from Python (its sub-object can still be mutated, but it does not affect UV import).
+
+## 27. Checker everywhere even though every asset is correct = materials cooked for the WRONG shader platform (SM5 only, game runs SM6)
+
+**Symptom**: grey/white checkerboard over every custom surface in game; nothing in the
+cook log; every asset loads at runtime (`mi_load/master_load/mesh_load/tex_load = OK`);
+MIs carry correct texture parameters in the cooked pak; meshes have UVs and 133 material
+slots; masters contain real `TBasePass*` shader maps.
+
+**Root cause**: `D:\UEProjects\C1\Config\DefaultEngine.ini` had **no** `TargetedRHIs`
+entry, so the cook produced **PCD3D_SM5 only**. Motor Town (UE 5.5, RTX 4070, DX12)
+runs the **SM6** shader platform, so no shader in our material matched the active
+platform and the engine substituted the default material at render time.
+
+**Fix**: add to `Config/DefaultEngine.ini`, then clean-cook:
+```ini
+[/Script/WindowsTargetPlatform.WindowsTargetSettings]
+TargetedRHIs=PCD3D_SM5
+TargetedRHIs=PCD3D_SM6
+```
+
+**Verified numbers**: cooked `M_C1_Tex2.uexp` **11,176 B** (SM5 only, 1 × `PCD3D_SM5`
+string) → **17,983 B** with both platforms (1 × `PCD3D_SM5` + 1 × `PCD3D_SM6`).
+Pak 171,508,036 → 171,511,402 B.
+
+**How to check a cook's platform coverage**:
+`Select-String -Path <master>.uexp -Pattern "PCD3D_SM5"` / `"PCD3D_SM6"` — a working
+modpak must contain the platform the game actually runs.
+
+**Lesson**: "asset loads fine" proves nothing about rendering. Shader *platform* coverage
+is a separate axis from shader *presence*. Verify the platform string, not just the
+`TBasePass`/`FMaterialShaderMapContent` strings.
+
+## 29. Materials cooked in a separate project NEVER render in Motor Town — reparent to a vanilla master
+
+**Symptom**: the whole map renders flat-coloured with checkerboard patches. Textures,
+UVs, MI parameters, master graph, import paths, shader platform (SM5 *and* SM6) all
+verified correct, yet nothing changes after any material edit.
+
+**The falsification test that settled it**: set the master to emit a flat magenta
+constant and re-cook. The world did **not** change at all. A material that is being
+rendered cannot ignore its own master — therefore our material was never on the
+surfaces. MT silently substitutes the default material when it cannot resolve a cooked
+material's shader map ID (UE log string: `Tried to access an uncooked shader map ID in
+a cooked application` → `Default Material will be used`). Shipping builds compile this
+warning out, so there is no log to read — the magenta test *is* the log.
+
+**Root cause**: a master material cooked in a different UE project carries shader maps
+keyed to a shader map ID the target game cannot resolve. MT's own materials work because
+MT cooked them.
+
+**The test that proved the fix** (cheap, no re-cook): take ONE cooked MI from the
+installed pak, rewrite only its `Parent` import to a vanilla MT material
+(`--patch-export-props` with `op: set_import_ref`, `class_name: MaterialInterface`,
+`package_path: /Game/Env/Materials/Road/MI_Road_01A_Ver01_NoGroove`), repack as a tiny
+override pak, install. The road immediately rendered MT's asphalt on **our** geometry.
+That single test separates three hypotheses at once: our geometry/imports/overrides are
+fine, and only our shader maps are rejected.
+
+**The fix** (`--retarget-mis <inDir> <outDir>` in `csharp/UAssetTool`): reparent every
+cooked MI to `/Game/Env/Materials/Master/M_PropMaster` and rename our texture params onto
+its parameter set. No project change, no re-cook — the MIs are patched from the cooked
+output and shipped as an override pak mounted last.
+
+`M_PropMaster` parameter set: `BaseColor`, `Normal`, `Metallic`, `Roughness`, `Specular`,
+`Mask` (textures); `Use_MaskTexture`, `Use_NormalTexture`, `UV_Tiling`.
+
+Param remap: `BaseColor→BaseColor`, `Normal→Normal`, `MetallicTex→Metallic`,
+`RoughnessTex→Roughness`, `EmissiveTex`/`EmissiveStrength` → **dropped** (no equivalent).
+
+**Verified numbers**: retargeted=568 failed=6 (the 6 masters — no `Parent` property,
+expected). `zzzz_AMC_C1Mats_P.pak` = 2,301,786 B replacing 568 instances, vs the 171 MB
+main pak. Textured corridor confirmed in-game.
+
+**Gotchas learned on the way**:
+
+- **Override pak precedence**: name it `zzzz_` so it mounts after `zzz_AMC_C1_P` and wins
+  the same asset paths. A one-file pak is enough to test a single material.
+- **`mesh:GetMaterial(i)` and `mi:GetMaterial()` return nil for EVERYTHING in UE4SS** —
+  vanilla `Atlas/Cab` and `MI_Road_01A_Ver01_NoGroove` return nil too. Never conclude
+  "no materials at runtime" from these accessors; validate against a vanilla asset first
+  (same trap as entries 24–25).
+- **`PKG_UnversionedProperties` absence is NOT a bug**: unversioned cooked packages are
+  opt-in (`-UnVersioned`), so versioned cooked content is legitimate. Do not chase it.
+- **NS (Nordschleife) is SM5-only with its own masters** — so platform coverage and
+  cross-project cooking are both *not* general explanations; only the shader map ID is.

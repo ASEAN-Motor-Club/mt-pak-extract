@@ -47,9 +47,12 @@ class Program
         bool patchRowsMode = args.Contains("--patch-rows");
         bool patchExportMode = args.Contains("--patch-export-props");
         bool patchNamedExportsMode = args.Contains("--patch-named-exports");
+        bool makeCompositeMode = args.Contains("--make-composite");
+        bool propProbeMode = args.Contains("--propprobe");
         bool alignImportsMode = args.Contains("--align-imports");
         bool dumpMode = args.Contains("--dump");
         bool ptProbe = args.Contains("--ptprobe");
+        bool retargetMode = args.Contains("--retarget-mis");
         int ptIdx = Array.IndexOf(args, "--ptprobe");
         
         Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--patch-export-props ...] [--patch-named-exports ...] [--dump ...] [path/to/asset.uasset]");
@@ -66,6 +69,14 @@ class Program
         Console.WriteLine($"Loaded {Mappings.Schemas.Count} schemas");
         
         PatchMappingsForVersion();
+        
+        if (retargetMode)
+        {
+            int ri = Array.IndexOf(args, "--retarget-mis");
+            if (ri + 2 >= args.Length) { Console.WriteLine("usage: --retarget-mis <inDir> <outDir>"); return; }
+            RetargetMIs(args[ri + 1], args[ri + 2]);
+            return;
+        }
         
         if (ptProbe)
         {
@@ -166,6 +177,19 @@ class Program
             var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
             var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
             PatchNamedExports(configPath, templatePath, outputDir);
+        }
+        else if (propProbeMode)
+        {
+            var idx = Array.IndexOf(args, "--propprobe");
+            PropProbe(args.ElementAtOrDefault(idx + 1)!);
+        }
+        else if (makeCompositeMode)
+        {
+            var idx = Array.IndexOf(args, "--make-composite");
+            var configPath = args.ElementAtOrDefault(idx + 1) ?? "config.json";
+            var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
+            var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
+            MakeComposite(configPath, templatePath, outputDir);
         }
         else if (alignImportsMode)
         {
@@ -656,6 +680,139 @@ class Program
     // ========================================================================
     // --clone-asset: Generic asset cloning, renaming, and patching
     // ========================================================================
+    static void PropProbe(string path)
+    {
+        var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+        Console.WriteLine($"Asset: {path}  imports={asset.Imports.Count} exports={asset.Exports.Count}");
+        foreach (var exp in asset.Exports)
+        {
+            var ne = exp as NormalExport;
+            Console.WriteLine($"Export {exp.ObjectName}: Class={exp.GetExportClassType()?.Value?.Value} C#Type={exp.GetType().Name} props={ne?.Data.Count ?? 0} serialSize={exp.SerialSize}");
+            if (ne == null) continue;
+            foreach (var p in ne.Data)
+            {
+                var tn = p.PropertyTypeName?.ToString() ?? "?";
+                string val = p switch
+                {
+                    ObjectPropertyData o => $"-> import/export {o.Value.Index}",
+                    SoftObjectPropertyData s => $"-> {s.Value.AssetPath.AssetName}",
+                    ArrayPropertyData a => $"count={a.Value.Length}" + (a.Value.Length > 0 ? $" [{string.Join(",", a.Value.Take(4).Select(x => x.GetType().Name))}]" : ""),
+                    NamePropertyData n => $"= '{n.Value}'",
+                    IntPropertyData i => $"= {i.Value}",
+                    BoolPropertyData b => $"= {b.Value}",
+                    _ => ""
+                };
+                Console.WriteLine($"    {p.Name} : {tn} {val}");
+            }
+        }
+    }
+
+    // --make-composite
+    // Turn a DataTable template into a CompositeDataTable at a new path:
+    // clear inline rows (a composite resolves rows from ParentTables), point
+    // RowStruct at the wanted struct, and set the ParentTables array.
+    // Template must already be a CompositeDataTable (vanilla Cargos.uasset is).
+    static void MakeComposite(string configPath, string templatePath, string outputDir)
+    {
+        if (!File.Exists(configPath)) { Console.WriteLine($"Error: Config not found: {configPath}"); return; }
+        if (!File.Exists(templatePath)) { Console.WriteLine($"Error: Template not found: {templatePath}"); return; }
+
+        var root = JsonDocument.Parse(File.ReadAllText(configPath)).RootElement;
+        var newName = root.GetProperty("new_name").GetString()!;
+        var newPath = root.GetProperty("new_path").GetString()!;
+
+        var asset = new UAsset(templatePath, EngineVersion.VER_UE5_5, Mappings);
+        asset.FolderName = FString.FromString(newPath);
+        asset.PackageGuid = Guid.NewGuid();
+
+        var mainExp = asset.Exports[0] as NormalExport;
+        if (mainExp == null) { Console.WriteLine("Error: main export is not a NormalExport"); return; }
+
+        var oldName = mainExp.ObjectName.Value.Value!;
+        mainExp.ObjectName = FName.FromString(asset, newName);
+        Console.WriteLine($"  Renamed export: {oldName} -> {newName}");
+
+        // 1. Export class -> CompositeDataTable (keeps the template's own import
+        // table, which the engine resolves child-row import indices against).
+        var (_, compositeIdx) = AddImportChain(asset, "/Script/CoreUObject", "Class",
+            "/Script/Engine", "CompositeDataTable", false);
+        mainExp.ClassIndex = FPackageIndex.FromImport(compositeIdx - 1);
+        Console.WriteLine($"  Export class -> CompositeDataTable (import {compositeIdx})");
+
+        // 2. Clear inline rows — a composite resolves rows from ParentTables.
+        bool clearRows = !root.TryGetProperty("keep_rows", out var kr) || !kr.GetBoolean();
+        if (clearRows && mainExp is DataTableExport dte && dte.Table?.Data != null && dte.Table.Data.Count > 0)
+        {
+            Console.WriteLine($"  Clearing {dte.Table.Data.Count} inline rows (composite reads parents)");
+            dte.Table.Data.Clear();
+        }
+
+        // 3. RowStruct (optional)
+        if (root.TryGetProperty("row_struct", out var rs))
+        {
+            var (_, rsIdx) = AddImportChain(asset, "/Script/CoreUObject", "ScriptStruct",
+                rs.GetProperty("package").GetString()!, rs.GetProperty("name").GetString()!, false);
+            var rsProp = mainExp.Data.FirstOrDefault(p => p.Name?.Value?.Value == "RowStruct");
+            if (rsProp is ObjectPropertyData rsObj)
+            {
+                rsObj.Value = FPackageIndex.FromImport(rsIdx - 1);
+                Console.WriteLine($"  RowStruct -> {rs.GetProperty("name").GetString()}");
+            }
+            else Console.WriteLine("  WARNING: RowStruct property not found on main export");
+        }
+
+        // 4. ParentTables array — only build one if the template has none
+        // (a hand-built array serializes wrong: missing type names / inner
+        // FName, which the engine reads as garbage). Templates that already
+        // carry ParentTables get it patched via clear_array/append_import_to_array.
+        if (root.TryGetProperty("parents", out var parents))
+        {
+            var ptProp = mainExp.Data.FirstOrDefault(p => p.Name?.Value?.Value == "ParentTables");
+            bool useExisting = ptProp is ArrayPropertyData
+                && root.TryGetProperty("use_existing_array", out var uea) && uea.GetBoolean();
+            if (useExisting)
+            {
+                Console.WriteLine("  ParentTables already present — leaving it to patches");
+            }
+            else
+            {
+                var arr = ptProp as ArrayPropertyData;
+                if (arr == null)
+                {
+                    arr = new ArrayPropertyData(FName.FromString(asset, "ParentTables"));
+                    arr.PropertyTypeName = MakeTypeName(asset, arr.PropertyType);
+                    mainExp.Data.Add(arr);
+                    Console.WriteLine("  Created ParentTables array");
+                }
+                var list = new List<PropertyData>();
+                int n = 0;
+                foreach (var p in parents.EnumerateArray())
+                {
+                    var (_, impIdx) = AddImportChain(asset, "/Script/Engine", "DataTable",
+                        p.GetProperty("package_path").GetString()!, p.GetProperty("asset_name").GetString()!, false);
+                    var opd = new ObjectPropertyData(FName.FromString(asset, n.ToString()))
+                    {
+                        Value = FPackageIndex.FromImport(impIdx - 1)
+                    };
+                    opd.PropertyTypeName = MakeTypeName(asset, opd.PropertyType);
+                    list.Add(opd);
+                    Console.WriteLine($"  ParentTables[{n}] -> {p.GetProperty("asset_name").GetString()}");
+                    n++;
+                }
+                arr.Value = list.ToArray();
+            }
+        }
+
+        if (root.TryGetProperty("patches", out var patches))
+            ApplyPatches(mainExp.Data, patches, asset);
+
+        var outDir = Path.Combine(outputDir, newName);
+        Directory.CreateDirectory(outDir);
+        var outPath = Path.Combine(outDir, $"{newName}.uasset");
+        asset.Write(outPath);
+        Console.WriteLine($"Written: {outPath} (+ .uexp)");
+    }
+
     static void CloneAsset(string configPath, string templatePath, string outputDir)
     {
         if (!File.Exists(configPath)) { Console.WriteLine($"Error: Config not found: {configPath}"); return; }
@@ -857,14 +1014,22 @@ class Program
                     // applied AFTER rename) for CDO targets, e.g. "Default__X_C".
                     var meStr = exportPatch.TryGetProperty("match_export", out var meProp) ? meProp.GetString() : null;
                     var matchExport = meStr;
-                    
+                    // match_occurrence: pick the Nth export matching match_class
+                    // (cooked export names carry no _N suffix, so identical names
+                    // can't be told apart otherwise)
+                    int? matchOccurrence = exportPatch.TryGetProperty("match_occurrence", out var occProp) ? occProp.GetInt32() : null;
+                    int occSeen = 0;
+                    Console.WriteLine($"  [dbg] export_patch matchClass={matchClass} matchExport={matchExport}");
+
                     foreach (var export in asset.Exports)
                     {
                         if (export is NormalExport ne)
                         {
                             bool classMatch = matchClass == null || export.GetExportClassType()?.Value?.Value == matchClass;
                             bool nameMatch = matchExport == null || export.ObjectName.Value?.Value == matchExport;
-                            if (classMatch && nameMatch && exportPatch.TryGetProperty("patches", out var patches))
+                            bool occMatch = matchOccurrence == null || (classMatch && occSeen++ == matchOccurrence);
+                            if (matchOccurrence != null && classMatch && occSeen - 1 < matchOccurrence) { /* counted above */ }
+                            if (classMatch && nameMatch && occMatch && exportPatch.TryGetProperty("patches", out var patches))
                             {
                                 ApplyPatches(ne.Data, patches, asset);
                             }
@@ -1674,6 +1839,7 @@ class Program
         {
             var path = patch.GetProperty("path").GetString()!;
             var op = patch.GetProperty("op").GetString()!;
+            Console.WriteLine($"    [dbg] ApplyPatch op={op} path={path}");
             ApplyPatch(properties, path, op, patch, asset);
         }
     }
@@ -1853,7 +2019,7 @@ class Program
                 var softPath = new FSoftObjectPath(
                     FName.FromString(asset, packageName),
                     FName.FromString(asset, assetName),
-                    new FString(""));
+                    null);  // vanilla writes a NULL (0-length) SubPathString, not ""
                 var leafName = path.Split('.').Last();
 
                 SoftObjectPropertyData newSoft;
@@ -2021,7 +2187,7 @@ class Program
                     softProp.Value = new FSoftObjectPath(
                         FName.FromString(asset, "None"),
                         FName.FromString(asset, "None"),
-                        new FString(""));
+                        null);  // vanilla writes a NULL (0-length) SubPathString, not ""
                 }
                 break;
             }
@@ -2076,6 +2242,62 @@ class Program
                 break;
             }
             
+            case "append_struct_clone":
+            {
+                var target = ResolveProperty(properties, path) as ArrayPropertyData;
+                if (target == null) { Console.WriteLine($"    Warning: append_struct_clone: '{path}' is not an ArrayPropertyData"); break; }
+                int ti = patch.TryGetProperty("template_index", out var tEl) ? tEl.GetInt32() : 0;
+                if (ti < 0 || ti >= target.Value.Length) { Console.WriteLine($"    Warning: append_struct_clone: template_index {ti} out of range (len {target.Value.Length})"); break; }
+                if (target.Value[ti] is not StructPropertyData srcStruct) { Console.WriteLine($"    Warning: append_struct_clone: element {ti} is not a struct"); break; }
+                // Shallow list copy is safe ONLY because every field we touch is REPLACED with a
+                // freshly constructed property. Mutating a shared child would write through to the
+                // template element (it renamed the stock DriveMaps[0] once already).
+                var clone = new StructPropertyData(srcStruct.Name, srcStruct.StructType);
+                clone.Value = new List<PropertyData>(srcStruct.Value);
+                if (patch.TryGetProperty("fields", out var fields) && fields.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var f in fields.EnumerateObject())
+                    {
+                        int idx = clone.Value.FindIndex(p => p.Name?.Value?.Value == f.Name);
+                        if (idx < 0) { Console.WriteLine($"    Warning: append_struct_clone: no field '{f.Name}' in template"); continue; }
+                        var old = clone.Value[idx];
+                        var name = FName.FromString(asset, f.Name);
+                        PropertyData? fresh = null;
+                        switch (f.Value.ValueKind)
+                        {
+                            case JsonValueKind.String when old is NamePropertyData:
+                                fresh = new NamePropertyData(name) { Value = FName.FromString(asset, f.Value.GetString()!) };
+                                break;
+                            case JsonValueKind.String when old is StrPropertyData:
+                                fresh = new StrPropertyData(name) { Value = FString.FromString(f.Value.GetString()!) };
+                                break;
+                            case JsonValueKind.True:
+                            case JsonValueKind.False when old is BoolPropertyData:
+                                fresh = new BoolPropertyData(name) { Value = f.Value.GetBoolean(), IsZero = !f.Value.GetBoolean() };
+                                break;
+                            case JsonValueKind.Object when old is SoftObjectPropertyData:
+                                fresh = new SoftObjectPropertyData(name)
+                                {
+                                    Value = new FSoftObjectPath(
+                                        new FTopLevelAssetPath(
+                                            FName.FromString(asset, f.Value.GetProperty("package").GetString()!),
+                                            FName.FromString(asset, f.Value.GetProperty("asset").GetString()!)),
+                                        null)
+                                };
+                                break;
+                            case JsonValueKind.Number when old is FloatPropertyData:
+                                fresh = new FloatPropertyData(name) { Value = f.Value.GetSingle() };
+                                break;
+                        }
+                        if (fresh == null) { Console.WriteLine($"    Warning: append_struct_clone: cannot set '{f.Name}' ({old.GetType().Name})"); continue; }
+                        clone.Value[idx] = fresh;
+                    }
+                }
+                target.Value = target.Value.Append(clone).ToArray();
+                Console.WriteLine($"    appended struct to '{path}' (now {target.Value.Length} entries)");
+                break;
+            }
+
             case "clear_array":
             {
                 var prop = ResolveProperty(properties, path);
@@ -2815,6 +3037,9 @@ class Program
             var guid = Guid.NewGuid().ToString("N").ToUpper();
             nameTxt.Value = FString.FromString(guid.Substring(0, 32));
             nameTxt.HistoryType = TextHistoryType.Base;
+            // CultureInvariant flag (2) makes the engine fall back to the source string
+            // instead of showing nothing for a key that has no localization entry.
+            nameTxt.Flags |= ETextFlag.CultureInvariant;
             if (displayText != null)
             {
                 nameTxt.CultureInvariantString = FString.FromString(displayText);
@@ -2839,6 +3064,9 @@ class Program
                         textProp.Value = FString.FromString(Guid.NewGuid().ToString("N").ToUpper().Substring(0, 32));
                         textProp.CultureInvariantString = FString.FromString(textVal);
                         textProp.HistoryType = TextHistoryType.Base;
+                        // CultureInvariant flag: engine falls back to source string when
+                        // the loc key has no entry (working police-tyres rows carry this).
+                        textProp.Flags |= ETextFlag.CultureInvariant;
                         textList.Add(textProp);
                     }
                     textsArr.Value = textList.ToArray();
@@ -2855,6 +3083,7 @@ class Program
             descTxt.Value = FString.FromString(Guid.NewGuid().ToString("N").ToUpper().Substring(0, 32));
             descTxt.CultureInvariantString = FString.FromString(text);
             descTxt.HistoryType = TextHistoryType.Base;
+            descTxt.Flags |= ETextFlag.CultureInvariant;
         }
     }
     
@@ -2893,11 +3122,86 @@ class Program
         return (pkgIdx, assetIdx);
     }
     
+    // --retarget-mis <inDir> <outDir>
+    // Reparent every cooked MaterialInstanceConstant under inDir to a vanilla Motor Town
+    // master material and remap our texture parameter names onto that master's parameter
+    // set. Rationale: shader maps cooked in a separate project are rejected by Motor Town
+    // (uncooked shader map ID -> default material, magenta test proved it), whereas a
+    // master MT itself ships already has shaders the game owns and resolves.
+    static void RetargetMIs(string inDir, string outDir)
+    {
+        const string vmPkg  = "/Game/Env/Materials/Master/M_PropMaster";
+        const string vmName = "M_PropMaster";
+        var rename = new Dictionary<string, string?>
+        {
+            { "BaseColor",    "BaseColor" },
+            { "Normal",       "Normal"    },
+            { "MetallicTex",  "Metallic"  },
+            { "RoughnessTex", "Roughness" },
+            { "EmissiveTex",  null        },  // no such param on the vanilla master
+            { "EmissiveStrength", null    },
+        };
+
+        Directory.CreateDirectory(outDir);
+        int ok = 0, fail = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            try
+            {
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { Console.WriteLine($"SKIP {Path.GetFileName(path)}: no NormalExport"); fail++; continue; }
+
+                var props = exp.Data;
+                var parent = props.OfType<ObjectPropertyData>().FirstOrDefault(p => p.Name?.Value?.Value == "Parent");
+                if (parent == null) { Console.WriteLine($"SKIP {Path.GetFileName(path)}: no Parent"); fail++; continue; }
+
+                var (_, assetIdx) = AddImportChain(asset, "/Script/Engine", "Material", vmPkg, vmName);
+                parent.Value = FPackageIndex.FromImport(assetIdx - 1);
+
+                foreach (var arrName in new[] { "TextureParameterValues", "ScalarParameterValues", "VectorParameterValues" })
+                {
+                    var arr = props.OfType<ArrayPropertyData>().FirstOrDefault(p => p.Name?.Value?.Value == arrName);
+                    if (arr == null) continue;
+                    var kept = new List<PropertyData>();
+                    foreach (var el in arr.Value)
+                    {
+                        var sp = el as StructPropertyData;
+                        if (sp == null) { kept.Add(el); continue; }
+                        var info = sp.Value.OfType<StructPropertyData>().FirstOrDefault(s => s.Name?.Value?.Value == "ParameterInfo");
+                        var nm = info?.Value.OfType<NamePropertyData>().FirstOrDefault(n => n.Name?.Value?.Value == "Name");
+                        var cur = nm?.Value?.ToString() ?? "";
+                        if (!rename.TryGetValue(cur, out var to)) { kept.Add(el); continue; }
+                        if (to == null) continue;
+                        if (nm != null) nm.Value = FName.FromString(asset, to);
+                        kept.Add(el);
+                    }
+                    arr.Value = kept.ToArray();
+                }
+
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                ok++;
+            }
+            catch (Exception ex) { Console.WriteLine($"FAIL {Path.GetFileName(path)}: {ex.Message}"); fail++; }
+        }
+        Console.WriteLine($"retargeted={ok} failed={fail}");
+    }
+
     static void SetEnumArray(ArrayPropertyData arr, JsonElement values,
         UAsset asset, string defaultEnumTypeName)
     {
-        if (arr.Value.Length == 0) return;
-        var templateEnum = (EnumPropertyData)arr.Value[0];
+        EnumPropertyData? templateEnum;
+        if (arr.Value.Length > 0)
+            templateEnum = (EnumPropertyData)arr.Value[0];
+        else
+        {
+            // Template array is empty (e.g. TruckClasses on car tires): synthesize
+            // an element so the enum type can be taken from the config instead.
+            templateEnum = new EnumPropertyData(FName.FromString(asset, defaultEnumTypeName))
+            {
+                Name = FName.FromString(asset, defaultEnumTypeName)
+            };
+        }
         var enumTypeName = templateEnum.EnumType?.Value?.Value ?? defaultEnumTypeName;
         var list = new List<PropertyData>();
         foreach (var val in values.EnumerateArray())
