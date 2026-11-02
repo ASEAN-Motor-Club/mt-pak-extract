@@ -72,11 +72,22 @@ CUEPATCH = os.path.join(MODS, "tooling", "cuepatch")
 AUDIO = os.path.join(HERE, "audio")
 
 VERSION = "0.8.0"
+DISPLAY_NAME = os.environ.get("DISPLAY_NAME", "Binka 500cc 50hp")
+
+# When building INTO an existing pak stage (the hams-engines pak), point these at it:
+#   SOUNDER_STAGE       stage root (…/build/stage) to write our assets into
+#   SOUNDER_BASE_TABLE  Engines.uasset with the other engine rows already in it
+#   SOUNDER_OUT_TABLE   where to write the table with our row appended
+#   SOUNDER_NO_PACK=1   don't try to pack
+STAGE_OVERRIDE = os.environ.get("SOUNDER_STAGE")
+BASE_TABLE = os.environ.get("SOUNDER_BASE_TABLE")
+OUT_TABLE = os.environ.get("SOUNDER_OUT_TABLE")
+NO_PACK = os.environ.get("SOUNDER_NO_PACK") == "1"
 PAK = os.environ.get(
     "OUT", os.path.join(MODS, "builds", f"zzz_AMC_Test_I4Sounder_v{VERSION}_0.7.19_P.pak")
 )
 WORK = os.environ.get("WORK") or tempfile.mkdtemp(prefix="amc-sounder-")
-STAGE = os.path.join(WORK, "stage", "MotorTown", "Content")
+STAGE = os.path.join(STAGE_OVERRIDE or os.path.join(WORK, "stage"), "MotorTown", "Content")
 WAVE_DIR = "Cars/Parts/Engine/Sound/AMC"
 ENG_DIR = "Cars/Parts/Engine/AMC"
 CUE_PKG = "/Game/" + WAVE_DIR + "/SC_AMC_I4Engine"
@@ -268,6 +279,9 @@ def build_engine():
 
 
 def build_table():
+    if BASE_TABLE:
+        req(BASE_TABLE, "base Engines table (SOUNDER_BASE_TABLE)")
+        return _add_row(BASE_TABLE, OUT_TABLE or os.path.join(WORK, "table_rows"))
     req(BASE_PAK, "base Engines pak (BASE_PAK)")
     ex = os.path.join(WORK, "table")
     os.makedirs(ex)
@@ -278,18 +292,21 @@ def build_table():
     if not os.path.exists(src):
         src = os.path.join(ex, "Engines.uasset")
     assert os.path.exists(src), "Engines table not extracted from BASE_PAK"
+    _add_row(src, os.path.join(ex, "rows"))
 
+
+def _add_row(src, out):
     cfg = {"output_filename": "Engines",
            "template_row_match": {"RowName": "I4_50HP"},
            "rows": [{"row_name": "TestEngine_AMCI4Sounder", "patches": [
-               {"op": "set", "path": "Name", "value": "Test AMC I4 Sounder"},
+               {"op": "set", "path": "Name", "value": DISPLAY_NAME},
                {"op": "set", "path": "Cost", "value": 5000},
                {"op": "set_soft_ref", "path": "EngineAsset",
                 "package_path": "/Game/" + ENG_DIR + "/" + ENGINE_NAME,
                 "asset_name": ENGINE_NAME}]}]}
-    cfg_path = os.path.join(ex, "add_row.json")
+    os.makedirs(out, exist_ok=True)
+    cfg_path = os.path.join(out, "add_row.json")
     json.dump(cfg, open(cfg_path, "w"), indent=2)
-    out = os.path.join(ex, "rows")
     sh([DOTNET, "run", "-c", "Release", "--no-build", "--project", ".",
         "--", "--add-rows", cfg_path, src, out], cwd=UATOOL, env=env())
 
@@ -312,6 +329,9 @@ def main():
     build_cue()
     build_engine()
     build_table()
+    if NO_PACK:
+        print("  (SOUNDER_NO_PACK=1 - staged into", STAGE, ")")
+        return
     os.makedirs(os.path.dirname(PAK), exist_ok=True)
     sh([MODPACK, os.path.join(WORK, "stage"), PAK], env=ld_env())
     print("PAK:", PAK, os.path.getsize(PAK), "bytes")

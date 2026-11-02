@@ -1,12 +1,14 @@
 # sounder — custom I4 engine with BINKA-encoded custom loops
 
-A complete custom engine row, `Test AMC I4 Sounder`, whose exhaust note is three
+A complete custom engine row, **Binka 500cc 50hp** (`TestEngine_AMCI4Sounder`), whose exhaust note is three
 user-supplied recordings streamed out of the pak. No vanilla asset is modified: our
 waves, our cue and our engine asset all live under `/Game/Cars/Parts/Engine/.../AMC/`,
 and only the `Engines` DataTable is shared (one pak may own it — see the parent README).
 
 Build: `python3 mods/hams-engines/sounder/build_sounder.py` (env vars in the module
-docstring; `VANILLA` is required).
+docstring; `VANILLA` is required) for a standalone pak, or let `mods/hams-engines/build.sh`
+call it with `SOUNDER_STAGE`/`SOUNDER_BASE_TABLE`/`SOUNDER_NO_PACK=1` so the engine ships
+inside the main hams-engines pak as one of its rows.
 
 ## What ships
 
@@ -19,7 +21,7 @@ docstring; `VANILLA` is required).
 | `Cars/Parts/Engine/AMC/Test_AMC_I4Sounder` | engine asset, `I4_50HP` clone, cue swapped |
 | `DataAsset/VehicleParts/Engines` | base table + `TestEngine_AMCI4Sounder` row |
 
-Row values: display name `Test AMC I4 Sounder`, cost 5,000, `PartType Engine`,
+Row values: display name **Binka 500cc 50hp**, cost 5,000, `PartType Engine`,
 `VehicleTypes Small + Pickup`. RowName `TestEngine_AMCI4Sounder` is save identity —
 never rename it, only the display `Name`.
 

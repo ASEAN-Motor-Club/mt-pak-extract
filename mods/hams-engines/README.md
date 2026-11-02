@@ -1,16 +1,22 @@
-# hams-engines — both custom engines in ONE pak
+# hams-engines — all custom engines in ONE pak
 
 Supersedes the separate `engine-13b-v6-test` and `engine-330-kart` paks, which each
 shipped their own copy of the vanilla `Engines` DataTable and therefore deleted each
 other's rows at load time (only one pak can own a DataTable; the last to load wins
 silently).
 
-One table = vanilla 36 rows + 2 custom rows = **38**:
+One table = vanilla 36 rows + 5 custom rows = **41**:
 
 | Row | Menu label | What it is |
 |---|---|---|
 | `TestEngine_13bV6` | **Hams Rotary 180HP** | rotary idle bed + V6Sport low/high + 26B brap (9000 rpm) |
 | `TestEngine_330Kart` | **Test 330 Kart** | MediumDuty 330 diesel with the kart 10HP chainsaw layered under it (3500 rpm) |
+| `TestEngine_HDHybrid` | **Test HD TDI V-Twin** | Audi TDI layers over the Harley cue (2900 rpm) |
+| `TestEngine_Thumper` | **Test Thumper** | 1,800 rpm lugger, 3,000 Nm @ 756 |
+| `TestEngine_AMCI4Sounder` | **Binka 500cc 50hp** | own BINKA-encoded loops, 8500 rpm, 50.0 hp @ ~7900 (see `sounder/`) |
+
+Built by `build.sh`; the sounder section is driven by `sounder/build_sounder.py`, which
+stages its waves/cue/engine into the same pak stage and appends its row to the table.
 
 ## Pak contents (16 files)
 

@@ -172,6 +172,19 @@ for d in 13b 26b; do
      "$S/Cars/Parts/Engine/Sound/$d/"
 done
 
+echo "==== Binka 500cc 50hp (custom BINKA loops as its own engine row) ===="
+echo "== sounder: waves + cue + engine asset into the same stage, row appended to the table"
+DISPLAY_NAME="${SOUNDER_NAME:-Binka 500cc 50hp}" \
+SOUNDER_STAGE="$WORK/stage" \
+SOUNDER_BASE_TABLE="$WORK/k7_engines/Engines.uasset" \
+SOUNDER_NO_PACK=1 \
+VANILLA="$OUT_ASSETS" \
+MAPPINGS="$MAPPINGS" \
+DOTNET="${DOTNET:-dotnet}" \
+MODPACK="$MODPACK" \
+BINKA_DIR="${BINKA_DIR:-$MOD_DIR/sounder/binka}" \
+python3 "$MOD_DIR/sounder/build_sounder.py"
+
 if [ -n "${MODPACK_LD:-}" ]; then
   LD_LIBRARY_PATH="$MODPACK_LD" "$MODPACK" "$WORK/stage" "$PAK_OUT"
 else
