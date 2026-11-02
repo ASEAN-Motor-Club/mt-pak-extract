@@ -1,0 +1,7 @@
+{
+  "new_name": "TorqueCurve_Rotary",
+  "old_name": "TorqueCurve_SmallBlock",
+  "new_path": "/Game/Cars/Parts/Engine/TorqueCurve",
+  "rename_exports": true,
+  "rename_imports": true
+}

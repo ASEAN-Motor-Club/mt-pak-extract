@@ -1,0 +1,7 @@
+{
+  "new_name": "SC_HybridTDIVTwin",
+  "old_name": "harley",
+  "new_path": "/Game/Cars/Parts/Engine/Sound/AMC",
+  "rename_exports": true,
+  "rename_imports": false
+}

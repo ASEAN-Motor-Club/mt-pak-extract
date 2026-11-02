@@ -1,0 +1,7 @@
+{
+  "new_name": "TorqueCurve_Thumper",
+  "old_name": "TorqueCurve_DieselTruck",
+  "new_path": "/Game/Cars/Parts/Engine/TorqueCurve",
+  "rename_exports": true,
+  "rename_imports": true
+}

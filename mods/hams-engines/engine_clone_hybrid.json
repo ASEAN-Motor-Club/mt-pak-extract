@@ -1,0 +1,15 @@
+{
+  "new_name": "Test_HD_TDI_VTwin",
+  "old_name": "HeavyDuty_350HP",
+  "new_path": "/Game/Cars/Parts/Engine",
+  "rename_exports": true,
+  "rename_imports": false,
+  "import_replacements": [
+    {
+      "match_class": "SoundCue",
+      "match_name": "SC_Truck_04",
+      "new_package_path": "/Game/Cars/Parts/Engine/Sound/AMC/SC_HybridTDIVTwin",
+      "new_name": "SC_HybridTDIVTwin"
+    }
+  ]
+}

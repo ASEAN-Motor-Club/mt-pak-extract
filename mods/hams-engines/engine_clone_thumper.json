@@ -1,0 +1,21 @@
+{
+  "new_name": "Test_Thumper_1800",
+  "old_name": "HeavyDuty_350HP",
+  "new_path": "/Game/Cars/Parts/Engine",
+  "rename_exports": true,
+  "rename_imports": false,
+  "import_replacements": [
+    {
+      "match_class": "SoundCue",
+      "match_name": "SC_Truck_04",
+      "new_package_path": "/Game/Cars/Parts/Engine/Sound/AMC/SC_Thumper",
+      "new_name": "SC_Thumper"
+    },
+    {
+      "match_class": "CurveFloat",
+      "match_name": "TorqueCurve_DieselTruck",
+      "new_package_path": "/Game/Cars/Parts/Engine/TorqueCurve/TorqueCurve_Thumper",
+      "new_name": "TorqueCurve_Thumper"
+    }
+  ]
+}
