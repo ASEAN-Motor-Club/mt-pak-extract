@@ -1,0 +1,34 @@
+{
+ "output_filename": "Engines",
+ "template_row_match": {
+  "RowName": "MediumDuty_330HP"
+ },
+ "rows": [
+  {
+   "row_name": "TestEngine_330Kart",
+   "patches": [
+    {
+     "op": "set",
+     "path": "Name",
+     "value": "Test Diesel Two Stroke 340"
+    },
+    {
+     "op": "set",
+     "path": "Cost",
+     "value": 1000
+    },
+    {
+     "op": "set",
+     "path": "MassKg",
+     "value": 600.0
+    },
+    {
+     "op": "set_soft_ref",
+     "path": "EngineAsset",
+     "package_path": "/Game/Cars/Parts/Engine/Test_330Kart_330HP",
+     "asset_name": "Test_330Kart_330HP"
+    }
+   ]
+  }
+ ]
+}

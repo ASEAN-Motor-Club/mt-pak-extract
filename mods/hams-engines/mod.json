@@ -1,0 +1,11 @@
+{
+  "name": "hams-engines",
+  "display_name": "AMC_HamsEngines",
+  "version": "0.2.0",
+  "type": "engine",
+  "prefix": "zzz_",
+  "script": "mods/hams-engines/build.sh",
+  "configs": ["add_row.json", "add_row_330.json", "engine_clone.json", "engine_clone_330.json", "cue_clone.json", "cue_clone_330.json", "cue_patch.json"],
+  "compat_suffix": "",
+  "extra_args": {}
+}

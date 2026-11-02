@@ -1,0 +1,34 @@
+{
+ "output_filename": "Engines",
+ "template_row_match": {
+  "RowName": "SmallBlock_180HP"
+ },
+ "rows": [
+  {
+   "row_name": "TestEngine_13bV6",
+   "patches": [
+    {
+     "op": "set",
+     "path": "Name",
+     "value": "Test Dorito 250"
+    },
+    {
+     "op": "set",
+     "path": "Cost",
+     "value": 1000
+    },
+    {
+     "op": "set",
+     "path": "MassKg",
+     "value": 220.0
+    },
+    {
+     "op": "set_soft_ref",
+     "path": "EngineAsset",
+     "package_path": "/Game/Cars/Parts/Engine/Test_13bV6_180HP",
+     "asset_name": "Test_13bV6_180HP"
+    }
+   ]
+  }
+ ]
+}

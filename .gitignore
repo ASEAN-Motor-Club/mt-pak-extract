@@ -55,3 +55,8 @@ qxZap_*/
 # Built mod PAK outputs (build artifacts within mod dirs)
 mods/*/builds/
 /cargo_build/
+
+# Mod build intermediates (per-mod asset staging)
+mods/*/build/
+mods/*/tooling/**/bin/
+mods/*/tooling/**/obj/

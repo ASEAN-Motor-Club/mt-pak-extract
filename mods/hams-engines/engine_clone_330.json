@@ -1,0 +1,15 @@
+{
+  "new_name": "Test_330Kart_330HP",
+  "old_name": "MediumDuty_250HP",
+  "new_path": "/Game/Cars/Parts/Engine",
+  "rename_exports": false,
+  "rename_imports": false,
+  "import_replacements": [
+    {
+      "match_class": "SoundCue",
+      "match_name": "SC_Truck_02",
+      "new_package_path": "/Game/Cars/Parts/Engine/Sound/MediumDuty330_Kart/SC_Truck_02",
+      "new_name": "SC_Truck_02"
+    }
+  ]
+}

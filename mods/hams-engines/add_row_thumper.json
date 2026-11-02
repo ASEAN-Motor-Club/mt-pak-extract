@@ -1,0 +1,29 @@
+{
+ "output_filename": "Engines",
+ "template_row_match": {
+  "RowName": "HeavyDuty_350HP"
+ },
+ "rows": [
+  {
+   "row_name": "TestEngine_Thumper",
+   "patches": [
+    {
+     "op": "set",
+     "path": "Name",
+     "value": "Test Thumper"
+    },
+    {
+     "op": "set",
+     "path": "Cost",
+     "value": 7500
+    },
+    {
+     "op": "set_soft_ref",
+     "path": "EngineAsset",
+     "package_path": "/Game/Cars/Parts/Engine/Test_Thumper_1800",
+     "asset_name": "Test_Thumper_1800"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,16 @@
+{
+  "output_filename": "SC_V8Engine",
+  "exports": [
+    {
+      "export_name": "SoundNodeWavePlayer",
+      "patches": [
+        {
+          "op": "set_soft_ref",
+          "path": "SoundWaveAssetPtr",
+          "package_path": "/Game/Cars/Parts/Engine/Sound/13b/idle",
+          "asset_name": "idle"
+        }
+      ]
+    }
+  ]
+}

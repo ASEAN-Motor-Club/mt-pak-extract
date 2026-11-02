@@ -1,0 +1,7 @@
+{
+  "new_name": "SC_V8Engine",
+  "old_name": "SC_V8Engine",
+  "new_path": "/Game/Cars/Parts/Engine/Sound/13bV8",
+  "rename_exports": false,
+  "rename_imports": false
+}

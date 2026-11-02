@@ -1,0 +1,29 @@
+{
+ "output_filename": "Engines",
+ "template_row_match": {
+  "RowName": "HeavyDuty_350HP"
+ },
+ "rows": [
+  {
+   "row_name": "TestEngine_HDHybrid",
+   "patches": [
+    {
+     "op": "set",
+     "path": "Name",
+     "value": "Test HD TDI V-Twin"
+    },
+    {
+     "op": "set",
+     "path": "Cost",
+     "value": 5000
+    },
+    {
+     "op": "set_soft_ref",
+     "path": "EngineAsset",
+     "package_path": "/Game/Cars/Parts/Engine/Test_HD_TDI_VTwin",
+     "asset_name": "Test_HD_TDI_VTwin"
+    }
+   ]
+  }
+ ]
+}
