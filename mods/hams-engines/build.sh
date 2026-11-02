@@ -115,15 +115,9 @@ cuepatch kd330engine "$WORK/k3_engine/Test_330Kart_330HP/Test_330Kart_330HP.uass
 echo "== 9e/9 append row TestEngine_330Kart to the SAME table (37 -> 38)"
 uatool --add-rows "$MOD_DIR/add_row_330.json" "$WORK/r7_engines/Engines.uasset" "$WORK/k5_engines"
 
-echo "==== Test HD TDI V-Twin (Audi 5.5 TDI + Harley V-twin over a stock heavy duty) ===="
-echo "== 10a clone the Harley cue into Sound/AMC/SC_HybridTDIVTwin"
-uatool --clone-asset "$MOD_DIR/cue_hybrid.json" "$OUT_ASSETS/harley.uasset" "$WORK/h1_cue_clone"
-echo "== 10b swap the idle/mid/high layers to the Audi TDI waves + rescale to 2900 rpm"
-cuepatch hybridvtdi "$WORK/h1_cue_clone/SC_HybridTDIVTwin/SC_HybridTDIVTwin.uasset" "$WORK/h2_cue_hybrid"
-echo "== 10c clone HeavyDuty_350HP as Test_HD_TDI_VTwin, cue repointed"
-uatool --clone-asset "$MOD_DIR/engine_clone_hybrid.json" "$OUT_ASSETS/HeavyDuty_350HP.uasset" "$WORK/h3_engine"
-echo "== 10d append row TestEngine_HDHybrid (38 -> 39)"
-uatool --add-rows "$MOD_DIR/add_row_hybrid.json" "$WORK/k5_engines/Engines.uasset" "$WORK/k6_engines"
+# NOTE: the Test HD TDI V-Twin engine was removed from this pak on the owner's
+# request. Its configs (cue_hybrid.json, engine_clone_hybrid.json, add_row_hybrid.json)
+# are kept in the repo but are no longer built.
 
 echo "==== Test Thumper (1,800 rpm lugger) ===="
 echo "== 11a clone DieselTruck curve as TorqueCurve_Thumper"
@@ -138,7 +132,7 @@ uatool --clone-asset "$MOD_DIR/engine_clone_thumper.json" "$OUT_ASSETS/HeavyDuty
 echo "== 11e Thumper engine numbers (3,000 Nm @ 900, 1,800 limiter)"
 cuepatch thumperengine "$WORK/t5_engine/Test_Thumper_1800/Test_Thumper_1800.uasset" "$WORK/t6_engine"
 echo "== 11f append row TestEngine_Thumper (39 -> 40)"
-uatool --add-rows "$MOD_DIR/add_row_thumper.json" "$WORK/k6_engines/Engines.uasset" "$WORK/k7_engines"
+uatool --add-rows "$MOD_DIR/add_row_thumper.json" "$WORK/k5_engines/Engines.uasset" "$WORK/k6_engines"
 
 S="$WORK/stage/MotorTown/Content"
 mkdir -p "$S/DataAsset/VehicleParts" "$S/Cars/Parts/Engine/Sound/13bV8" \
@@ -147,15 +141,10 @@ mkdir -p "$S/DataAsset/VehicleParts" "$S/Cars/Parts/Engine/Sound/13bV8" \
          "$S/Cars/Parts/Engine/Sound/AMC" \
          "$S/Cars/Parts/Engine/TorqueCurve"
 cp "$WORK/k6_engines/Engines.uasset" "$WORK/k6_engines/Engines.uexp" "$S/DataAsset/VehicleParts/"
-cp "$WORK/k7_engines/Engines.uasset" "$WORK/k7_engines/Engines.uexp" "$S/DataAsset/VehicleParts/"
 cp "$WORK/t4_cue/SC_Thumper.uasset" "$WORK/t4_cue/SC_Thumper.uexp" "$S/Cars/Parts/Engine/Sound/AMC/"
 cp "$WORK/t2_curve/TorqueCurve_Thumper.uasset" "$WORK/t2_curve/TorqueCurve_Thumper.uexp" \
    "$S/Cars/Parts/Engine/TorqueCurve/"
 cp "$WORK/t6_engine/Test_Thumper_1800.uasset" "$WORK/t6_engine/Test_Thumper_1800.uexp" \
-   "$S/Cars/Parts/Engine/"
-cp "$WORK/h2_cue_hybrid/SC_HybridTDIVTwin.uasset" "$WORK/h2_cue_hybrid/SC_HybridTDIVTwin.uexp" \
-   "$S/Cars/Parts/Engine/Sound/AMC/"
-cp "$WORK/h3_engine/Test_HD_TDI_VTwin/Test_HD_TDI_VTwin.uasset" "$WORK/h3_engine/Test_HD_TDI_VTwin/Test_HD_TDI_VTwin.uexp" \
    "$S/Cars/Parts/Engine/"
 cp "$WORK/r6b_engine_curve/Test_13bV6_180HP.uasset" "$WORK/r6b_engine_curve/Test_13bV6_180HP.uexp" \
    "$S/Cars/Parts/Engine/"
@@ -176,7 +165,7 @@ echo "==== Binka 500cc 50hp (custom BINKA loops as its own engine row) ===="
 echo "== sounder: waves + cue + engine asset into the same stage, row appended to the table"
 DISPLAY_NAME="${SOUNDER_NAME:-Binka 500cc 50hp}" \
 SOUNDER_STAGE="$WORK/stage" \
-SOUNDER_BASE_TABLE="$WORK/k7_engines/Engines.uasset" \
+SOUNDER_BASE_TABLE="$WORK/k6_engines/Engines.uasset" \
 SOUNDER_NO_PACK=1 \
 VANILLA="$OUT_ASSETS" \
 MAPPINGS="$MAPPINGS" \

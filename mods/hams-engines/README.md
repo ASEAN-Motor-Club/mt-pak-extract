@@ -5,15 +5,17 @@ shipped their own copy of the vanilla `Engines` DataTable and therefore deleted 
 other's rows at load time (only one pak can own a DataTable; the last to load wins
 silently).
 
-One table = vanilla 36 rows + 5 custom rows = **41**:
+One table = vanilla 36 rows + 4 custom rows = **40**:
 
 | Row | Menu label | What it is |
 |---|---|---|
 | `TestEngine_13bV6` | **Hams Rotary 180HP** | rotary idle bed + V6Sport low/high + 26B brap (9000 rpm) |
 | `TestEngine_330Kart` | **Test 330 Kart** | MediumDuty 330 diesel with the kart 10HP chainsaw layered under it (3500 rpm) |
-| `TestEngine_HDHybrid` | **Test HD TDI V-Twin** | Audi TDI layers over the Harley cue (2900 rpm) |
 | `TestEngine_Thumper` | **Test Thumper** | 1,800 rpm lugger, 3,000 Nm @ 756 |
 | `TestEngine_AMCI4Sounder` | **Binka 500cc 50hp** | own BINKA-encoded loops, 8500 rpm, 50.0 hp @ ~7900 (see `sounder/`) |
+
+The **HD TDI V-Twin** was removed from this pak on the owner's request (its configs
+remain in the repo, unbuilt).
 
 Built by `build.sh`; the sounder section is driven by `sounder/build_sounder.py`, which
 stages its waves/cue/engine into the same pak stage and appends its row to the table.
