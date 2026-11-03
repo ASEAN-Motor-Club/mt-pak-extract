@@ -73,8 +73,9 @@ class Program
         if (retargetMode)
         {
             int ri = Array.IndexOf(args, "--retarget-mis");
-            if (ri + 2 >= args.Length) { Console.WriteLine("usage: --retarget-mis <inDir> <outDir>"); return; }
-            RetargetMIs(args[ri + 1], args[ri + 2]);
+            if (ri + 2 >= args.Length) { Console.WriteLine("usage: --retarget-mis <inDir> <outDir> [forceMaskedFile]"); return; }
+            int fi = ri + 3 < args.Length && !args[ri + 3].StartsWith("--") ? ri + 3 : -1;
+            RetargetMIs(args[ri + 1], args[ri + 2], fi > 0 ? args[fi] : null);
             return;
         }
         
@@ -3324,7 +3325,7 @@ class Program
     // set. Rationale: shader maps cooked in a separate project are rejected by Motor Town
     // (uncooked shader map ID -> default material, magenta test proved it), whereas a
     // master MT itself ships already has shaders the game owns and resolves.
-    static void RetargetMIs(string inDir, string outDir)
+    static void RetargetMIs(string inDir, string outDir, string forceMaskedFile = null)
     {
         // Two destinations, chosen per instance:
         //  - opaque surfaces  -> M_PropMaster (BLEND_Opaque, BaseColor/Normal/Metallic/Roughness)
@@ -3337,6 +3338,9 @@ class Program
         const string propName = "M_PropMaster";
         const string polyPkg  = "/Game/Env/Materials/Master/M_PolygonMaster";
         const string polyName = "M_PolygonMaster";
+        // MT's own masked foliage master -- BLEND_Masked + two-sided, reads BaseColor alpha.
+        const string plantPkg  = "/Game/Models/Stylized_Forest/Materials/plants/M_plants";
+        const string plantName = "M_plants";
 
         var propRename = new Dictionary<string, string?>
         {
@@ -3360,6 +3364,17 @@ class Program
         };
 
         Directory.CreateDirectory(outDir);
+        var forceMasked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(forceMaskedFile) && File.Exists(forceMaskedFile))
+        {
+            foreach (var line in File.ReadAllLines(forceMaskedFile))
+            {
+                var t = line.Trim();
+                if (t.Length == 0 || t.StartsWith("#")) continue;
+                forceMasked.Add(t);
+            }
+            Console.WriteLine($"force_masked={forceMasked.Count}");
+        }
         int ok = 0, fail = 0, masked = 0;
         foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
         {
@@ -3373,13 +3388,25 @@ class Program
                 var parent = props.OfType<ObjectPropertyData>().FirstOrDefault(p => p.Name?.Value?.Value == "Parent");
                 if (parent == null) { Console.WriteLine($"SKIP {Path.GetFileName(path)}: no Parent"); fail++; continue; }
 
-                // Is this a masked surface? Detect on the ORIGINAL parameter name.
-                bool isMasked = ContainsParam(props, "TextureParameterValues", "OpacityTex");
+                // Is this a masked surface? Detect on the ORIGINAL parameter name, or honour a
+                // force list. Vegetation/fence/wire materials carry no OpacityTex parameter --
+                // their cutout is the colour map's alpha -- so they were routed opaque and
+                // rendered with black where the texture is transparent.
+                bool isMasked = ContainsParam(props, "TextureParameterValues", "OpacityTex")
+                                || forceMasked.Contains(Path.GetFileNameWithoutExtension(path));
                 var rename = isMasked ? calcRename : propRename;
+                // Cutout surfaces go to MT's own masked foliage master (M_plants): BLEND_Masked,
+                // two-sided, and its graph reads the BaseColor alpha -- exactly how MT's own
+                // MI_TreeMedow_01 is set up (BaseColor only, masked, clip 0.3333).
+                // M_PolygonMaster has no BlendMode at all, so its graph never routes alpha to
+                // opacity and a masked override there only clips to the RGB (= black).
+                bool usePlant = isMasked && forceMasked.Contains(Path.GetFileNameWithoutExtension(path));
+                string destPkg = usePlant ? plantPkg : (isMasked ? polyPkg : propPkg);
+                string destName = usePlant ? plantName : (isMasked ? polyName : propName);
                 if (isMasked) masked++;
 
                 var (_, assetIdx) = AddImportChain(asset, "/Script/Engine", "Material",
-                    isMasked ? polyPkg : propPkg, isMasked ? polyName : propName);
+                    destPkg, destName);
                 parent.Value = FPackageIndex.FromImport(assetIdx - 1);
 
                 foreach (var arrName in new[] { "TextureParameterValues", "ScalarParameterValues", "VectorParameterValues" })
@@ -3415,11 +3442,19 @@ class Program
                     };
                     var blend = new EnumPropertyData(FName.FromString(asset, "BlendMode"))
                     {
-                        Value = FName.FromString(asset, "BLEND_Masked")
+                        Value = FName.FromString(asset, "BLEND_Masked"),
+                        EnumType = FName.FromString(asset, "EBlendMode")
                     };
                     blend.PropertyTypeName = MakeTypeName(asset, blend.PropertyType);
                     var clip = new FloatPropertyData(FName.FromString(asset, "OpacityMaskClipValue")) { Value = 0.3333f };
                     clip.PropertyTypeName = MakeTypeName(asset, clip.PropertyType);
+                    if (usePlant)
+                    {
+                        // MT's tree instance is two-sided; foliage cards need it.
+                        var ts = new BoolPropertyData(FName.FromString(asset, "TwoSided")) { Value = true, IsZero = false };
+                        ts.PropertyTypeName = MakeTypeName(asset, ts.PropertyType);
+                        overrides.Value.Add(ts);
+                    }
                     overrides.Value.Add(blend);
                     overrides.Value.Add(clip);
                     overrides.PropertyTypeName = MakeTypeName(asset, overrides.PropertyType);
