@@ -181,6 +181,24 @@ the correct shape. The class reference is applied to the cooked map with
 
 
 
+### Spawn placed on the road (2026-11-03)
+
+The PlayerStart was authored from `c1_road_points.json` and put the player ~824 m above and
+~2.7 km away from the geometry: the mesh import translated the corridor, so the road spline
+and the level are in different frames.
+
+Offset derived from cell `-2_12` (imported asset bounds minus OBJ bounds):
+`SPLINE_TO_LEVEL = (-272037, -743660, -82472)` cm. Confirmed by mapping 82 spline points —
+all 82 fall inside placed actor bounds, spline Z 38–290 cm above the cell floor.
+
+Spawn is spline point 102 mapped into level space: `(-102122, -50681, 1730)`, yaw
+`-155.9°`. Load-verified in game with the pawn on the road surface.
+
+Note: `c0_14` is NOT a valid cell to derive the offset from — it contains only a window
+material subset, so its bounds are a fraction of the cell.
+
+
+
 ## Phases
 
 ### Phase 1 — a map that loads, is visible, and is a registered course
