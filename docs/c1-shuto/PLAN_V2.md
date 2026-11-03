@@ -46,6 +46,30 @@ the engine does not require the row; the game's UI does.
 5. Every build writes a manifest (input hashes, cooked file hashes, pak hash) so a
    rebuild is byte-comparable.
 
+### Class resolution: how we reach game classes
+
+`D:\UEProjects\C1` has neither the MotorTown module nor its assets, so `/Script/MotorTown.*`
+and `/Game/Blueprints/MTSunSky` are not spawnable in-editor. Cooked references are
+package-path strings resolved against the mounted paks, so a project can hold a fake
+asset at the exact game path, reference it, and have the game resolve to the real one —
+provided the fake is never packaged.
+
+Order of work (full write-up: `docs/c1-shuto/RESEARCH-base-game-classes.md`):
+
+1. **Now — dummy blueprint assets.** Create `BP` assets at `/Game/Blueprints/MTSunSky`
+   and `/Game/Objects/GarageActorBP` (parent `Actor`) so `ChildActorClass` is an
+   ordinary editor reference; exclude both from staging. Removes the temporary
+   post-cook `--set-class-ref` step.
+2. **Later — stub `MotorTown` C++ module** from the existing UHT dump, for direct
+   `AMTSunSky` / `AMTGarageActor` / `AMotorTownRaceSection` access in-editor.
+3. **Later — `UE4GameProjectGenerator`** over our UHT dump (+ game `.uproject` and
+   `.upluginmanifest` extracted from the pak) to generate a full project.
+4. **Later — `Suzie`** plugin, generating classes at editor startup and during cook
+   from a live-game `.jmap` dump.
+
+Trigger for 2–4: needing `AMotorTownRaceSection`, which has no blueprint counterpart
+in the game's content tree, so dummying a BP cannot cover it.
+
 ### Hard constraint: the project has no game classes
 
 `D:\UEProjects\C1` is a bare UE 5.5 project. It has **no MotorTown module and none of
@@ -109,8 +133,9 @@ and point `TimeAttackMaps`/`DriveMaps` at `/Game/Mods/C1/Maps/C1`.
 ## Phases
 
 ### Phase 1 — a map that loads, is visible, and is a registered course
-- Empty level `C1` with `PlayerStart`, `ExponentialHeightFog`, `DirectionalLight`,
-  `SkyLight`, `SkyAtmosphere` (all engine classes — the only ones the project has).
+- Empty level `C1` with `PlayerStart`, `ExponentialHeightFog`, and `BP_C1_Sky` (plain
+  `Actor` + `ChildActorComponent` `SunSky`, mirroring `BP_NS_Sky`) whose child class
+  is the dummy `/Game/Blueprints/MTSunSky.MTSunSky_C`.
 - No nav data, and do **not** set `bAutoSpawnMissingNavData`.
 - `Courses` row `C1Shuto` cloned from the vanilla `Town_Circuit` row.
 - `GameResource` rows: `TimeAttackMaps` + `DriveMaps`, `Key=C1Shuto`,
@@ -146,8 +171,10 @@ and point `TimeAttackMaps`/`DriveMaps` at `/Game/Mods/C1/Maps/C1`.
 - [x] Vanilla TA level shape captured (`TimeAttackGameModeBP`, 2 always-loaded sublevels)
 - [x] Editor can create `C1` level + `PlayerStart` + `ExponentialHeightFog`
 - [x] Confirmed: game classes/BP assets unavailable in the project (engine classes only)
-- [ ] Level carries `DirectionalLight` + `SkyLight` + `SkyAtmosphere`; dump of the
-      cooked map shows them
+- [ ] Level carries `BP_C1_Sky` + `SunSky` child component; dump of the cooked map
+      shows them
+- [ ] Dummy `/Game/Blueprints/MTSunSky` exists in-project and is **excluded** from the
+      staged pak
 - [ ] `bAutoSpawnMissingNavData` absent or `False`
 - [ ] Cook output contains `Maps/C1.umap` + `.uexp`
 - [ ] `Courses` row `C1Shuto` added from the vanilla template (`--add-rows`)
