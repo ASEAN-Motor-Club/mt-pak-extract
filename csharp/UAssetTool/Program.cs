@@ -348,10 +348,29 @@ class Program
             }
             return;
         }
+        else if (args.Contains("--get-text"))
+        {
+            var idx = Array.IndexOf(args, "--get-text");
+            var path = args.ElementAtOrDefault(idx + 1);
+            var propPath = args.ElementAtOrDefault(idx + 2);
+            if (path == null || propPath == null) { Console.WriteLine("usage: --get-text <asset.uasset> <prop.path>"); return; }
+            if (!Path.IsPathRooted(path)) path = Path.Combine(RootDir, path);
+            var a = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+            var all = new List<PropertyData>();
+            foreach (var e in a.Exports) if (e is NormalExport ne) all.AddRange(ne.Data);
+            var p = ResolveProperty(all, propPath);
+            if (p == null) { Console.WriteLine($"GETTEXT_NOPROP {propPath}"); return; }
+            if (p is TextPropertyData tp)
+                Console.WriteLine($"GETTEXT {propPath} NS={(tp.Namespace?.Value ?? "<null>")} Key={(tp.Value?.Value ?? "<null>")} Invariant={(tp.CultureInvariantString?.Value ?? "<null>")} Flags={tp.Flags}");
+            else
+                Console.WriteLine($"GETTEXT_NOTTEXT {propPath} type={p.GetType().Name}");
+            return;
+        }
         else if (args.Contains("--textprobe"))
         {
             var idx = Array.IndexOf(args, "--textprobe");
             var path = args.ElementAtOrDefault(idx + 1) ?? Path.Combine(RootDir, "Cargos_ScheduleI.uasset");
+            var rowFilter = args.ElementAtOrDefault(idx + 2);
             if (!Path.IsPathRooted(path)) path = Path.Combine(RootDir, path);
             var a = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
             var dt = FindDataTable(a);
@@ -361,6 +380,7 @@ class Program
                 var spd = row as StructPropertyData;
                 if (spd == null) continue;
                 var rowName = spd.Name?.Value?.Value ?? "?";
+                if (!string.IsNullOrEmpty(rowFilter) && !string.Equals(rowName, rowFilter, StringComparison.OrdinalIgnoreCase)) continue;
                 foreach (var prop in spd.Value)
                 {
                     if (prop is TextPropertyData tp && (prop.Name.Value.Value == "Name"))
