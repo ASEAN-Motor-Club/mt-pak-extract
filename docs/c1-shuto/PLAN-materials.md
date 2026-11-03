@@ -1,8 +1,21 @@
 # Plan — materials and textures for C1 (MVP project)
 
-Status: assets are already *imported*; the open question is whether they *render*. Treat
-every step as unproven until it is measured, because this is the part of the port that
-fails silently.
+Status: **SOLVED for the opaque set (2026-11-03).** All surfaces went from checkerboard to
+the C1 photographic textures by reparenting instances onto the game's masters. No authored
+master is needed — that whole route is retired.
+
+## Result
+
+- `zzzz_AMC_C1Mats_P.pak` — 6,236,093 B, 3,218 entries — **retargeted=1609 masked=78
+  opaque=1531 failed=0**.
+- Opaque → `M_PropMaster`, masked → `M_PolygonMaster`.
+- Verified in game: proper C1 textures render. They sample our texture assets through the
+  game master's parameters, so the texture import/settings were never the problem.
+- The vanilla master contributes shading only; the photographic content is ours.
+
+Consequence: **stop authoring masters.** Our `M_C1_*` cooked masters carry no shader map
+(`M_C1_Surface.uexp` 3,640 B vs `M_C1_Tex2.uexp` 17,289 B with shaders — and even the latter
+rendered flat). The proven path is vanilla parens + our textures via parameter names.
 
 ## What exists today (measured 2026-11-03, `D:\UEProjects\C1`)
 
