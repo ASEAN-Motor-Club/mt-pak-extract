@@ -21,6 +21,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|i| args.get(i + 1))
         .map(|s| s.as_str())
         .unwrap_or("../../../");
+    // Pak version matters: UE5.5 reads V11; some older tools wrote V3. Match the
+    // host pak (UE's UnrealPak) so the engine treats the file identically.
+    let ver_idx = args.iter().position(|a| a == "--version");
+    let ver_str = ver_idx
+        .and_then(|i| args.get(i + 1))
+        .map(|s| s.as_str())
+        .unwrap_or("V3");
+    let pak_version = match ver_str.to_ascii_uppercase().as_str() {
+        "V1" => repak::Version::V1,
+        "V2" => repak::Version::V2,
+        "V3" => repak::Version::V3,
+        "V4" => repak::Version::V4,
+        "V5" => repak::Version::V5,
+        "V6" => repak::Version::V6,
+        "V7" => repak::Version::V7,
+        "V8A" => repak::Version::V8A,
+        "V8B" => repak::Version::V8B,
+        "V9" => repak::Version::V9,
+        "V10" => repak::Version::V10,
+        "V11" => repak::Version::V11,
+        other => {
+            eprintln!("Unknown --version {other}");
+            std::process::exit(1);
+        }
+    };
 
     if !Path::new(input_dir).is_dir() {
         eprintln!("Error: {} is not a directory", input_dir);
@@ -41,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input_path = Path::new(input_dir);
     let mut pak = PakBuilder::new().writer(
         BufWriter::new(File::create(output_pak)?),
-        repak::Version::V11,
+        pak_version,
         mount_point.to_string(),
         Some(0),
     );
