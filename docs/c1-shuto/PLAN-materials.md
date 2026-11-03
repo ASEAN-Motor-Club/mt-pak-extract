@@ -89,11 +89,18 @@ Original note kept for reference: the OBJ import mirrors Y, so cancelling it wit
 restores position but leaves UV handedness mirrored. Which axis needs negating depends on
 the UV layout — decide from the observed symptom (horizontal vs vertical), do not assume V.
 
-The mesh import mirrors Y, so cancelling it with `y = -y` restores position but leaves UVs
-mirrored: markings, arrows and any text on horizontal surfaces read upside down, while tiled
-noise (asphalt, concrete) looks fine and hides the bug.
+**Second fault, same step:** the first reimport omitted `import_uniform_scale = 100.0`, so every
+cell came back 100× too small ("geometry vanished — very far or very small"). The cell OBJs are
+in metres; the importer converts to cm. Reimported with the scale block restored: bounds then
+read `c0_14 min x -1264 … max 52713`, i.e. source ×100.
 
-- Fix in UV data, not materials: negate **V** (`v = -v`) on every `vt`. Never `1 - v` —
+Because reimport re-applies the importer's Y mirror, the level frame is
+`(x*100, -y*100, z*100)` and the previous translated-frame spawn became invalid. Spawn
+recomputed from road spline point 102: `(169915, -692979, 84352)`, yaw `155.9`.
+Pak 228,212,770 B.
+
+- Fix in UV data, not materials: negate the mirrored axis — **U** for the C1 corridor (measured
+  horizontal inversion), V for upside-down markings. Never `1 - u`/`1 - v` —
   ported UVs tile far past 0–1 (u measured up to 23,388), so `1 - v` shifts by a whole tile.
 - Corpus scale for "complete": ~4.96M `vt` lines across the cells.
 - This is a re-import → cook → pack cycle: ship it as its own build, separate from the
