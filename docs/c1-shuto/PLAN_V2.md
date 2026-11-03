@@ -130,6 +130,37 @@ patching), add the matching `Courses` row via `--add-rows` from the vanilla asse
 and point `TimeAttackMaps`/`DriveMaps` at `/Game/Mods/C1/Maps/C1`.
 
 
+## Observed results (2026-11-03, MVP build)
+
+- **Loads.** `C1` starts from the time-attack list with no crash — the first configuration
+  to load since the working NS-era build.
+- **Geometry visible** — buildings seen in the distance.
+- **Sun and sky present**, but the world is **too dark**.
+- **No player character, no minimap, no map UI** — the level had no game mode, so no
+  player controller was created. Cause identified: vanilla/NS levels set
+  `WorldSettings.DefaultGameMode` (NS imports `Default__DriveGameModeBP_C`), our
+  editor-authored level set nothing.
+- Causally important: this also means the sky, geometry and pack pipeline are all
+  sound; what was missing was game-mode wiring, not content.
+
+Fix applied (build 235,623,194):
+- Dummy BPs added for `/Game/GameMode/DriveGameModeBP` and
+  `/Game/GameMode/TimeAttackGameModeBP` (parent `GameModeBase`), same dummying rule as
+  the sky — never staged into the pak.
+- `WorldSettings.DefaultGameMode` set in the editor. The editor's actor list excludes
+  `WorldSettings`, so it must be reached via
+  `GameplayStatics.get_actor_of_class(get_editor_world(), WorldSettings)` — iterating
+  level actors returns nothing.
+- Verified in the cook: `Export[161] WorldSettings` now carries
+  `DefaultGameMode (Object): Index=-2` → `Import[1] DriveGameModeBP_C`, matching the NS
+  level's shape.
+
+Open item: the world is **too dark**. `MTSunSky` is spawned from the game's class with
+its own defaults; whether MT drives time-of-day from it, or expects particular
+serialized settings on the actor, is unresolved.
+
+
+
 ## Phases
 
 ### Phase 1 — a map that loads, is visible, and is a registered course
