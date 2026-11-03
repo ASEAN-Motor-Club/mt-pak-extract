@@ -76,6 +76,19 @@ Acceptance: in a dump, `Parent (Object): Index=-(N+1)` resolving to an import na
 
 ## Step 3 — inverted V (its own build)
 
+**Measured 2026-11-03: the mirror is on U, not V.** With textures finally rendering, surfaces
+read inverted *horizontally* and correct vertically — so the UV axis mapping to world Y is U
+in this layout. Fix: `u = -u` on every `vt`.
+
+Applied: `meshes_uflip/` written from the 74 corridor OBJs, **4,744,698 `vt` lines**
+negated, reimported in place. Slot bindings survived the reimport (`replace_existing` with
+unchanged `usemtl` names: c5_18 133/133 bound, c-2_12 107/107). New pak 229,486,767 B
+(was 235,622,943).
+
+Original note kept for reference: the OBJ import mirrors Y, so cancelling it with `y = -y`
+restores position but leaves UV handedness mirrored. Which axis needs negating depends on
+the UV layout — decide from the observed symptom (horizontal vs vertical), do not assume V.
+
 The mesh import mirrors Y, so cancelling it with `y = -y` restores position but leaves UVs
 mirrored: markings, arrows and any text on horizontal surfaces read upside down, while tiled
 noise (asphalt, concrete) looks fine and hides the bug.
