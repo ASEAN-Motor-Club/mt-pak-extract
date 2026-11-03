@@ -159,6 +159,26 @@ Open item: the world is **too dark**. `MTSunSky` is spawned from the game's clas
 its own defaults; whether MT drives time-of-day from it, or expects particular
 serialized settings on the actor, is unresolved.
 
+### Crash: dummy class as a serialized child actor (2026-11-03)
+
+Setting `child_actor_class` on the `SunSky` component of the **level instance** made the
+editor serialize a `MTSunSky_C_0` child actor. Load fails with:
+
+```
+LowLevelFatalError ... UObjectArchetype.cpp [Line: 175]
+SceneComponent /Game/Blueprints/MTSunSky.Default__MTSunSky_C:RootSceneComponent had
+RF_NeedLoad when being set up as an archetype of Class /Script/Engine.SceneComponent
+in MTSunSky_C /Game/Mods/C1/Maps/C1.c1:PersistentLevel.MTSunSky_C_0
+```
+
+The dummy has no components, so the instance's component archetype cannot resolve. The
+NS reference level never does this: it stores only a class import, no instance.
+
+Rule: **dummy classes may be referenced, never instantiated.** After cooking, the map must
+contain zero exports named `<DummyClass>_0`; `ChildActorClass` pointing at an import is
+the correct shape. The class reference is applied to the cooked map with
+`--set-class-ref`, which is a reference edit, not level surgery.
+
 
 
 ## Phases
