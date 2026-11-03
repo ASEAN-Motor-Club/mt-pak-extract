@@ -76,18 +76,34 @@ Two separate assets, both required, neither touched by the old approach:
   `DefaultViewHeight`). Vanilla `TimeAttackMaps` holds 6 rows pointing at dedicated
   TA levels; `DriveMaps` holds 12 dev/test maps.
 - `/Game/DataAsset/Courses` (`DataTable` of `MTCourseRow`): 13 rows keyed by course
-  name (`AnsanSpeedway`, `Town_Circuit`, `OlleSpeedway_Kart`, …) with `Name`,
-  `Name2` (text struct), `bUseOffTrack`, `RacerXPPerLap`, plus `HeatDamageMultiplier`
-  and `OverlapSlots` from the schema. This is gameplay data, not a map reference.
-- Vanilla TA levels are **thin containers**: `PolygonTown_TimeAttack_01` imports only
-  `/Game/GameMode/TimeAttackGameModeBP` and streams two `LevelStreamingAlwaysLoaded`
-  sublevels. Course logic lives in the game mode, not in level actors.
+  name (`AnsanSpeedway`, `Town_Circuit`, `OlleSpeedway_Kart`, …). From
+  `MTCourseRow.h` the row is exactly `Name` (`FText`), `Name2` (`FMTTextByTexts`),
+  `bUseOffTrack` (`bool`), `RacerXPPerLap` (`int32`) — no map reference, no
+  `HeatDamageMultiplier`/`OverlapSlots` (those come from an unrelated row struct).
+- **The course name lives on the road, not in the table.** `MotorTownRoad.h`:
+  `AMotorTownRoad` has `RoadType`, **`CourseKey` (`FName`)**, `LaneWidth`,
+  `NumForwardLanes`, `NumBackwardLanes`, `SpeedLimitKPH`, `RoadFlags`, and an
+  `Instanced USplineComponent* Spline`.
+- `MTLaptimeModule.h`: `FMTLaptimeModule` holds `TMap<FName, FMTLaptimeCourse>
+  Courses`, `AMotorTownRoad* CourseRoad`, `AMotorTownRaceSection*
+  OverlappedRaceSection`. `MTLaptimeCourse.h`: `FMTLaptimeCourse` = `Sections`
+  (`TArray<AMotorTownRaceSection*>`) + `NumSections`. So lap gates are
+  `AMotorTownRaceSection` actors carrying `CourseName` (`FName`),
+  `RaceSectionIndex` (`int32`), `bIsStopBox` (`bool`).
+- **Our roads map has the road but no course name**: `C1_Roads` contains
+  `MotorTownRoad_2` (`LaneWidth 300`, 2 forward lanes, 60 km/h, spline bound) and
+  `MotorTownNavigation_1`, and `CourseKey` appears **zero** times in the map.
+- Vanilla TA persistent levels are **thin containers**: `PolygonTown_TimeAttack_01`
+  imports only `TimeAttackGameModeBP`; `AnsanSpeedway_TimeAttack` holds just
+  `World`/`WorldSettings`/`NavigationSystemModuleConfig`/`Model`/`LevelBounds` plus
+  one `LevelStreamingAlwaysLoaded`. Course actors (road + sections) live in the
+  streamed sublevels, which is the same shape our `C1` → `C1_Roads` split already has.
 - The Nordschleife pak has **no** `GameResource`/`Courses` override, which is why it
   never appeared in any list and had to be launched directly.
 
-Plan: author both rows from the **vanilla** asset as template (`--add-rows` clone
-mode), never by patching a previously patched copy. Name the course `C1Shuto` in
-`Courses`, and point `TimeAttackMaps`/`DriveMaps` at `/Game/Mods/C1/Maps/C1`.
+Plan: set `CourseKey` on `C1_Roads/MotorTownRoad_2` (at generation time, not by
+patching), add the matching `Courses` row via `--add-rows` from the vanilla asset,
+and point `TimeAttackMaps`/`DriveMaps` at `/Game/Mods/C1/Maps/C1`.
 
 
 ## Phases
