@@ -114,6 +114,14 @@ class Program
             return;
         }
 
+        if (args.Contains("--set-child-class-refs"))
+        {
+            int li = Array.IndexOf(args, "--set-child-class-refs");
+            if (li + 6 >= args.Length) { Console.WriteLine("usage: --set-child-class-refs <in.uasset> <out.uasset> <ownerNamePrefix> <componentName> <packagePath> <className>"); return; }
+            SetChildClassRefs(args[li + 1], args[li + 2], args[li + 3], args[li + 4], args[li + 5], args[li + 6]);
+            return;
+        }
+
         if (args.Contains("--set-spline"))
         {
             int li = Array.IndexOf(args, "--set-spline");
@@ -1168,6 +1176,60 @@ class Program
     // --set-class-ref: point an ObjectProperty at a class that lives in another
     // package (e.g. a ChildActorComponent's ChildActorClass -> /Game/Blueprints/
     // MTSunSky.MTSunSky_C). Adds the package + BlueprintGeneratedClass imports.
+    // ========================================================================
+    // --set-child-class-refs: same as --set-class-ref but for many child-actor
+    // components at once -- every component named <componentName> whose owning
+    // actor's object name starts with <ownerNamePrefix>. This is how NS places
+    // garages: own prop actor + ChildActorClass pointing at the base game class.
+    // ChildActor is forced to null so the child is constructed at runtime.
+    // ========================================================================
+    static void SetChildClassRefs(string inPath, string outPath, string ownerPrefix, string componentName, string packagePath, string className)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        var (pkgIdx, classIdx) = AddImportChain(asset, "/Script/Engine", "BlueprintGeneratedClass", packagePath, className);
+        int hits = 0;
+        foreach (var e in asset.Exports)
+        {
+            if (e is not NormalExport ne) continue;
+            var nm = ne.ObjectName?.Value?.Value ?? "";
+            if (!string.Equals(nm, componentName, StringComparison.OrdinalIgnoreCase)) continue;
+
+            // owning actor: outer is a positive export index (1-based)
+            var oi = ne.OuterIndex != null ? ne.OuterIndex.Index : 0;
+            if (oi <= 0 || oi > asset.Exports.Count) continue;
+            var owner = asset.Exports[oi - 1];
+            var ownerName = owner?.ObjectName?.Value?.Value ?? "";
+            if (!ownerName.StartsWith(ownerPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+
+            ObjectPropertyData? clsProp = null;
+            ObjectPropertyData? childProp = null;
+            foreach (var p in ne.Data)
+            {
+                if (p is not ObjectPropertyData op) continue;
+                var pn = op.Name?.Value?.Value;
+                if (string.Equals(pn, "ChildActorClass", StringComparison.OrdinalIgnoreCase)) clsProp = op;
+                else if (string.Equals(pn, "ChildActor", StringComparison.OrdinalIgnoreCase)) childProp = op;
+            }
+
+            if (clsProp == null)
+            {
+                clsProp = new ObjectPropertyData(FName.FromString(asset, "ChildActorClass"))
+                { Value = FPackageIndex.FromImport(classIdx - 1) };
+                clsProp.PropertyTypeName = MakeTypeName(asset, clsProp.PropertyType);
+                ne.Data.Add(clsProp);
+            }
+            else clsProp.Value = FPackageIndex.FromImport(classIdx - 1);
+
+            if (childProp != null) childProp.Value = FPackageIndex.FromExport(0);
+            hits++;
+            Console.WriteLine($"  {ownerName}.{componentName} -> {className}");
+        }
+
+        asset.ResolveAncestries();
+        asset.Write(outPath);
+        Console.WriteLine($"SETCHILDCLASSREFS_{ (hits > 0 ? "OK" : "FAIL") } patched={hits} prefix={ownerPrefix} -> {outPath}");
+    }
+
     // ========================================================================
     static void SetClassRef(string inPath, string outPath, string exportName, string propName, string packagePath, string className)
     {
