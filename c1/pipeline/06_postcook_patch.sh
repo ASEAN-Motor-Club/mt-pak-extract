@@ -17,27 +17,37 @@ source "$(dirname "$0")/00_env.sh"
 
 IN="${1:?cooked dir required}"
 OUT="${2:?output dir required}"
+# Map names are overridable so the same stage serves the corridor build (C1 /
+# C1Roads) and the full-map build (C1Full / C1Full_Roads).
+PARENT_MAP="${PARENT_MAP:-C1}"
+SUB_MAP="${SUB_MAP:-C1Roads}"
 mkdir -p "$OUT"
 
 # UAssetTool needs the .uexp beside the .umap, and absolute paths.
 abs() { python3 -c "import os,sys;print(os.path.abspath(sys.argv[1]))" "$1"; }
 
-if [ -f "$IN/C1.umap" ]; then
+if [ -f "$IN/$PARENT_MAP.umap" ]; then
     echo "== parent map: game-mode / sunsky / garage refs"
-    bash "$C1_PIPE/repair_class_refs.sh" "$(abs "$IN/C1.umap")" "$(abs "$OUT/C1.umap")"
+    bash "$C1_PIPE/repair_class_refs.sh" "$(abs "$IN/$PARENT_MAP.umap")" "$(abs "$OUT/$PARENT_MAP.umap")"
 else
     echo "== parent map absent, skipping (delta build)"
 fi
 
-if [ -f "$IN/C1Roads.umap" ]; then
+if [ -f "$IN/$SUB_MAP.umap" ]; then
     echo "== roads sublevel: spawner VehicleClass"
+    # The spawner export is renamed on every re-authoring (_0 -> _1 -> _2 ...).
+    # Never hardcode it: dump the cooked map and take the name it actually has.
+    SPAWNER="$("$DOTNET" "$UATT_DLL" --dump "$(abs "$IN/$SUB_MAP.umap")" 2>/dev/null \
+        | grep -oE 'Name=MTAIVehicleSpawnSystem_[0-9]+' | head -1 | cut -d= -f2)"
+    [ -n "$SPAWNER" ] || { echo "FAIL: no MTAIVehicleSpawnSystem export in $SUB_MAP" >&2; exit 4; }
+    echo "   spawner export: $SPAWNER"
     "$DOTNET" "$UATT_DLL" --set-array-class-ref \
-        "$(abs "$IN/C1Roads.umap")" "$(abs "$OUT/C1Roads.umap")" \
-        MTAIVehicleSpawnSystem_0 SpawnSettings SettingKey VehicleClass \
+        "$(abs "$IN/$SUB_MAP.umap")" "$(abs "$OUT/$SUB_MAP.umap")" \
+        "$SPAWNER" SpawnSettings SettingKey VehicleClass \
         "$C1_PIPE/vc_map.json" | tail -5
 
     # Verify: negative import index per patched row, and no baked child instances.
-    "$DOTNET" "$UATT_DLL" --dump "$(abs "$OUT/C1Roads.umap")" > "$OUT/dump_roads.txt" 2>&1
+    "$DOTNET" "$UATT_DLL" --dump "$(abs "$OUT/$SUB_MAP.umap")" > "$OUT/dump_roads.txt" 2>&1
     for k in Small Special Truck Bus; do
         grep -q "SettingKey (Name): $k" "$OUT/dump_roads.txt" || { echo "FAIL: $k row missing"; exit 2; }
     done
