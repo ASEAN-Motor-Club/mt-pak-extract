@@ -35,7 +35,11 @@ Gate: source counts match the facts block.
 - 0 hidden actors, 0 hidden-in-game, 0 invisible components
 - 155 road actors in `C1Full_Roads`
 - each mesh carries **collision** (full-map import resets per-asset collision; corridor
-  settings do not survive it)
+  settings do not survive it) — `CTF_USE_COMPLEX_AS_SIMPLE`, 0 convex hulls
+- **no LODs.** Project decision: shipped build is LOD0 only. Current state: 418 meshes
+  single-LOD, **137 still carry 4 LODs** from the earlier pass and must be re-imported
+  single-LOD (no API deletes LODs). None of those LODs are empty, so they are not a
+  rendering bug — they are unwanted payload.
 - **cooked bounds** of the whole set: `x -1.5..3.6 km, y -10.5..1.6 km, z 0..1.2 km`,
   0 tiles outside the map area (catches the OBJ Y-mirror and unshifted imports)
 

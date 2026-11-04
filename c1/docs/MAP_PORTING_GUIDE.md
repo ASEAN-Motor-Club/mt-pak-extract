@@ -121,6 +121,14 @@ move world-space geometry, so a mirrored or unshifted import looks perfectly fin
 editor list while sitting kilometres away at runtime. Compare **cooked asset bounds**
 against the source bbox axis by axis (`C1_PORT_LESSONS.md`, gotchas 22/23).
 
+**LODs: project decision — none.** The shipped C1Full build uses LOD0 only. Note that
+there is no Python API that deletes LODs (`get_num_lods` exists, there is no setter or
+remove on `StaticMeshEditorSubsystem` in this build), so an earlier LOD pass can only be
+undone by re-importing those tiles single-LOD. Check with
+`sm.get_num_lods()` and also verify the LODs aren't empty (`get_num_triangles(i) == 0`
+for `i > 0` makes tiles vanish at distance — that is a real failure mode, distinct from
+having LODs at all).
+
 Hidden actors are worth checking explicitly — a cell can be present, correctly
 assigned and invisible at the same time.
 
