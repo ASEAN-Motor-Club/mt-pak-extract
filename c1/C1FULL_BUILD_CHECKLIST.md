@@ -36,12 +36,16 @@ Gate: source counts match the facts block.
 - 155 road actors in `C1Full_Roads`
 - each mesh carries **collision** (full-map import resets per-asset collision; corridor
   settings do not survive it) — `CTF_USE_COMPLEX_AS_SIMPLE`, 0 convex hulls
-- **no LODs.** Project decision: shipped build is LOD0 only. Current state: 418 meshes
-  single-LOD, **137 still carry 4 LODs** from the earlier pass and must be re-imported
-  single-LOD (no API deletes LODs). None of those LODs are empty, so they are not a
-  rendering bug — they are unwanted payload.
-- **cooked bounds** of the whole set: `x -1.5..3.6 km, y -10.5..1.6 km, z 0..1.2 km`,
-  0 tiles outside the map area (catches the OBJ Y-mirror and unshifted imports)
+- **scale**: union of mesh bounds must be the same order as the road splines
+  (`x -1,104,777..611,734 cm`, `y -1,002,062..1,658,899 cm`). A union spanning a few km
+  instead of ~20 km means `import_uniform_scale=100` never applied and every tile is
+  100× too small — invisible geometry, no collision, no error. Per tile: OBJ x = −5,068.62 m
+  must import as −506,862 cm.
+- **no LODs.** Project decision: shipped build is LOD0 only. `replace_existing=True` does
+  **not** drop extra LODs (it rewrites LOD0 only) — delete the asset, then import.
+- **cooked bounds** of the fixed set must match the road span:
+  `x -11.0..6.1 km, y -10.0..16.6 km, z 0.8..0.9 km`, 0 tiles outside the map area
+  (catches the OBJ Y-mirror and unshifted imports)
 
 Gate: `check_hidden.py` → `cells=554 hidden_actor=0 hidden_in_game=0 component_invisible=0`;
 `mesh_bounds.py` → `near_origin=554 far=0`.

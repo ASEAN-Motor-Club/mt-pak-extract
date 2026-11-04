@@ -127,7 +127,27 @@ remove on `StaticMeshEditorSubsystem` in this build), so an earlier LOD pass can
 undone by re-importing those tiles single-LOD. Check with
 `sm.get_num_lods()` and also verify the LODs aren't empty (`get_num_triangles(i) == 0`
 for `i > 0` makes tiles vanish at distance — that is a real failure mode, distinct from
-having LODs at all).
+having LODs at all). Deleting the asset *before* importing is what actually yields a
+single-LOD asset: `replace_existing=True` on a multi-LOD asset rewrites **LOD0 only** and
+keeps the extra levels.
+
+**Scale gate — the one that matters most.** Cell OBJs are authored in metres; Unreal
+imports 1 unit = 1 cm. If `import_uniform_scale = 100` fails to land, every tile ends up
+**100× too small** and the whole map collapses into a miniature clustered near the
+origin: nothing visible where the roads are, nothing to stand on, and no error anywhere.
+It reads exactly like "geometry missing". The catch is cheap — **compare the union of
+mesh bounds against the road spline bounds**:
+
+```
+roads   x -1,104,777..611,734 cm   y -1,002,062..1,658,899 cm   z 82,367..92,004 cm
+meshes  must be the same order of magnitude (a union spanning a few km instead of ~20 km
+        means the scale never applied)
+```
+
+The same failure shows up per tile: `c-10_-21`'s OBJ sits at x = −5,068.62 m, so the
+correct asset bound is **−506,862 cm**. Getting −5,068 cm means the import is 100× small.
+`import_uniform_scale` must be set on `static_mesh_import_data`; the property silently
+fails to apply elsewhere, so assert the imported bounds rather than trusting the option.
 
 Hidden actors are worth checking explicitly — a cell can be present, correctly
 assigned and invisible at the same time.
