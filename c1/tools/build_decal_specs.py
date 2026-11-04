@@ -9,15 +9,21 @@ own Z.
 """
 import json
 import math
+import os
 import statistics
 import sys
 
 SPEED_KPH = 120.0
 
-# C1 map geometry bbox (UE cm) -> source metres. Decals outside it have no road geometry
-# under them: authoring them puts roads in the void and inflates the nav graph.
-BBOX_SRC = (-1530.52, 4938.25, 3574.34, 10522.40)   # x0, y0, x1, y1
-MIN_INSIDE_FRAC = 0.60
+# Geometry bbox in SOURCE metres (x0, y0, x1, y1). The corridor build used the
+# bounds of the 76 imported tiles: decals outside them had no road geometry under
+# them, and authoring those puts roads in the void and inflates the nav graph.
+# The full-map build imports all 555 tiles, so the filter is disabled with
+# C1_BBOX_SRC=none (or replaced by the full tile bounds).
+_bbox_env = os.environ.get("C1_BBOX_SRC", "-1530.52,4938.25,3574.34,10522.40")
+BBOX_SRC = None if _bbox_env.strip().lower() in ("none", "", "off") else \
+    tuple(float(v) for v in _bbox_env.split(","))
+MIN_INSIDE_FRAC = float(os.environ.get("C1_MIN_INSIDE_FRAC", "0.60"))
 
 
 def to_ue(p):
@@ -53,11 +59,12 @@ def main(items_path, out_path):
             skipped.append((i, "too_short %.0fcm" % length_cm))
             continue
 
-        x0, y0, x1, y1 = BBOX_SRC
-        inside = sum(1 for n in nodes if x0 <= n[0] <= x1 and y0 <= n[1] <= y1)
-        if inside < MIN_INSIDE_FRAC * len(nodes):
-            skipped.append((i, "outside_bbox %d/%d" % (inside, len(nodes))))
-            continue
+        if BBOX_SRC is not None:
+            x0, y0, x1, y1 = BBOX_SRC
+            inside = sum(1 for n in nodes if x0 <= n[0] <= x1 and y0 <= n[1] <= y1)
+            if inside < MIN_INSIDE_FRAC * len(nodes):
+                skipped.append((i, "outside_bbox %d/%d" % (inside, len(nodes))))
+                continue
 
         lanes_f = int(d.get("lanesLeft", 2) or 0)
         lanes_b = int(d.get("lanesRight", 0) or 0)
