@@ -32,8 +32,12 @@ echo "PACK files=$NUM bytes=$(stat -c%s "$OUT") mount=$MOUNT ver=$VER comp=$COMP
 sha256sum "$OUT" | cut -c1-64
 
 # Content assertion: the roads sublevel must be inside, or the map ships without AI.
+# Capture the listing first: `mod_explore --list | grep -q` makes grep exit at the
+# first match, mod_explore takes SIGPIPE (141), and `set -o pipefail` turns a
+# SUCCESSFUL match into a failure. Cost one false FAIL already.
 if [ -f "$IN/Maps/C1_Roads.uexp" ]; then
-    "$MOD_EXPLORE" "$OUT" --list 2>/dev/null | grep -q 'Maps/C1_Roads.uexp' \
+    "$MOD_EXPLORE" "$OUT" --list > /tmp/c1_pack_list.txt 2>/dev/null || true
+    grep -q 'Maps/C1_Roads.uexp' /tmp/c1_pack_list.txt \
         || { echo "FAIL: Maps/C1_Roads.uexp missing from pak" >&2; exit 5; }
     echo "PACK_OK roads sublevel present"
 fi

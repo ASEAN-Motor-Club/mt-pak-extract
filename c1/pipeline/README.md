@@ -12,7 +12,8 @@ read that before changing anything here.
 04_author_spawner.sh   author AMTAIVehicleSpawnSystem (editor)
 05_cook.ps1            cook the sublevel (Windows, mirror project)
 06_postcook_patch.sh   class refs + spawner VehicleClass
-07_pack.sh             compressed pak (repak, V11, zlib)
+07_pack.sh             compressed pak from a directory tree (repak, V11, zlib)
+07b_build_release_paks.sh  assemble + pack BOTH server and client paks
 08_deploy_staging.sh   install into .mod-cache (restart gated by RESTART=1)
 09_verify.sh           pak contents + live server probe
 run_all.sh             driver

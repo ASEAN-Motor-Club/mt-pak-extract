@@ -184,6 +184,7 @@ acceptance line. `run_all.sh` chains them; each can be run alone.
 | 5 | `05_cook.ps1` | Windows | cooked `Maps/C1Roads.umap/.uexp` |
 | 6 | `06_postcook_patch.sh` | container | class refs + `VehicleClass` injected |
 | 7 | `07_pack.sh` | container/host | compressed pak (V11, zlib) |
+| 7b | `07b_build_release_paks.sh` | container/host | **both** server and client paks |
 | 8 | `08_deploy_staging.sh` | staging host | pak in `.mod-cache`, server restarted |
 | 9 | `09_verify.sh` | staging host | graph + pak assertions |
 
@@ -206,6 +207,13 @@ seconds when the project's plugin DLLs are not on `PATH`. Judge the cook by
 `UAssetAPI`/UAssetTool needs the `.uexp` beside the `.umap`, absolute paths, and on
 .NET 10 a runtime roll-forward: `DOTNET_ROLL_FORWARD=Major` and
 `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`.
+
+**7b — both artifacts.** Server and client are assembled from their own base
+paks, never from each other: the client pak carries 10,039 files and its own
+`C1.umap` (the one registering the streaming level), the server pak 8,056. The
+client's map layer is merged by extracting the published client pak, overlaying
+`Maps/C1.umap` + `Maps/C1_Roads.*` + the two `BP_C1_*` actors, and repacking —
+the same operation that was done by hand for the v4 release, now scripted.
 
 **7 — pack.** `mod_pack` in this tree has no compression flag; use `repak`:
 
