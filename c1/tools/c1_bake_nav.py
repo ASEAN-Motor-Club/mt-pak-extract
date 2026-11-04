@@ -171,6 +171,12 @@ def main():
     # Endpoint-only linking leaves mid-road merges and on-ramps disconnected, which shows up
     # in game as "the car drives a hundred metres then stops". Search from every node.
     connect_any = float(cfg.get('connect_any_cm', 4000.0))
+    # Two roads can be separate actors yet occupy the same corridor (C1 has 11 pairs under a
+    # metre apart). Linking those fuses the two lane chains edge-to-edge, so the AI can hop
+    # between them. Skip links to a node that is both near and travelling the same way --
+    # at a real junction the tangents are perpendicular, so legit links are unaffected.
+    parallel_dot = float(cfg.get('parallel_dot', 0.90))
+    parallel_skip = float(cfg.get('parallel_skip_cm', 400.0))
     cell2 = 2000.0
 
     def cellkey2(p):
@@ -181,6 +187,7 @@ def main():
         grid_all.setdefault(cellkey2(n['loc']), []).append(idx)
 
     linked = 0
+    skipped_parallel = 0
     for idx, n in enumerate(nodes):
         cx, cy = int(n['loc'][0] // cell2), int(n['loc'][1] // cell2)
         best = None
@@ -201,12 +208,15 @@ def main():
                            + n['dir'][2] * m['dir'][2])
                     if dot < fdot:
                         continue
+                    if dot > parallel_dot and d < parallel_skip:
+                        skipped_parallel += 1
+                        continue
                     if best is None or d < best[0]:
                         best = (d, j)
         if best is not None and best[1] not in edges[idx]:
             edges[idx][best[1]] = (0.0, best[0])
             linked += 1
-    log('cross-road links=%d' % linked)
+    log('cross-road links=%d (skipped_parallel=%d)' % (linked, skipped_parallel))
 
     # ---- 2c. lane-change edges: same spline point, adjacent lane, non-zero cost ------------
     lateral_cost = float(cfg.get('lateral_cost', 30.0))
