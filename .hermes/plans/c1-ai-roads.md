@@ -22,10 +22,9 @@ From `ported-map-extension/references/beamng-source-model.md` (measured on this 
 - `SpeedLimitKPH` is serialised nowhere -> every road sits on the 30 kph CDO default.
 - Only `MotorTownRoad_27` has `RoadType=Track_Course`, `CourseKey=C1Shuto` - the race line.
   The other 27 inherit `Road`.
-- **Discrepancy to resolve:** the source is 2/0 for 84 % of loop length, but 22 of our 28
-  segments carry a single forward lane. Either the authoring split reduced lanes, or lane
-  counts were derived per-segment rather than per-road. Must be reconciled against the
-  source before anything else changes.
+- The `lanes` field in `road_specs_v2.json` reads 1 for 22 segments, but that is not what the
+  level holds: Stage 0 read the actors directly and they are 2/0 (see below). Trust the level,
+  not the spec file.
 
 ## LHT -> RHT is already solved by the frame
 
