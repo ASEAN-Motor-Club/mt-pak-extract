@@ -106,11 +106,19 @@ def main():
             continue
 
         lanes = [l for l in range(1, nf + 1)] + [-l for l in range(1, nb + 1)]
+        # Lanes TILE the carriageway: lane_width * (nf + nb) equals the decal width on every
+        # C1 road, so lane centres are measured from the road EDGES, not stacked outward from
+        # the spline. Stacking put lane 2 of a 2-lane road at 5.25 m on a road 3.5 m from the
+        # centreline -- off the surface, which is why AI vehicles hit barriers and columns.
+        total_w = width * float(nf + nb)
         count = max(2, int(math.ceil(length / step)) + 1)
         first_index = len(nodes)
 
         for lane in lanes:
-            lateral = (abs(lane) - 0.5) * width * (1.0 if lane > 0 else -1.0)
+            if lane > 0:
+                lateral = total_w / 2.0 - (lane - 0.5) * width   # +1 = rightmost
+            else:
+                lateral = -total_w / 2.0 + (abs(lane) - 0.5) * width   # -1 = leftmost
             for k in range(count):
                 s = min(length, k * step)
                 loc = spl.get_location_at_distance_along_spline(s, unreal.SplineCoordinateSpace.WORLD)
