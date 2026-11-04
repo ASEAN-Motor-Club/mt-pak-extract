@@ -11,11 +11,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("Usage: mod_pack <input_dir> <output.pak> [--mount <mount_point>]");
         eprintln!("  Creates a UE5 PAK file from a directory tree.");
         eprintln!("  Default mount point: ../../../ (MotorTown content root)");
+        eprintln!("  --compress: zlib-compress entries (required for full content paks)");
         std::process::exit(1);
     }
 
     let input_dir = &args[1];
     let output_pak = &args[2];
+    let compress = args.iter().any(|a| a == "--compress");
     let mount_idx = args.iter().position(|a| a == "--mount");
     let mount_point = mount_idx
         .and_then(|i| args.get(i + 1))
@@ -39,7 +41,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Files to pack: {}", paths.len());
 
     let input_path = Path::new(input_dir);
-    let mut pak = PakBuilder::new().writer(
+    let mut builder = PakBuilder::new();
+    if compress {
+        builder = builder.compression([repak::Compression::Zlib]);
+    }
+    let mut pak = builder.writer(
         BufWriter::new(File::create(output_pak)?),
         repak::Version::V11,
         mount_point.to_string(),
@@ -55,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .to_string_lossy()
             .replace('\\', "/");
         let data = fs::read(p)?;
-        let entry = entry_builder.build_entry(false, data)?;
+        let entry = entry_builder.build_entry(compress, data)?;
         pak.write_entry(rel.clone(), entry)?;
         println!("  {} ({} bytes)", rel, fs::metadata(p)?.len());
     }
