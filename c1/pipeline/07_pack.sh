@@ -19,6 +19,13 @@ COMP="$(c1_const '["pack"]["compression"]')"
 [ -d "$IN" ] || { echo "FAIL: input dir missing: $IN" >&2; exit 2; }
 [ -x "$REPAK" ] || { echo "FAIL: repak not built at $REPAK" >&2; exit 2; }
 
+# repak compresses entries on a rayon pool and writes them in COMPLETION order, so
+# three packs of identical input give three different hashes (same size, same
+# content). Pinning the pool to one thread makes the pak byte-reproducible:
+# measured 7e482fab x3 on the same tree vs 5a5f9860/4ba2f756/95747cd5 with the
+# default pool. Costs ~2.5x wall time on a 69 MB pak — irrelevant here.
+export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-1}"
+
 # Deterministic input ordering; refuse empty trees (a silent empty pak is worse
 # than a failure).
 NUM=$(find "$IN" -type f | wc -l)

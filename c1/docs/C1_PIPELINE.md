@@ -68,8 +68,14 @@ sort **or the next rebuild silently renumbers every node.**
 - `nodes_with_road == nav_nodes` and `nodes_null_road == 0` on the live server — a
   graph that lost its road references after cook is a broken bake.
 
-**What is legitimately non-deterministic:** pak sha256 across rebuilds, cooked `.uexp`
-bytes, and any count that depends on the source road set. Verify *content* (file list,
+**Pak bytes are reproducible if you pin the packer.** `repak` compresses entries on a
+rayon pool and writes them in completion order: three packs of the same tree produced
+three hashes (`5a5f9860…`, `4ba2f756…`, `95747cd5…`) at an identical 68,764,212 bytes.
+With `RAYON_NUM_THREADS=1` the same three runs produce one hash (`7e482fab…`). Stage 7
+sets it, so identical trees now give identical paks — the residue is the cook.
+
+**What is legitimately non-deterministic:** cooked `.uexp` bytes (embedded build data),
+and therefore any count or hash that depends on the source road set. Verify *content* (file list,
 property values, `.uexp` size within reason), not pak hashes.
 
 ---
