@@ -149,3 +149,23 @@ Stage 5; everything up to it is unaffected.
 | C1_Seg24_r38 | ROAD: 1> | 1/0 | 400.0 | 50.0 | 15 | 1000.93 |
 | C1_Seg25_r56 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 14 | 1000.77 |
 | C1_Seg26_r58 | ROAD: 1> | 1/0 | 400.0 | 50.0 | 20 | 0.0 |
+
+
+## Stage 2 results (applied, verified)
+
+Editor pass in the mirror (`c1_bridge.py`, committed): each seam was closed at its midpoint -
+the end point of segment N and the start point of N+1 were both moved to the midpoint of the
+gap, then the spline was rebuilt. Endpoint displacement was 5 m per side, well under the
+guard rails (max shift 15 m, minimum 3 m of room before the neighbouring point).
+
+Independent verification (fresh editor process, re-opened the level and re-measured):
+
+- **26 internal seam gaps: 0.000 cm** (were 999.9-1001.7)
+- **wrap joint seg26.end -> seg00.start was already exactly coincident and still is** - the
+  network is a closed loop, not an open chain
+- **speed limit 120.0 kph on all 27 segments** (was 50); `C1_Course` untouched at 120
+- lanes (21x 2/0, 4x 1/0, 2x 3/0), widths and the 40 `MotorTownRaceSection` gates unchanged
+- level saved: 7,702,998 -> 7,705,046 bytes, backup at `C1Roads.umap.bak_bridge`
+
+Still open: `MotorTownNavigation` GraphData = 0 nodes. Bridging seams makes a graph *possible*;
+it does not create one.
