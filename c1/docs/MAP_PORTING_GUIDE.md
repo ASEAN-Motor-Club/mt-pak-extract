@@ -384,6 +384,17 @@ in the editor log. Scan a cooked MI for the texture path string — if it isn't 
 **Fix.** Restore the referenced namespace and re-cook. Do not try to repair the MIs in
 place: see §5.2.
 
+**Cook may not export every referenced texture.** In this project a cook emitted **774**
+texture assets while the MIs referenced **1,993** — 1,550 unresolved, and the pak still
+"worked" (grey surfaces, no error). Textures are stable across geometry work, so take the
+texture tree from the last known-good build instead of trusting the cook, and gate it:
+
+```
+referenced = every "/Game/Mods/<MAP>/Textures/..." string inside the MI assets
+present    = every .uasset under Content/Mods/<MAP>/Textures
+gate:      missing == 0 (or a short, explained list)
+```
+
 ### 5.2 Asset property writes report success but never persist
 
 **Cause.** On material instances (texture parameter overrides) and on static meshes
