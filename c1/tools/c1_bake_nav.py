@@ -142,44 +142,72 @@ def main():
         for a, b in zip(idxs, idxs[1:]):
             d = math.dist(nodes[a]['loc'], nodes[b]['loc'])
             if d > 0.1:
-                edges[a][b] = (d, d)
+                edges[a][b] = (0.0, d)   # cost 0.0 like Jeju; distance = spacing
 
-    # spatial hash of road endpoints for cross-road connections
-    cell = 1000.0
-    grid = {}
-    def cellkey(p):
-        return (int(p[0] // cell), int(p[1] // cell))
-    ends = []
+    # ---- 2b. connectivity: any node may connect to the nearest node of ANOTHER road -------
+    # Endpoint-only linking leaves mid-road merges and on-ramps disconnected, which shows up
+    # in game as "the car drives a hundred metres then stops". Search from every node.
+    connect_any = float(cfg.get('connect_any_cm', 4000.0))
+    cell2 = 2000.0
+
+    def cellkey2(p):
+        return (int(p[0] // cell2), int(p[1] // cell2))
+
+    grid_all = {}
     for idx, n in enumerate(nodes):
-        if n['k'] == 0 or n['k'] == n['count'] - 1:
-            ends.append(idx)
-            grid.setdefault(cellkey(n['loc']), []).append(idx)
+        grid_all.setdefault(cellkey2(n['loc']), []).append(idx)
 
     linked = 0
-    for idx in ends:
-        n = nodes[idx]
-        cx, cy = int(n['loc'][0] // cell), int(n['loc'][1] // cell)
+    for idx, n in enumerate(nodes):
+        cx, cy = int(n['loc'][0] // cell2), int(n['loc'][1] // cell2)
         best = None
         for gx in (cx - 1, cx, cx + 1):
             for gy in (cy - 1, cy, cy + 1):
-                for j in grid.get((gx, gy), ()):
+                for j in grid_all.get((gx, gy), ()):
                     if j == idx:
                         continue
                     m = nodes[j]
+                    if id(m['road']) == id(n['road']):
+                        continue
                     if m['lane'] != n['lane']:
                         continue
                     d = math.dist(n['loc'], m['loc'])
-                    if d > connect:
+                    if d > connect_any:
                         continue
-                    dot = n['dir'][0] * m['dir'][0] + n['dir'][1] * m['dir'][1] + n['dir'][2] * m['dir'][2]
+                    dot = (n['dir'][0] * m['dir'][0] + n['dir'][1] * m['dir'][1]
+                           + n['dir'][2] * m['dir'][2])
                     if dot < fdot:
                         continue
                     if best is None or d < best[0]:
                         best = (d, j)
-        if best is not None:
-            edges[idx][best[1]] = (best[0], best[0])
+        if best is not None and best[1] not in edges[idx]:
+            edges[idx][best[1]] = (0.0, best[0])
             linked += 1
-    log('cross-road endpoint links=%d' % linked)
+    log('cross-road links=%d' % linked)
+
+    # ---- 2c. lane-change edges: same spline point, adjacent lane, non-zero cost ------------
+    lateral_cost = float(cfg.get('lateral_cost', 30.0))
+    by_point = {}
+    for idx, n in enumerate(nodes):
+        by_point.setdefault((id(n['road']), n['k']), []).append(idx)
+    lat = 0
+    for key, idxs in by_point.items():
+        for a in idxs:
+            for b in idxs:
+                if a == b:
+                    continue
+                if abs(nodes[a]['lane'] - nodes[b]['lane']) != 1:
+                    continue
+                if nodes[a]['lane'] * nodes[b]['lane'] <= 0:
+                    continue
+                d = math.dist(nodes[a]['loc'], nodes[b]['loc'])
+                if d > 1.0:
+                    edges[a][b] = (lateral_cost, d)
+                    lat += 1
+    log('lane-change edges=%d' % lat)
+
+    dead_ends = sum(1 for e in edges if not e)
+    log('dead_ends=%d' % dead_ends)
 
     # ---- 3. build the unreal structs ----------------------------------------------
     node_array = []
@@ -195,7 +223,7 @@ def main():
         nd.set_editor_property('spline_point_index', -1)
         nd.set_editor_property('lateral_distance', float(n['lateral']))
         nd.set_editor_property('lateral_offset', 0.0)
-        nd.set_editor_property('flags', 0)
+        nd.set_editor_property('flags', 0)  # 0 is the most common value in Jeju (6,352 of 17,619)
         nd.set_editor_property('auto_connect_distance', -1.0)
         nd.set_editor_property('speed_limit', float(n['kmh']) * CM_PER_KMH)
         nd.set_editor_property('island_id', 0)
@@ -236,7 +264,7 @@ def main():
     log('saved %s' % OUT_LEVEL)
 
     report = {'roads': len(roads), 'nodes': len(nodes), 'step_cm': step,
-              'readback_nodes': n_back, 'cross_links': linked,
+              'readback_nodes': n_back, 'cross_links': linked, 'lane_change': lat, 'dead_ends': dead_ends,
               'bounds': [min(xs), min(ys), min(zs), max(xs), max(ys), max(zs)]}
     with open(REPORT, 'w') as f:
         json.dump(report, f, indent=1)
