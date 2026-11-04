@@ -16,10 +16,14 @@ fallback name. Every step below has a gate that must pass before the next.
   stays at `/Game/Mods/C1/` — the MI→texture references are baked to that path.
 - 155 roads / 209.72 km / 6,040 points; graph 42,578 nodes / 10,167 cross-links /
   42,700 lane-change edges / 0 dead ends; 554 cell actors.
-- Source assets: 554 meshes, 1,633 materials, 2,314 textures.
-- Cooked: `C1Full_Roads.uexp` 60,740,498 B, `C1Full.uexp` 156,625 B. Tree 10,433 files:
-  1,108 mesh / 3,204 material / 6,113 texture cooked files + 4 map files.
-- Pak: mount `../../../`, V11, zlib, `RAYON_NUM_THREADS=1`.
+- Source assets: 554 meshes (555 including `uvquad`), 1,609 material instances, 2,314 textures.
+- Cooked: `C1Full_Roads.uexp` 60,740,498 B, `C1Full.uexp` 156,625 B. Tree 10,447 files:
+  1,108 mesh / 3,218 material / 6,113 texture cooked files + 4 map + 4 C1Full extras.
+- Pak: mount `../../../`, V11, zlib, `RAYON_NUM_THREADS=1`. v6 =
+  659,718,290 B, `3d437472dab693fff7eb339eef68667a6f14e7713001633a47c79b84d53d287e`.
+- Geometry: 554 tiles at metres→cm ×100 (bounds x −11.2..7.7 km, y −10.7..16.5 km),
+  single LOD, collision complex-as-simple. **~9.1 M tris, no LODs** — the parked
+  1.12 GB build differed only by carrying LODs.
 
 ## 0. Preconditions
 
@@ -89,6 +93,11 @@ Preconditions: `TargetedRHIs` must list **both** `PCD3D_SM5` and `PCD3D_SM6` in
 SM6), and Nahimic must be stopped (`NahimicService`, `NahimicSvc64.exe`) or
 `ShaderCompileWorker` crashes and no material compiles.
 
+**Status in this project: `TargetedRHIs` is not set at all** (no `PCD3D_*` line in
+`DefaultEngine.ini`). That was harmless once every MI was reparented to a vanilla MT
+master — MT compiles those shaders itself and we no longer cook any master of our own.
+If a future build ships a mod-owned master, this gate becomes blocking again.
+
 Gate: `LogCook: Display: Done!` **and** `C1Full_Roads.uexp` ≈ 60.7 MB. A ~800 B stub
 means the sublevel saved empty — see `save_map` in the guide §2.3. Exit code is `1` on
 the known Water Body collision-profile warning; ignore it. Spot-check a cooked master
@@ -119,8 +128,10 @@ for `PCD3D_SM6`.
 Tree must contain `MotorTown/Content/Mods/C1Full/Maps/*` **and**
 `MotorTown/Content/Mods/C1/{Meshes,Materials,Textures}/*`.
 
-Gate: `mod_explore --list` → mount `../../../`, 10,433 files, per-directory counts as
-in the facts block. Round-trip: extract the 4 map files, sha256 == tree copies.
+Gate: `mod_explore --list` → mount `../../../`, 10,447 files
+(554 mesh / 1,609 material / 2,148 texture `.uasset` + 4 map files). Round-trip: extract
+the 4 map files, sha256 == tree copies (`946801611ede…` / `0ee8d0ab641c…` /
+`1787630c787a…` / `22cabe1bb54b…`).
 
 ## 6. Registration (`zzz_AMC_C1FullOffline_*`)
 
