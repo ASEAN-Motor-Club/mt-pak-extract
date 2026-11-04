@@ -118,10 +118,22 @@ def main():
                 rgt = spl.get_right_vector_at_distance_along_spline(s, unreal.SplineCoordinateSpace.WORLD)
                 lx, ly, lz = vec(loc)
                 rx, ry, rz = vec(rgt)
+                # Oncoming lanes travel AGAINST the spline tangent. Keeping the raw tangent
+                # made oncoming nodes point the same way as forward traffic, so cars on the
+                # wrong side drove head-on ("traffic coming the wrong way"). Reverse both the
+                # travel direction and the right vector (right of travel) for lane < 0.
+                tx, ty, tz = vec(tan)
+                # position stays on the spline's own lateral axis: only the TRAVEL frame flips
+                px = lx + rx * lateral
+                py = ly + ry * lateral
+                pz = lz + rz * lateral
+                if lane < 0:
+                    tx, ty, tz = -tx, -ty, -tz
+                    rx, ry, rz = -rx, -ry, -rz
                 nodes.append({
                     'road': road, 'lane': lane, 'side': 1 if lane > 0 else -1,
-                    's': s, 'loc': (lx + rx * lateral, ly + ry * lateral, lz + rz * lateral),
-                    'dir': vec(tan), 'right': (rx, ry, rz),
+                    's': s, 'loc': (px, py, pz),
+                    'dir': (tx, ty, tz), 'right': (rx, ry, rz),
                     'lateral': lateral, 'kmh': kmh,
                     'road_start': first_index, 'k': k, 'count': count,
                 })
