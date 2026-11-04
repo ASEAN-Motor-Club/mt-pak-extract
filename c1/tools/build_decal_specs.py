@@ -14,6 +14,11 @@ import sys
 
 SPEED_KPH = 120.0
 
+# C1 map geometry bbox (UE cm) -> source metres. Decals outside it have no road geometry
+# under them: authoring them puts roads in the void and inflates the nav graph.
+BBOX_SRC = (-1530.52, 4938.25, 3574.34, 10522.40)   # x0, y0, x1, y1
+MIN_INSIDE_FRAC = 0.60
+
 
 def to_ue(p):
     return [round(float(p[0]) * 100.0, 2), round(-float(p[1]) * 100.0, 2), round(float(p[2]) * 100.0, 2)]
@@ -46,6 +51,12 @@ def main(items_path, out_path):
         length_cm = sum(math.dist(clean[k], clean[k + 1]) for k in range(len(clean) - 1))
         if length_cm < 500.0:          # under 5 m: a stub, not a road
             skipped.append((i, "too_short %.0fcm" % length_cm))
+            continue
+
+        x0, y0, x1, y1 = BBOX_SRC
+        inside = sum(1 for n in nodes if x0 <= n[0] <= x1 and y0 <= n[1] <= y1)
+        if inside < MIN_INSIDE_FRAC * len(nodes):
+            skipped.append((i, "outside_bbox %d/%d" % (inside, len(nodes))))
             continue
 
         lanes_f = int(d.get("lanesLeft", 2) or 0)
