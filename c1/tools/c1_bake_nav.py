@@ -115,10 +115,13 @@ def main():
         first_index = len(nodes)
 
         for lane in lanes:
+            # C1 is a LEFT-hand-traffic map while MotorTown's AI keeps right. Numbering the
+            # lanes from the LEFT edge makes the lane the AI prefers (+1) the LHT slow lane,
+            # instead of the overtaking lane next to the oncoming carriageway.
             if lane > 0:
-                lateral = total_w / 2.0 - (lane - 0.5) * width   # +1 = rightmost
+                lateral = -total_w / 2.0 + (lane - 0.5) * width   # +1 = leftmost (LHT slow)
             else:
-                lateral = -total_w / 2.0 + (abs(lane) - 0.5) * width   # -1 = leftmost
+                lateral = total_w / 2.0 - (abs(lane) - 0.5) * width   # -1 = rightmost
             for k in range(count):
                 s = min(length, k * step)
                 loc = spl.get_location_at_distance_along_spline(s, unreal.SplineCoordinateSpace.WORLD)
