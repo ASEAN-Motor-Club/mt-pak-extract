@@ -9,13 +9,14 @@ Editor-only: spawns actors, builds splines, sets reflected properties. No byte w
     D:\\C1Mirror\\run_py.bat D:/UEProjects/C1/Scripts/author_decal_roads.py
 """
 import json
+import os
 import traceback
 
 import unreal
 
-SPEC = 'D:/UEProjects/C1/Scripts/c1_decal_roads.json'
-OUT_LEVEL = '/Game/Mods/C1/Maps/C1Roads'
-REPORT = 'D:/UEProjects/C1/Scripts/c1_decal_author_report.json'
+SPEC = os.environ.get('C1_SPEC', 'D:/UEProjects/C1/Scripts/c1_decal_roads.json')
+OUT_LEVEL = os.environ.get('C1_LEVEL', '/Game/Mods/C1/Maps/C1Roads')
+REPORT = os.environ.get('C1_AUTHOR_REPORT', 'D:/UEProjects/C1/Scripts/c1_decal_author_report.json')
 DROP_PREFIXES = ('C1_Seg', 'C1_Rd')   # old racing-line slices + our own roads (idempotent)
 
 

@@ -17,13 +17,15 @@ Node conventions copied from a live Jeju graph (D:/c1_nodes.json):
 """
 import json
 import math
+import os
 import traceback
 
 import unreal
 
-CONFIG = 'D:/UEProjects/C1/Scripts/nav_bake_config.json'
-OUT_LEVEL = '/Game/Mods/C1/Maps/C1Roads'
-REPORT = 'D:/UEProjects/C1/Scripts/c1_nav_bake_report.json'
+# Paths are overridable so the same script works for any level without editing it.
+CONFIG = os.environ.get('C1_BAKE_CONFIG', 'D:/UEProjects/C1/Scripts/nav_bake_config.json')
+OUT_LEVEL = os.environ.get('C1_LEVEL', '/Game/Mods/C1/Maps/C1Roads')
+REPORT = os.environ.get('C1_BAKE_REPORT', 'D:/UEProjects/C1/Scripts/c1_nav_bake_report.json')
 
 CM_PER_KMH = 1000.0 / 36.0     # 27.7778 cm/s per km/h
 DEFAULTS = {'limit_roads': 0, 'step_cm': 1000.0, 'connect_cm': 2500.0, 'forward_dot': 0.55}

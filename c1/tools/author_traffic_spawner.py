@@ -6,6 +6,8 @@ spawner reads; the server probe will tell us whether that is sufficient.
 """
 
 import json
+import os
+
 import unreal
 
 ROWS = json.loads(r"""[
@@ -439,7 +441,7 @@ ROWS = json.loads(r"""[
 
 LES = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 EAS = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-LEVEL = "/Game/Mods/C1/Maps/C1Roads"
+LEVEL = os.environ.get("C1_LEVEL", "/Game/Mods/C1/Maps/C1Roads")
 
 BOOL_FIELDS = ["bSpawnAIController", "bIsTrafficVehicle", "bSpawnRoadSide",
                "bDespawnIfPlayersAreFar", "bAllowCloseToPlayer", "bAllowCloseToOtherVehicle",
