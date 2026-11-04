@@ -77,3 +77,76 @@ Verify once against a stock MT road (spline vs lane offsets) before trusting it 
   pavement.
 - Race course must keep working: keep the `Track_Course` line or re-derive `CourseKey`.
 - Navmesh + graph bakes are the expensive steps; they stay last.
+
+
+## Stage 0 results (measured, 2026-11-04)
+
+Recon ran against `D:\C1Mirror` (the project that owns the MotorTown classes) on
+`/Game/Mods/C1/Maps/C1Roads`. Raw output: `D:/UEProjects/C1/Scripts/c1_recon.json`.
+
+- **28 road actors**: 27 `C1_SegNN_*` + `C1_Course`. All 27 segments are already
+  `RoadType=Road`; only `C1_Course` is `Track_Course` (closed, 1,379 points, 120 kph).
+- **Lanes**: 21 segments 2/0, 4 segments 1/0, 2 segments 3/0. Zero backward lanes anywhere,
+  which matches the one-way BeamNG source.
+- **Widths**: 21 at 300, 3 at 400, 2 at 333, 1 at 350.
+- **Speed**: 27 segments at 50 kph, course at 120 kph. The speed IS set in the editor - the
+  earlier cooked dump just did not show it.
+- **40 `MotorTownRaceSection` gates**, all `CourseName=C1Shuto`.
+- **`MotorTownNavigation` GraphData has 0 nodes** - navigation was never baked.
+
+### The blocking finding: every segment is 10 m short at each end
+
+Measured end->next-start for the 26 consecutive pairs plus the wrap:
+
+- gap = **999.9 - 1001.7 cm, mean 1,000.6** (exactly 10.0 m), angle to the local tangent
+  median **11.3 degrees** - the hole is *along* the road, not a lateral offset.
+- This is systematic, not noise: the authoring split trimmed each segment by 5 m at both
+  ends. The result is 27 disconnected splines where the game needs one connected graph.
+
+### Second blocker: the graph cannot be baked in the mirror
+
+`AMotorTownNavigation::BuildNavigation()` in the reconstructed source has an **empty body**,
+and the mirror's compiled module is built from that source - so even a successful bake writes
+0 nodes (which is exactly what the recon shows). The graph has to come from the real game
+module at runtime, or be produced by a different mechanism. This is the open question for
+Stage 5; everything up to it is unaffected.
+
+### Patch list for Stage 2-4 (ordered, editor only)
+
+1. Bridge the 28 x 10 m seams: extend each segment's first/last spline point along its
+   tangent, or add a connector road per seam. Prefer extending - it keeps lane continuity.
+2. Set speed limits per class instead of a flat 50.
+3. Leave `C1_Course` untouched (race line + 40 gates stay valid).
+4. Only then attempt the graph (Stage 5) and navmesh (Stage 6).
+
+### Segment inventory
+
+| label | type | fwd/back | width | kph | points | seam gap |
+|---|---|---|---|---|---|---|
+| C1_Seg00_r40 | ROAD: 1> | 1/0 | 400.0 | 50.0 | 16 | 0.0 |
+| C1_Seg01_r36 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 32 | 999.91 |
+| C1_Seg02_r55 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 49 | 1000.29 |
+| C1_Seg03_r37 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 15 | 1000.44 |
+| C1_Seg04_r54 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 33 | 1000.39 |
+| C1_Seg05_r53 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 21 | 1000.77 |
+| C1_Seg06_r75 | ROAD: 1> | 3/0 | 333.0 | 50.0 | 52 | 1000.0 |
+| C1_Seg07_r91 | ROAD: 1> | 2/0 | 350.0 | 50.0 | 22 | 1000.58 |
+| C1_Seg08_r77 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 8 | 1000.22 |
+| C1_Seg09_r73 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 32 | 1000.1 |
+| C1_Seg10_r7 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 319 | 1000.25 |
+| C1_Seg11_r11 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 61 | 1000.23 |
+| C1_Seg12_r9 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 22 | 1000.39 |
+| C1_Seg13_r10 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 59 | 1000.49 |
+| C1_Seg14_r21 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 31 | 1000.66 |
+| C1_Seg15_r8 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 65 | 1001.06 |
+| C1_Seg16_r19 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 15 | 1001.06 |
+| C1_Seg17_r8 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 35 | 1001.57 |
+| C1_Seg18_r16 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 47 | 1001.45 |
+| C1_Seg19_r15 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 21 | 1000.89 |
+| C1_Seg20_r23 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 263 | 999.99 |
+| C1_Seg21_r27 | ROAD: 1> | 1/0 | 300.0 | 50.0 | 35 | 1001.71 |
+| C1_Seg22_r26 | ROAD: 1> | 3/0 | 333.0 | 50.0 | 41 | 1000.92 |
+| C1_Seg23_r22 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 36 | 1000.53 |
+| C1_Seg24_r38 | ROAD: 1> | 1/0 | 400.0 | 50.0 | 15 | 1000.93 |
+| C1_Seg25_r56 | ROAD: 1> | 2/0 | 300.0 | 50.0 | 14 | 1000.77 |
+| C1_Seg26_r58 | ROAD: 1> | 1/0 | 400.0 | 50.0 | 20 | 0.0 |
