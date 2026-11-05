@@ -1,8 +1,10 @@
 # Plan — materials/alpha/blending iterations (C1Full)
 
 Rule for this task: **every iteration gets a written plan first, and the plan is gated against
-`c1/C1FULL_BUILD_CHECKLIST.md` before anything is built.** No build without a stated single
-variable, the gate list it must pass, and the decision rule for what its result means.
+`c1/docs/MATERIALS_CHECKLIST.md` (gates M1–M18) — the materials checklist only.** The full
+`C1FULL_BUILD_CHECKLIST.md` covers geometry, cook, maps, nav and shipping, and does not apply to a
+material-pak iteration. No build without a stated single variable, the gate list it must pass, and
+the decision rule for what its result means.
 
 History and mechanisms: `c1/docs/MATERIALS_ALPHA_BLEND.md`.
 Prior state: material paks A–F shipped; trees still render a black background.
@@ -27,7 +29,8 @@ Prior state: material paks A–F shipped; trees still render a black background.
 
 ## Checklist conflict this resolves (read before building)
 
-`§2b` states: *parent must be a vanilla MT master*. Pak G deliberately violates that by shipping
+`MATERIALS_CHECKLIST.md` **M18** records the open question, inherited from
+`C1FULL_BUILD_CHECKLIST.md §2b`: *parent must be a vanilla MT master*. Pak G deliberately violates that by shipping
 the author's masters at their original path. This is an **A/B against a measured release**, not a
 hypothesis: the release is byte-for-byte this configuration and renders. Per the skill's rule, the
 checklist entry is amended **only after G renders on screen** — not before, and not on the strength
@@ -42,23 +45,28 @@ of this argument alone.
 
 **Artifact**: `zzzzz_AMC_C1Mats_G_P.pak`, 119,152,165 B, sha256 `7d2ea7cfbf627ea4…`.
 
-**Gate status against the checklist:**
+**Gate status against `MATERIALS_CHECKLIST.md`:**
 
-- §8b shader archive — **PASS**: `mod_explore --list | grep -ci shaderarchive` = 0.
-- §2c mesh→material coverage — **PASS by construction**: instances are the release's own, same
-  names the release's meshes use; our meshes reference the same MI names.
-- §2f texture bindings non-null — **PASS (measured on the built pak)**: `MI_C1X_mat_tree_02`
-  extracted back out of `zzzzz_AMC_C1Mats_G_P.pak` dumps `BaseColor → ParameterValue (Object):
-  Index=-7`, `TwoSided (Bool): True`, `OpacityMaskClipValue 0.3333`, parent `Index=-2` →
-  `Import[1] = M_C1_Surface_Masked`, and `area_zz_02_gtf_tex_191.uasset` is in the pak.
-- §2b parent is vanilla master — **DELIBERATE DEVIATION**, documented above; verdict deferred to
-  the on-screen result.
-- §2g masked override serialised — **PASS**: `TwoSided` + clip 0.3333 present in the shipped
-  instance (the blend byte is unreliable in UE5.5 dumps, per the skill).
-- Counts — **PASS**: 1,625 instances in, 1,625 out; 2,314 textures; 4/4 masters; 0 shader files.
-  (`Materials/` also carries 4 unused test masters from the release — inert, same names as ours.)
-- Install gate — `MATS_SHA_MATCH` against `7d2ea7cf…`.
-- Control retained — pak F archived; geometry pak `50956D9E…` untouched.
+- **M4** no shader archives — **PASS**: `grep -ci shaderarchive` = 0 on the built pak.
+- **M5** counts — **PASS**: 1,625 instances in / 1,625 out; 2,314 textures; 4/4 masters;
+  0 shader files. (`Materials/` also carries 4 unused test masters from the release — inert.)
+- **M6** absolute output path — **PASS after a failure**: the first build used a relative `--out`,
+  reported `MATS_PAK_OK`, and left no file (temp dir deleted). Rebuilt absolute.
+- **M7** parent resolves — **PASS**: `MI_C1X_mat_tree_02` → `Parent (Object): Index=-2` →
+  `Imports[1] = M_C1_Surface_Masked`.
+- **M8** colour parameter matches master contract — **PASS**: `BaseColor`, which is what
+  `M_C1_Surface_Masked` declares (verified against the release's own instance).
+- **M9** bindings non-null — **PASS**: `ParameterValue (Object): Index=-7` on the instance
+  extracted back out of the pak.
+- **M10** every referenced texture ships — **PASS**: 2,314 textures; `area_zz_02_gtf_tex_191.uasset`
+  present. This is the gate pak A failed (masters shipped, zero textures).
+- **M11** masked override serialised — **PASS**: `TwoSided (Bool): True` and
+  `OpacityMaskClipValue 0.3333` in the same dump (blend byte not used as a pass condition).
+- **M12** texture can actually cut — **PASS**: `area_zz_02_gtf_tex_191` is PF_BC7 with 62.5 %
+  transparent pixels, measured by the alpha census.
+- **M2** control retained — pak F archived; geometry pak `50956D9E…` untouched.
+- **M13** install gate — pending: `MATS_SHA_MATCH` against `7d2ea7cf…` (blocked, game running).
+- **M18** — this iteration is the A/B that decides it: mod-owned masters + complete texture set.
 
 **Decision rule:**
 
