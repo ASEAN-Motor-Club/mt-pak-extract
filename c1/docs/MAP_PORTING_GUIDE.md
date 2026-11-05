@@ -95,7 +95,20 @@ Gate: road count and total length match the source. C1Full: **155 roads / 209.72
 Pitfalls:
 - Units: BeamNG is metres, Unreal centimetres. A 100× transform error looks like
   "scaled to the moon" actors, not like a unit bug.
-- Declared lanes lie. Audit `lane_width` **before** believing any lane complaint;
+- **Declared lanes are usually not the game's lanes.** BeamNG honours `lanesLeft`/`lanesRight`
+  only when `autoLanes == false`; otherwise `map.lua:numOfLanesFromRadius` derives the count from
+  the decal's own width: `max(1, floor(width / 3.61 + 0.5))`. A 4 m decal is **one** lane, a 10 m
+  decal is three. Taking the declared 2 verbatim turns narrow ramps into two 1.5 m lanes and wide
+  carriageways into two 7.5 m ones — the widths look inconsistent, but they are just
+  `decal_width / declared_lanes`.
+- **Lane centres tile the width**: `-w/2 + (k - 0.5) * (w / lanes)` from the centreline, which is
+  the normalised placement `decalRoadsEditor.lua` draws. Never stack lanes outward from the spline.
+- **Link roads by physical offset, not lane index.** Once lane counts follow width, "lane 1" of a
+  6 m road sits 1.5 m off its centreline and "lane 1" of a 10 m road sits 2.5 m off — comparing
+  indices joins two lines that are metres apart. Require headings to agree and the target to lie
+  within ~1.9 m of the source's heading line; the C1Full graph went from 7,538 links with a 5.9 m
+  median side-step to 3,000 links with 0.48 m.
+- Width still needs auditing: `lane_width` above ~400 cm means an under-declared carriageway;
   width > ~400 cm usually means an under-declared carriageway.
 - Never merge dual carriageways. Opposed pairs are identified by midpoint **tangent
   dot = −1** with separation below `(wa+wb)/2`, sustained — never by closest point.
