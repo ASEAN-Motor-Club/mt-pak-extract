@@ -1,62 +1,66 @@
 {
-    "_comment": "Frozen constants for the C1 build. Changing any value here invalidates the recorded baselines in `expected`.",
-    "game_version": "0.7.19",
-    "level": {
-        "parent_map": "/Game/Mods/C1/Maps/C1",
-        "roads_sublevel": "/Game/Mods/C1/Maps/C1Roads",
-        "mount_point": "../../../MotorTown/Content/Mods/C1/"
-    },
-    "pack": {
-        "version": "V11",
-        "compression": "Zlib",
-        "server_pak": "zzz_AMC_C1_Server_v4_P.pak",
-        "client_pak": "zzz_AMC_C1_P.pak"
-    },
-    "bake": {
-        "step_cm": 1000.0,
-        "connect_cm": 2500.0,
-        "connect_any_cm": 2000.0,
-        "forward_dot": 0.85,
-        "normal_dot": 0.85,
-        "deck_dz_cm": 150.0,
-        "deck_dist_cm": 1200.0,
-        "grade_max": 0.25,
-        "crossroad_min_nodes": 2,
-        "parallel_dot": 0.9,
-        "parallel_skip_cm": 400.0,
-        "lateral_cost": 30.0,
-        "limit_roads": 0,
-        "crossroad_pass": 0,
-        "_crossroad_note": "0 = leave CrossroadId -1 / Flags 0 (shipped Jeju plurality). Shipped Jeju has 2,908 nodes at Flags 4 but 6,244 with a CrossroadId, so our clustering does not reproduce the shipped spread; enable only after that shape is measured.",
-        "deck_dz_abs_cm": 250.0
-    },
-    "lanes": {
-        "traffic_side": "left",
-        "comment": "LHT map: +1 is the leftmost lane so the AI-preferred lane is the slow lane. total_w = lane_width * (nf+nb); offsets measured from the road edges."
-    },
-    "spawner": {
-        "keep_rows": [
-            "Small",
-            "Special",
-            "Truck",
-            "Bus"
-        ],
-        "zeroed_rows": "every other row, including Getaway and all service rows; the authoritative list is the embedded ROWS in tools/author_traffic_spawner.py \u2014 do not duplicate it here"
-    },
-    "expected": {
-        "_comment": "Baseline for the 54-road (bbox-filtered) build. Re-record after any road set change; the verifier fails on drift.",
-        "roads": 54,
-        "nodes": 7222,
-        "cross_links": 1698,
-        "lane_change": 7342,
-        "dead_ends": 0
-    },
-    "expected_c1full": {
-        "_comment": "C1Full full-map baseline (155 C1_Rd roads + C1_Course excluded). Re-record after any road-set change.",
-        "roads": 155,
-        "nodes": 42578,
-        "cross_links": 9911,
-        "lane_change": 42700,
-        "dead_ends": 0
-    }
+ "_comment": "Frozen constants for the C1 build. Changing any value here invalidates the recorded baselines in `expected`.",
+ "game_version": "0.7.19",
+ "level": {
+  "parent_map": "/Game/Mods/C1/Maps/C1",
+  "roads_sublevel": "/Game/Mods/C1/Maps/C1Roads",
+  "mount_point": "../../../MotorTown/Content/Mods/C1/"
+ },
+ "pack": {
+  "version": "V11",
+  "compression": "Zlib",
+  "server_pak": "zzz_AMC_C1_Server_v4_P.pak",
+  "client_pak": "zzz_AMC_C1_P.pak"
+ },
+ "bake": {
+  "step_cm": 1000.0,
+  "connect_cm": 2500.0,
+  "connect_any_cm": 2000.0,
+  "forward_dot": 0.85,
+  "normal_dot": 0.85,
+  "deck_dz_cm": 150.0,
+  "deck_dist_cm": 1200.0,
+  "grade_max": 0.25,
+  "crossroad_min_nodes": 2,
+  "parallel_dot": 0.9,
+  "parallel_skip_cm": 400.0,
+  "lateral_cost": 30.0,
+  "limit_roads": 0,
+  "crossroad_pass": 0,
+  "_crossroad_note": "0 = leave CrossroadId -1 / Flags 0 (shipped Jeju plurality). Shipped Jeju has 2,908 nodes at Flags 4 but 6,244 with a CrossroadId, so our clustering does not reproduce the shipped spread; enable only after that shape is measured.",
+  "deck_dz_abs_cm": 250.0,
+  "lanes_from_width": 1,
+  "max_lateral_cm": 190.0
+ },
+ "lanes": {
+  "traffic_side": "left",
+  "comment": "LHT map: +1 is the leftmost lane so the AI-preferred lane is the slow lane. total_w = lane_width * (nf+nb); offsets measured from the road edges."
+ },
+ "spawner": {
+  "keep_rows": [
+   "Small",
+   "Special",
+   "Truck",
+   "Bus"
+  ],
+  "zeroed_rows": "every other row, including Getaway and all service rows; the authoritative list is the embedded ROWS in tools/author_traffic_spawner.py \u2014 do not duplicate it here"
+ },
+ "expected": {
+  "_comment": "Baseline for the 54-road (bbox-filtered) build. Re-record after any road set change; the verifier fails on drift.",
+  "roads": 54,
+  "nodes": 7222,
+  "cross_links": 1698,
+  "lane_change": 7342,
+  "dead_ends": 0
+ },
+ "expected_c1full": {
+  "roads": 155,
+  "nodes": 46901,
+  "cross_links": 3000,
+  "lane_change": 51468,
+  "dead_ends": 0,
+  "side_step_median_m": 0.48,
+  "side_step_max_m": 3.2,
+  "_note": "width-derived lanes (round(w/3.61)) + 190 cm lateral link gate, 2026-11-05"
+ }
 }

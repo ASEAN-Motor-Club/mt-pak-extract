@@ -15,5 +15,9 @@
   "lateral_cost": 30.0,
   "crossroad_pass": 0,
   "_crossroad_note": "0 = leave CrossroadId -1 / Flags 0 (shipped Jeju plurality). Shipped Jeju has 2,908 nodes at Flags 4 but 6,244 with a CrossroadId, so our clustering does not reproduce the shipped spread; enable only after that shape is measured.",
-  "deck_dz_abs_cm": 250.0
+  "deck_dz_abs_cm": 250.0,
+  "lanes_from_width": 1,
+  "max_lateral_cm": 190.0,
+  "_lanes_note": "Lane count comes from the painted width: round(width/3.61), min 1, max 4 -- BeamNG's numOfLanesFromRadius in lua/ge/map.lua. The mod's lanesLeft is only read when autoLanes == false, so it is not authoritative.",
+  "_lateral_note": "A cross-road link may move the car at most 190 cm sideways. Lane numbers are not comparable across roads once lane counts follow painted width, so links match on the physical offset instead."
 }

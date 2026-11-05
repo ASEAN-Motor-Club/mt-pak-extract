@@ -109,6 +109,8 @@ def main():
     log('nav=%s roads=%d step=%.0fcm' % (nav.get_actor_label(), len(roads), step))
 
     # ---- 1. sample nodes -----------------------------------------------------------
+    lanes_from_width = int(cfg.get('lanes_from_width', 1)) == 1
+    rebalanced = 0
     nodes = []          # plain dicts first; unreal structs come later
     for road in roads:
         spl = get_spline(road)
@@ -127,12 +129,26 @@ def main():
         if length <= 1.0 or (nf + nb) <= 0:
             continue
 
-        lanes = [l for l in range(1, nf + 1)] + [-l for l in range(1, nb + 1)]
         # Lanes TILE the carriageway: lane_width * (nf + nb) equals the decal width on every
         # C1 road, so lane centres are measured from the road EDGES, not stacked outward from
         # the spline. Stacking put lane 2 of a 2-lane road at 5.25 m on a road 3.5 m from the
         # centreline -- off the surface, which is why AI vehicles hit barriers and columns.
         total_w = width * float(nf + nb)
+        # Lane COUNT from the painted width, which is what BeamNG itself does:
+        #   numOfLanesFromRadius(rad1, rad2) = max(1, floor(min(rad1,rad2)*2/3.61 + 0.5))
+        # i.e. round(width / 3.61) with a floor of one lane (lua/ge/map.lua). The mod's
+        # `lanesLeft: 2` is only read when `autoLanes == false`, so for a default decal the
+        # game never used it -- a 4 m decal is ONE lane, not two 2 m lanes. Applying the
+        # source rule here keeps the authors' intent and removes the 1.5 m and 7.5 m lanes.
+        if lanes_from_width:
+            n_canon = int(math.floor(total_w / 361.0 + 0.5))
+            n_canon = max(1, min(4, n_canon))
+            if n_canon != (nf + nb):
+                rebalanced += 1
+            nf, nb = n_canon, 0
+            width = total_w / float(n_canon)
+
+        lanes = [l for l in range(1, nf + 1)] + [-l for l in range(1, nb + 1)]
         # Sample at multiples of step, then close the chain on the real end. The old
         # `min(length, k*step)` loop emitted a second node a few CENTIMETRES past the last
         # one whenever length was not a multiple of step (94 of 313 chains ended with a
@@ -260,6 +276,10 @@ def main():
     deck_abs = float(cfg.get('deck_dz_abs_cm', 250.0))
     deck_dist = float(cfg.get('deck_dist_cm', 1200.0))
     grade_max = float(cfg.get('grade_max', 0.25))
+    # Continuity gate: how far sideways a link may move the car. BeamNG's own lane
+    # spacing is width/(2*lanes), so two roads that genuinely continue one lane differ
+    # by well under this; anything larger is a jump across open ground or a median.
+    max_lateral = float(cfg.get('max_lateral_cm', 190.0))
     cell2 = 2000.0
 
     def cellkey2(p):
@@ -274,6 +294,7 @@ def main():
     skipped_normal = 0
     skipped_deck = 0
     skipped_grade = 0
+    skipped_lateral = 0
     for idx, n in enumerate(nodes):
         cx, cy = int(n['loc'][0] // cell2), int(n['loc'][1] // cell2)
         best = None
@@ -285,14 +306,25 @@ def main():
                     m = nodes[j]
                     if id(m['road']) == id(n['road']):
                         continue
-                    if m['lane'] != n['lane']:
-                        continue
                     d = math.dist(n['loc'], m['loc'])
                     if d > connect_any:
                         continue
                     dot = (n['dir'][0] * m['dir'][0] + n['dir'][1] * m['dir'][1]
                            + n['dir'][2] * m['dir'][2])
                     if dot < fdot:
+                        continue
+                    # Continuity: a link must continue the lane the car is in, so the target
+                    # has to sit on the source's own heading line. Lane numbers are NOT
+                    # comparable across roads once lane counts come from painted width --
+                    # lane 1 of a 6 m decal is 1.5 m off centre, lane 1 of a 10 m decal is
+                    # 2.5 m off -- so the test is the sideways offset itself, and the lane
+                    # index is ignored. Every link older builds made across 5-20 m of open
+                    # ground fails here by construction.
+                    lat = (m['loc'][0] - n['loc'][0]) * n['right'][0] \
+                        + (m['loc'][1] - n['loc'][1]) * n['right'][1] \
+                        + (m['loc'][2] - n['loc'][2]) * n['right'][2]
+                    if abs(lat) > max_lateral:
+                        skipped_lateral += 1
                         continue
                     if dot > parallel_dot and d < parallel_skip:
                         skipped_parallel += 1
@@ -328,8 +360,9 @@ def main():
             edges[idx][best[1]] = (0.0, best[0])
             linked += 1
     log('u-turn edges blocked=%d' % u_turn_blocked)
-    log('cross-road links=%d (skipped_parallel=%d normal=%d deck=%d grade=%d)'
-        % (linked, skipped_parallel, skipped_normal, skipped_deck, skipped_grade))
+    log('lanes rebalanced from painted width=%d' % rebalanced)
+    log('cross-road links=%d (skipped_parallel=%d normal=%d deck=%d grade=%d lateral=%d)'
+        % (linked, skipped_parallel, skipped_normal, skipped_deck, skipped_grade, skipped_lateral))
 
     # ---- 2c. lane-change edges: same spline point, adjacent lane, non-zero cost ------------
     lateral_cost = float(cfg.get('lateral_cost', 30.0))
