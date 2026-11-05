@@ -675,3 +675,15 @@ main pak. Textured corridor confirmed in-game.
   Check `strings <map>.umap | grep -oE '/Game/Mods/[A-Za-z0-9_]+/Meshes'` on the *cooked* map.
   Duplicated trees are the underlying defect — one namespace per release pair is the fix
   (`.hermes/plans/2026-11-05-single-content-namespace.md`).
+- **The cook writes texture parameter values as NULL — never source instances from a cook output.**
+  A cooked `MaterialInstanceConstant` keeps the parameter *name* but stores
+  `ParameterValue (Object): Index=0`, i.e. no texture, and the surface renders **flat white**. Measured:
+  every instance in the project cook had null `BaseColor`, while the same instance in the shipped C1
+  pak carried `Index=-7` → `Texture2D mat_wal_15_file0`. The duplicate `C1Full/Materials` tree was
+  degraded the same way. Authoritative source for instances = the build that demonstrably rendered.
+  Gate: `UAssetTool --dump <mi>.uasset | grep 'ParameterValue (Object)'` must show non-zero indices,
+  sampled per material family.
+- **White ≠ checkerboard, and the distinction is diagnostic.** Checkerboard = material never resolved
+  (missing asset, dead parent, uncompilable master). White = material resolved and rendered with a
+  sampler on its default (null `BaseColor`, or a parameter name the master does not declare). Seeing
+  white after seeing checkerboard means the chain is connected and only the bindings are wrong.

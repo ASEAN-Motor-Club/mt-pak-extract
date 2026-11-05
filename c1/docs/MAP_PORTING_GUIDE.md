@@ -399,6 +399,33 @@ Specular   scalar       UV_Tiling  scalar
 Writing a Texture2D into `Metallic`/`Roughness` produces an instance that fails to compile and
 draws checkerboard. Drop those parameters and let the scalar defaults apply.
 
+#### 5.0.5 The cook silently nulls texture parameters
+
+A cooked `MaterialInstanceConstant` preserves the parameter **name** but writes
+`ParameterValue (Object): Index=0` — no texture. The surface then renders **flat white**. Both the
+cook output and the duplicate `C1Full/Materials` copies had this; only the shipped `C1` pak's
+instances carried real values (`Index=-7` → `Texture2D mat_wal_15_file0`). Never source instances
+from a cook or from a renamed copy: take them from the build that rendered, and verify per family
+that every texture parameter has a non-zero object index (checklist §2f).
+
+#### 5.0.6 Reading the three failure screens
+
+```
+checkerboard  material never resolved   → missing instance / dead parent / uncompilable master
+flat white    material resolved, no texture bound → null BaseColor (5.0.5) or name mismatch (5.0.4)
+dark / unlit  no lighting at all        → sky blueprint missing from the pak (5.0.2)
+```
+
+Each stage is progress, and each names a different field to look at.
+
+#### The confirmed-rendering configuration
+
+The build that finally rendered on screen, in full: map → meshes under the build's own namespace →
+**instances taken from the previously shipped pak** → parented to the host's
+`/Game/Env/Materials/Master/M_PropMaster` → real `BaseColor` texture plus scalar
+`Metallic`/`Roughness` → sky and prop blueprints shipped at the content root, no master assets and
+no shader archives in the pak. Every link was verified from asset bytes before the launch.
+
 #### The recipe that actually shipped
 
 The old C1 material pak is the reference implementation: **1,609 instances, zero masters**,

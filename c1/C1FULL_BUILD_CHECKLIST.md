@@ -228,3 +228,17 @@ actor, therefore no sun and no skylight, and every surface rendered unlit — vi
 
 Instances only, parented to MT's own masters, `BaseColor` texture + `Metallic`/`Roughness`
 scalars. No master assets in the pak. See `MAP_PORTING_GUIDE.md` §5.0.
+### §2f — Texture bindings non-null (HARD FAIL)
+
+Instances must come from the build that rendered, never from a cook output or a duplicate tree —
+the cook stores `ParameterValue (Object): Index=0` (null) for texture parameters and the world
+renders flat white.
+
+```bash
+dotnet UAssetTool.dll --dump <Materials>/MI_x.uasset | grep 'ParameterValue (Object)'
+# every texture parameter must show a non-zero index (e.g. Index=-7), never Index=0
+```
+
+Sample one instance per material family. 2026-11-05: the cook output and the `C1Full` tree copies
+were null; only the shipped `C1` pak's instances carried textures, and swapping the source is what
+turned white into a textured world.
