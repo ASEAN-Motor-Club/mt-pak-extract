@@ -229,11 +229,21 @@ def main():
         by_road.setdefault((id(n['road']), n['lane']), []).append(idx)
 
     edges = [dict() for _ in nodes]     # target -> (cost, distance)
+    u_turn_blocked = 0
     for key, idxs in by_road.items():
         for a, b in zip(idxs, idxs[1:]):
             d = math.dist(nodes[a]['loc'], nodes[b]['loc'])
-            if d > 0.1:
-                edges[a][b] = (0.0, d)   # cost 0.0 like Jeju; distance = spacing
+            if d <= 0.1:
+                continue
+            # A lane edge is what the pathfinder drives along. If the two sampled positions
+            # disagree with the travel frame (dot < 0) the spline doubles back there, and the
+            # edge is a legal U-turn in the middle of a highway. Never bake one: the car then
+            # has to take the real road (or stop) instead of turning around.
+            da, db = nodes[a]['dir'], nodes[b]['dir']
+            if sum(x * y for x, y in zip(da, db)) < 0.0:
+                u_turn_blocked += 1
+                continue
+            edges[a][b] = (0.0, d)   # cost 0.0 like Jeju; distance = spacing
 
     # ---- 2b. connectivity: any node may connect to the nearest node of ANOTHER road -------
     # Endpoint-only linking leaves mid-road merges and on-ramps disconnected, which shows up
@@ -317,6 +327,7 @@ def main():
         if best is not None and best[1] not in edges[idx]:
             edges[idx][best[1]] = (0.0, best[0])
             linked += 1
+    log('u-turn edges blocked=%d' % u_turn_blocked)
     log('cross-road links=%d (skipped_parallel=%d normal=%d deck=%d grade=%d)'
         % (linked, skipped_parallel, skipped_normal, skipped_deck, skipped_grade))
 
@@ -522,6 +533,7 @@ def main():
 
     report = {'roads': len(roads), 'nodes': len(nodes), 'step_cm': step,
               'readback_nodes': n_back, 'cross_links': linked, 'lane_change': lat, 'dead_ends': dead_ends,
+              'u_turn_blocked': u_turn_blocked,
               'skipped_parallel': skipped_parallel, 'skipped_normal': skipped_normal,
               'skipped_deck': skipped_deck, 'skipped_grade': skipped_grade,
               'islands': len(remap), 'crossroads': len(final_groups),
