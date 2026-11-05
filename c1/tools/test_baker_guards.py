@@ -202,7 +202,7 @@ def main():
     os.environ.setdefault('C1_BAKE_REPORT', os.path.join(WORK, 'test_bake_report.json'))
     cfg = {'limit_roads': 0, 'step_cm': 1000.0, 'connect_cm': 2500.0, 'connect_any_cm': 4000.0,
            'forward_dot': 0.85, 'normal_dot': 0.85, 'deck_dz_cm': 150.0,
-           'deck_dist_cm': 1200.0, 'grade_max': 0.5, 'crossroad_min_nodes': 2, 'parallel_dot': 0.9,
+           'deck_dist_cm': 1200.0, 'grade_max': 0.5, 'crossroad_min_nodes': 2, 'crossroad_pass': 1, 'parallel_dot': 0.9,
            'parallel_skip_cm': 400.0, 'lateral_cost': 30.0}
     json.dump(cfg, open(os.environ['C1_BAKE_CONFIG'], 'w'))
 
@@ -282,6 +282,24 @@ def main():
             if ef == 1 and not (xid[i] != -1 and xid[i] == xid[t]):
                 edge_ok = False
     check('edge flags only inside one crossroad group', edge_ok)
+
+    # --- shipped default: crossroad_pass off must leave -1 / 0 everywhere ---
+    cfg0 = dict(cfg, crossroad_pass=0)
+    json.dump(cfg0, open(os.environ['C1_BAKE_CONFIG'], 'w'))
+    roads2, nav2 = build_world()
+    install_unreal(roads2, nav2)
+    try:
+        exec(compile(src, BAKER, 'exec'), {'__name__': '__main__'})
+    except SystemExit:
+        pass
+    n2 = nav2.get_editor_property('graph_data').get_editor_property('nodes')
+    check('crossroad_pass=0 writes shipped defaults',
+          all(n.get_editor_property('crossroad_id') == -1 and
+              n.get_editor_property('flags') == 0 for n in n2),
+          '%d nodes' % len(n2))
+    check('crossroad_pass=0 still writes island ids',
+          len({n.get_editor_property('island_id') for n in n2}) == len(set(isl)),
+          '%d islands' % len({n.get_editor_property('island_id') for n in n2}))
 
     report = json.load(open(os.environ['C1_BAKE_REPORT']))
     print('\nreport:', {k: report[k] for k in

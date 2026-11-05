@@ -355,6 +355,11 @@ def main():
     # CrossroadId -1 (same as the game's "not at a junction" value) instead of handing
     # the AI thousands of single-node crossroads.
     min_nodes = int(cfg.get('crossroad_min_nodes', 2))
+    # Shipped Jeju_World keeps 2,908 nodes at Flags=4 but 6,244 at CrossroadId != -1, so the
+    # game's own ids are NOT one-per-candidate-node: a group id there spans nodes we never
+    # mark. Our clustering reproduces the union rule the RE recovered but not that spread, so
+    # the ids are off by default until the shipped shape is measured properly.
+    crossroad_pass = int(cfg.get('crossroad_pass', 0)) != 0
     sizes = {}
     for i in cand:
         if cross[i] != -1:
@@ -365,6 +370,9 @@ def main():
         if cross[i] != -1 and cross[i] not in kept_groups:
             cross[i] = -1
             dropped += 1
+    if not crossroad_pass:
+        cross = [-1] * len(nodes)
+        dropped = 0
     final_groups = {}
     for i in cand:
         if cross[i] != -1:
