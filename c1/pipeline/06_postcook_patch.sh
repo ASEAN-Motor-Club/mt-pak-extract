@@ -29,8 +29,12 @@ abs() { python3 -c "import os,sys;print(os.path.abspath(sys.argv[1]))" "$1"; }
 if [ -f "$IN/$PARENT_MAP.umap" ]; then
     echo "== parent map: game-mode / sunsky / garage refs"
     bash "$C1_PIPE/repair_class_refs.sh" "$(abs "$IN/$PARENT_MAP.umap")" "$(abs "$OUT/$PARENT_MAP.umap")"
+elif [ "${ALLOW_DELTA:-0}" = "1" ]; then
+    echo "== parent map absent, skipping (explicit delta build)"
 else
-    echo "== parent map absent, skipping (delta build)"
+    # A wrong path used to print this and exit 0, which reads as a successful patch.
+    echo "FAIL: $IN/$PARENT_MAP.umap absent (set ALLOW_DELTA=1 for a real delta build)" >&2
+    exit 5
 fi
 
 if [ -f "$IN/$SUB_MAP.umap" ]; then
