@@ -435,6 +435,58 @@ def main():
     log('lane-change edges=%d (step=%d stations, %d flat at a chain end, %d rescued)'
         % (lat, lane_step, lat_flat, rescued))
 
+    # ---- 2d. merge out of a lane that dies at a junction -----------------------------------
+    # 17 chain ends have no onward edge and no cross-road link: their lane simply does not
+    # exist on the road they run into (a 3-lane road meeting a 2-lane one). Their only exit
+    # was the perpendicular lane hop above, so a car that left the merge late stopped and
+    # pivoted. Give them a real merge: a forward link onto the road ahead, allowed to land up
+    # to `merge_lateral_cm` off the lane centre -- one lane width, which is what a merge is.
+    merge_lateral = float(cfg.get('merge_lateral_cm', 500.0))
+    cell = 1000.0
+    grid = {}
+    for j, m in enumerate(nodes):
+        grid.setdefault((int(m['loc'][0] // cell), int(m['loc'][1] // cell)), []).append(j)
+    merged = 0
+    for idx, nd in enumerate(nodes):
+        outs = edges[idx]
+        if not outs:
+            continue
+        road_out = [j for j in outs if nodes[j]['road'] is nd['road']]
+        if any(abs(nodes[j]['lane']) == abs(nd['lane']) for j in road_out):
+            continue        # the lane carries on; nothing to merge
+        if any(nodes[j]['road'] is not nd['road'] for j in outs):
+            continue        # it already has a cross-road link
+        best = None
+        gx, gy = int(nd['loc'][0] // cell), int(nd['loc'][1] // cell)
+        for ax in (gx - 1, gx, gx + 1):
+            for ay in (gy - 1, gy, gy + 1):
+                for j in grid.get((ax, ay), ()):
+                    m = nodes[j]
+                    if m['road'] is nd['road']:
+                        continue
+                    d = math.dist(nd['loc'], m['loc'])
+                    if d > connect_any or d < 1.0:
+                        continue
+                    if (nd['dir'][0] * m['dir'][0] + nd['dir'][1] * m['dir'][1]
+                            + nd['dir'][2] * m['dir'][2]) < fdot:
+                        continue
+                    vx, vy, vz = m['loc'][0] - nd['loc'][0], m['loc'][1] - nd['loc'][1], \
+                        m['loc'][2] - nd['loc'][2]
+                    if (vx * nd['dir'][0] + vy * nd['dir'][1] + vz * nd['dir'][2]) / d < back_cos:
+                        continue
+                    loff = vx * nd['right'][0] + vy * nd['right'][1] + vz * nd['right'][2]
+                    if abs(loff) > merge_lateral:
+                        continue
+                    if abs(m['loc'][2] - nd['loc'][2]) > deck_abs:
+                        continue
+                    key = (abs(loff), d)
+                    if best is None or key < best[0]:
+                        best = (key, j, d)
+        if best is not None:
+            edges[idx][best[1]] = (0.0, best[2])
+            merged += 1
+    log('merge links out of dead lanes=%d' % merged)
+
     # ---- 2d. island + crossroad ids -------------------------------------------------
     # Mirrors the two graph passes reconstructed from BuildNavigation (RE notes:
     # mt-sdk-2026-11-04/ROADGRAPH-SYMBOLS.md - FUN_14572e820 labels islands over the
