@@ -189,3 +189,12 @@ Gate: installed files `SHA_MATCH`; active pak list contains exactly one pak per 
 - Loads into normal driving (DriveGameMode), player controllable, HUD present
 - Full city visible past the loop, **textured**
 - AI traffic present
+
+### §8b — Shader archive gate (HARD FAIL)
+
+- [ ] `mod_explore <pak> --list | grep -c 'ShaderArchive'` **must be 0**.
+  Shipping `ShaderArchive-*.ushaderbytecode` shadows the game's own library and crashes the
+  client at boot: `LowLevelFatalError [GlobalShader.cpp:803] Could not load section N (of 330)
+  of the global shadermap`. MT ships only SM5 archives (`Global` 13,242,450 B, `MotorTown`
+  56,636,716 B); our cook emits same-named partial ones. Mod paks cannot extend MT's shader
+  library — instances of MT's own masters only.

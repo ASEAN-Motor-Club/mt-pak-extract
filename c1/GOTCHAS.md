@@ -632,3 +632,27 @@ main pak. Textured corridor confirmed in-game.
   shows checkerboard, because assignment succeeds and only compilation fails. Do not treat a
   clean material-resolution probe as proof the materials render; a checkerboard screenshot
   outranks it.
+
+- **NEVER ship `ShaderArchive-*.ushaderbytecode` in a mod pak — it crashes the client**
+  (2026-11-05, v11, reproduced): the game ships exactly two archives,
+  `ShaderArchive-Global-PCD3D_SM5` (13,242,450 B) and `ShaderArchive-MotorTown-PCD3D_SM5`
+  (56,636,716 B) — **no SM6 archive at all**, so MT runs `PCD3D_SM5`. A UE cook of our project
+  emits the same two names but partial (13,181,977 B / 6,186,317 B). Mounting them shadows the
+  game's files and the client dies at boot with
+  `LowLevelFatalError [GlobalShader.cpp] [Line: 803] Could not load section 11 (of 330) of the
+  global shadermap`. Mod paks cannot extend MT's shader library, so **custom material masters
+  can never render in MT regardless of how cleanly they cook**. Ship instances of MT's own
+  masters only, and add a packaging gate: no `ShaderArchive-*` entry may appear in a mod pak.
+- **"Compiled successfully" is not proof a master can render — check the payload.** A master
+  that failed to compile cooks at ~3.6 KB with zero shader strings; a real one is 17–32 KB and
+  carries `PCD3D_SM5`/`PCD3D_SM6` plus `TBasePass*` shader-map names. Gate on size + strings;
+  the cook exit code and `LogCook: Done!` say nothing about it.
+- **A cook with no `TargetedRHIs` silently emits uncompilable materials.** `DefaultEngine.ini`
+  needs `[/Script/WindowsTargetPlatform.WindowsTargetSettings]` with `TargetedRHIs=PCD3D_SM5`
+  (MT's platform) or the log fills with `Failed to compile Material for platform PCD3D_SM6 …
+  Default Material will be used in game`.
+- **Repairing a broken master never works; rebuild it.** The compiled pair in the C1Full project
+  (`M_C1_Tex2`, `M_C1_TexMasked2`) is a from-scratch rebuild that kept the original parameter
+  names (`BaseColor`, `MetallicTex`, `Normal`, `RoughnessTex`, `EmissiveTex`, plus scalars), so
+  original instances bind with no renaming. Editing `M_C1_Surface*` re-cooks the same 3,640 B
+  failure every time.
