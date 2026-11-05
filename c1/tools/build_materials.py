@@ -35,7 +35,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-MASKED_MASTER_PKG = "/Game/AssetsvilleTown/Materials/MasterMaterials/M_AlphaTest"
+# AssetsvilleTown2, not AssetsvilleTown: the first path exists as a directory name in the pak but
+# holds different masters. A wrong package path does not error at load — the instance silently
+# fails to compile and the mesh draws with the engine default (grey checkerboard).
+MASKED_MASTER_PKG = "/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTest"
 MASKED_MASTER_NAME = "M_AlphaTest"
 DEFAULT_CLIP = 0.3333
 BAKE_CLIP = 0.5
@@ -109,6 +112,7 @@ def main() -> int:
     ap.add_argument("--pak", required=True)
     ap.add_argument("--family", default="", help="only instances whose source key starts with this")
     ap.add_argument("--texture-subdir", default="other", help="where baked textures live in the pak")
+    ap.add_argument("--game-pak", default="", help="client pak to verify the master package path against")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
@@ -117,6 +121,14 @@ def main() -> int:
     # -> five levels up). Running from anywhere else fails with "Access to the path
     # '/opt/data/Mappings.usmap' is denied" and the pipeline dies on the first stage.
     tool_cwd = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(a.tool)), *[".."] * 5))
+
+    # Preflight: a wrong master package path doesn't error anywhere - the instance fails to compile
+    # and the mesh draws with the engine default (grey checkerboard). Verify against the real pak.
+    if a.game_pak:
+        listing = run(["bash", "/opt/data/scripts/pak.sh", "listpak", a.game_pak])
+        want = "MotorTown/Content" + MASKED_MASTER_PKG.replace("/Game", "") + ".uasset"
+        if want not in listing:
+            raise SystemExit(f"master package not in {a.game_pak}: {want}")
 
     src = json.load(open(a.source))
     work = os.path.abspath(a.work)
@@ -239,6 +251,7 @@ def main() -> int:
     report_path = os.path.join(work, "materials_report.json")
     json.dump(report, open(report_path, "w"), indent=1)
     print(f"report {report_path} instances={report['instances_in_pak']} baked={report['textures_baked']}")
+    return 0
     return 0
 
 

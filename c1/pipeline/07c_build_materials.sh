@@ -39,5 +39,6 @@ python3 "$C1_C1/tools/build_materials.py" \
     --tool "$UATT_DLL" \
     --dotnet "$DOTNET" \
     --family "$FAMILY" \
+    --game-pak "${GAMEPAK:-/opt/data/workspace/amc-server/mt-pak-extract-wt-0719/client-0.7.19.pak}" \
     --work "$WORK" \
     --pak "$OUT"

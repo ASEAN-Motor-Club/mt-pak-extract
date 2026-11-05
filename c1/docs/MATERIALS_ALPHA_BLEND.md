@@ -364,6 +364,12 @@ It is not a script of remembered commands — it re-derives every decision from
 5. pack, and emit `materials_report.json` (per-instance clip, per-texture bake stats or the reason
    it was skipped).
 
+**The masked master's real path is `/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTest`.**
+Point a instance at `/Game/AssetsvilleTown/…` (one digit short) and nothing errors: the instance
+fails to compile and every quad draws with the engine default — a grey checkerboard that reads as
+"translucent with a missing texture". The stage now preflights the path against the client pak
+(`--game-pak`) and refuses to build if it isn't there.
+
 Two tool facts this stage depends on:
 
 - `UAssetTool` resolves `Mappings.usmap` **from the current working directory**, not from the DLL
