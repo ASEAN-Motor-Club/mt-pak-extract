@@ -44,9 +44,10 @@ DEFAULTS = {
     # like a legal successor at 4 m link range and the AI drives into the barrier
     # between them.
     'deck_dz_cm': 150.0,
+    'deck_dz_abs_cm': 250.0,
     'deck_dist_cm': 1200.0,
     # and the long shallow version of the same defect
-    'grade_max': 0.5,
+    'grade_max': 0.25,
 }
 
 
@@ -200,8 +201,9 @@ def main():
     parallel_skip = float(cfg.get('parallel_skip_cm', 400.0))
     normal_dot = float(cfg.get('normal_dot', 0.85))
     deck_dz = float(cfg.get('deck_dz_cm', 150.0))
+    deck_abs = float(cfg.get('deck_dz_abs_cm', 250.0))
     deck_dist = float(cfg.get('deck_dist_cm', 1200.0))
-    grade_max = float(cfg.get('grade_max', 0.5))
+    grade_max = float(cfg.get('grade_max', 0.25))
     cell2 = 2000.0
 
     def cellkey2(p):
@@ -251,6 +253,13 @@ def main():
                     # is the height difference itself.
                     dz = m['loc'][2] - n['loc'][2]
                     if abs(dz) > deck_dz and d < deck_dist:
+                        skipped_deck += 1
+                        continue
+                    # A junction is never metres apart in height, and the radius test above
+                    # only covers short hops. Long links used to slip through on the grade
+                    # test alone (17 m drop over 39 m = 44%, under the old 50% limit), which
+                    # is exactly "the car noses off the deck onto the one below".
+                    if abs(dz) > deck_abs:
                         skipped_deck += 1
                         continue
                     horiz = math.hypot(m['loc'][0] - n['loc'][0], m['loc'][1] - n['loc'][1])

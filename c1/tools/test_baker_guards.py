@@ -139,6 +139,7 @@ ROAD_A = [(0, 0, 0), (6000, 0, 0)]
 ROAD_B = [(500, 0, 1000), (6500, 0, 1000)]                      # deck 10 m up, 5 m staggered
 ROAD_C = [(-500, -2000, 0), (6000, 366, 0)]                     # merges at 20 deg
 ROAD_D = [(-1000, -3000, 0), (6000, 5345, 0)]                   # crosses at 50 deg
+ROAD_G = [(0, 1800, 350), (6000, 1800, 350)]                          # 3.5 m up, 18 m aside: grade 19%
 ROAD_E = [(0, 700, 0), (6000, 700, 0)]                          # alongside, mirrored right
 ROAD_F = [(0, 0, 0), (0, 0, 0)]                                 # unused placeholder
 
@@ -153,6 +154,9 @@ def build_world():
               num_backward_lanes=0, lane_width=350.0, speed_limit_kph=120.0),
         Actor('C1_RdD', 'MotorTownRoad', Spline=Spline(ROAD_D), num_forward_lanes=1,
               num_backward_lanes=0, lane_width=350.0, speed_limit_kph=120.0),
+        Actor('C1_RdG', 'MotorTownRoad', Spline=SplineWithRight(ROAD_G, (0, -1, 0)),
+              num_forward_lanes=1, num_backward_lanes=0, lane_width=350.0,
+              speed_limit_kph=120.0),
         Actor('C1_RdE', 'MotorTownRoad', Spline=SplineWithRight(ROAD_E, (0, -1, 0)),
               num_forward_lanes=1, num_backward_lanes=0, lane_width=350.0,
               speed_limit_kph=120.0),
@@ -202,7 +206,7 @@ def main():
     os.environ.setdefault('C1_BAKE_REPORT', os.path.join(WORK, 'test_bake_report.json'))
     cfg = {'limit_roads': 0, 'step_cm': 1000.0, 'connect_cm': 2500.0, 'connect_any_cm': 4000.0,
            'forward_dot': 0.85, 'normal_dot': 0.85, 'deck_dz_cm': 150.0,
-           'deck_dist_cm': 1200.0, 'grade_max': 0.5, 'crossroad_min_nodes': 2, 'crossroad_pass': 1, 'parallel_dot': 0.9,
+           'deck_dist_cm': 1200.0, 'grade_max': 0.25, 'deck_dz_abs_cm': 250.0, 'crossroad_min_nodes': 2, 'crossroad_pass': 1, 'parallel_dot': 0.9,
            'parallel_skip_cm': 400.0, 'lateral_cost': 30.0}
     json.dump(cfg, open(os.environ['C1_BAKE_CONFIG'], 'w'))
 
@@ -257,6 +261,9 @@ def main():
 
     e_to_a = links('C1_RdE', 'C1_RdA') + links('C1_RdA', 'C1_RdE')
     check('mirrored right vector rejected', not e_to_a, '%d links' % len(e_to_a))
+
+    g_to_a = links('C1_RdG', 'C1_RdA') + links('C1_RdA', 'C1_RdG')
+    check('height jump beyond the deck radius rejected', not g_to_a, '%d links' % len(g_to_a))
 
     f_to_a = links('C1_RdF', 'C1_RdA') + links('C1_RdA', 'C1_RdF')
     check('steep link outside deck radius rejected', not f_to_a, '%d links' % len(f_to_a))
