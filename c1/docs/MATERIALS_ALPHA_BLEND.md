@@ -260,6 +260,56 @@ saying so is a one-build experiment rather than an argument.
 - Corollary: the geometry pak's instances come from the author. They are the reference. Compare
   against them before replacing them.
 
+## 3c. The source's own material definitions — the contract to port against
+
+The BeamNG map carries its materials as data, so there is no need to infer intent:
+`levels/c1/art/models/merged.materials.json` (1,605 materials). Every foliage, bush and
+plant-parts material has the same shape:
+
+```json
+"mat_bush_03a": {
+  "class": "Material",
+  "Stages": [ { "colorMap": "/levels/c1/art/textures/area_zz_01.gtf_tex_020.dds" } ],
+  "alphaTest": true,
+  "alphaRef": 62,
+  "translucentBlendOp": "None"
+}
+```
+
+- `colorMap` only — one texture, no separate opacity map.
+- **`alphaTest: true`** — the cutout comes from the colour map's alpha channel.
+- **`alphaRef: 0–255`** — a per-material threshold. This is the value the port must carry.
+- **`translucentBlendOp: "None"`** — these are opaque + alpha test, *not* translucent. Any
+  translucent override on them is a port bug, not a design choice.
+- No `doubleSided` key → single-sided in the source.
+
+Port mapping: **BLEND_Masked**, opacity mask from the colour map's alpha, and
+**`OpacityMaskClipValue = alphaRef / 255`** — per material, not the tooling's flat 0.3333.
+
+Measured thresholds (fraction in brackets):
+
+- Bushes — `bush_03a` 62 (0.243), `03b` 143 (0.561), `04a` 192 (0.753), `04b` none,
+  `04c` 138 (0.541), `05a` 46 (0.180), `05b` 48 (0.188), `05c` 48 (0.188), `06` 52 (0.204)
+- Trees — `tree_01` 52 (0.204), `tree_02` 46 (0.180), `tree_03` 142 (0.557), `tree_03_sh` 152
+  (0.596), `tree_04` 61 (0.239), `tree04_sh` 170 (0.667), `tree_06` none, `tree_06_01` 89 (0.349),
+  `tree_06_02` 18 (0.071), `tree_2a` 158 (0.620), `tree_2b` 174 (0.682)
+- Vegetation — `vegetation1` 128 (0.502), `vegetation2` 148 (0.580), `vegetation3` 145 (0.569),
+  `vegetation5` 156 (0.612), `vegetation7` 180 (0.706); `vegetation4` and `vegetation6` are
+  **not** alpha-tested
+- Grass — `grass_seitaka` 100 (0.392)
+- Building planter parts — `PA_siba_syokubutu01` 56 (0.220), `syokubutu02` 58 (0.227),
+  `saku` 54 (0.212), `sotowaku01` 151 (0.592), `tesuri01` 53 (0.208), `light01` 53 (0.208),
+  `komono01` 212 (0.831), `komono01_glow` 165 (0.647), `tenpo_window01` / `tenpo_yane01` 51 (0.200);
+  the rest of the `PA_siba_*` family is not alpha-tested at all and must stay opaque.
+
+Two consequences that cost real time before this was read:
+
+- `mat_tree_06` is alpha-tested with **no** `alphaRef` and points at a **DXT1** colour map —
+  the combination that can never cut (see M24). Its `_01` sibling has the alpha.
+- The balcony plants are `mat_PA_siba_syokubutu01/02` — a *different* family from the ground
+  bushes, on the author's opaque master, which is why they showed a backdrop while the ground
+  bushes did not.
+
 ## 4. Diagnosis procedure — follow it in order
 
 Do these in sequence and stop at the first hit. Do not skip ahead to blend flags.
