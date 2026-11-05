@@ -75,7 +75,14 @@ UE community threads on DXT1 1-bit alpha.
 Dumped from `client-0.7.19.pak`. These are the *actual* parameter names each master declares —
 the only names an instance may legally bind.
 
-- **`/Game/AssetsvilleTown/Materials/MasterMaterials/M_Plants`** — the foliage master.
+- **`/Game/Models/Stylized_Forest/Materials/plants/M_plants`** — **the master the port's own tree and
+  bush instances actually use, and the one that renders correctly.** `BLEND_Masked`, TwoSided,
+  `MSM_Subsurface`, dithered LOD, instanced-static-mesh support; samples `T_plants_basecolor` and
+  `T_plants_normal`. Parameters include **`BaseColor`**, `opacity`, `roughness`, `specular`,
+  `SS_color`, `HueShift`, `Color_Map`, `Normal_Map`, `GrassBendingDistance`, `AO`, `Power`.
+  Do not confuse it with the similarly named AssetsvilleTown master below — they take *different*
+  parameter names and swapping between them is a rewrite, not a fix.
+- **`/Game/AssetsvilleTown/Materials/MasterMaterials/M_Plants`** — a *second*, different foliage master.
   `BLEND_Masked`, TwoSided, `MSM_Subsurface`, `DitheredLODTransition`,
   `bUsedWithInstancedStaticMeshes`, grass-wind via `SimpleGrassWind`, default texture `T_leaf_01`.
   Parameters: **`Base_Color`** (texture), `Base_Color_Tint`, `Roughness`, `SubSurface_Color`,
@@ -214,6 +221,21 @@ looping.
   bound `BaseColor`, so the master always drew its default `T_leaf_01`. This is the first build
   that binds the real tree atlases on the real foliage master, with no overrides.
 
+- **P5/P6 — texture repair and the bushes.** P5 pointed the tree instances at real atlases (a rename
+  had truncated one to a non-existent `area_zz_02_gtf_tex`), and moved `MI_C1_mat_tree_06` off a
+  **PF_DXT1** texture — no alpha channel, so it could never cut. P6 converted the 9 bush instances,
+  which sat on the author's **opaque** `M_C1_Surface`: their textures are 31–76 % transparent, so an
+  opaque master painted the backdrop (the "green background"). Result: *"nothing changed"* — because
+  the family had been moved to `AssetsvilleTown/M_Plants`, which is **not** the master the geometry's
+  instances use.
+- **P7 — stop overriding foliage entirely.** The pak shipped *without* its 27 foliage instances, so
+  the geometry pak's own author-derived instances drew the trees. Result: *"the main trees are fixed
+  now."* The instances were never broken. Our material pak had been replacing a working author
+  configuration with a different master, on every build since B.
+- **P8 — the same treatment for bushes only.** Bushes keep their own `BaseColor` binding, are
+  parented to `Stylized_Forest/M_plants` (the master the working trees use), and carry no overrides.
+  Still on the author's opaque master otherwise, which is the last green backdrop.
+
 The pattern to notice: A–E were all arguments about blending, and blending was never the problem.
 F–P4 were all *binding* failures, and the last one was a single character: `BaseColor` vs
 `Base_Color`. Three separate rules converge here — count the population (step 0), read the
@@ -221,6 +243,22 @@ master's real parameter names (step 3), and never carry an override forward with
 shipped bytes.
 
 ---
+
+## 3b. The rule that would have saved the whole loop
+
+**A material pak does not have to include an instance at all.** Absence is a configuration: if the
+base pak's own instance already renders correctly, overriding it can only make things worse, and
+saying so is a one-build experiment rather than an argument.
+
+- Before building a fix for a family, build **the pak without that family** and look. If the symptom
+  disappears, the base configuration was correct and the defect is in *your* override — not in the
+  base assets, not in the blend mode, not in the alpha.
+- Corollary: never "fix" an instance by moving it to a *differently named* master and assuming the
+  names line up. Two foliage masters exist (`Stylized_Forest/M_plants` with `BaseColor` +
+  `opacity`; `AssetsvilleTown/M_Plants` with `Base_Color` + `SubSurface_*`). They are different
+  materials with different contracts; a swap is a rewrite.
+- Corollary: the geometry pak's instances come from the author. They are the reference. Compare
+  against them before replacing them.
 
 ## 4. Diagnosis procedure — follow it in order
 
@@ -235,6 +273,11 @@ Do these in sequence and stop at the first hit. Do not skip ahead to blend flags
 1. **Identify the instance.** A coordinate plus a screenshot beats any amount of statistics.
    From the coordinate, get the cell, then the mesh, then the material slot. Name the MI
    before changing anything.
+   The player position is readable without asking: UE4SS writes
+   `MotorTown\Binaries\Win64\ue4ss\UE4SS.log`, and the client mod logs
+   `pawn_loc=<x> <y> <z>` (centimetres, y negated — the same convention as the import). A mod that
+   only logs `tick no-pawn` means the player is not spawned; the coordinates appear once it is.
+   The game's own Unreal log is *not* written to `Saved\Logs` — only Chromium/CEF logs are there.
 2. **Read the instance's live parent.** `--dump` and look at the `Parent` object property's
    `Index`. The name map may contain several stale master imports; only the `Parent` index
    tells you what is actually used. (Both `M_AlphaTest` and `M_plants` appear in the import
