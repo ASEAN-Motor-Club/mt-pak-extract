@@ -259,8 +259,19 @@ def main():
     d_to_a = links('C1_RdD', 'C1_RdA') + links('C1_RdA', 'C1_RdD')
     check('50 deg cut rejected', not d_to_a, '%d links' % len(d_to_a))
 
-    e_to_a = links('C1_RdE', 'C1_RdA') + links('C1_RdA', 'C1_RdE')
-    check('mirrored right vector rejected', not e_to_a, '%d links' % len(e_to_a))
+    # the baker now derives each node's right vector from its travel direction, so a
+    # mirrored spline right vector cannot leak into the graph at all
+    bad_right = 0
+    for i in range(len(nodes)):
+        nd = nodes[i]
+        d = nd.get_editor_property('direction')
+        r = nd.get_editor_property('right_vector')
+        ux, uy = -d.y, d.x
+        n = math.hypot(ux, uy) or 1.0
+        if (r.x * ux + r.y * uy) / n < 0.99:
+            bad_right += 1
+    check('right vector is right-of-travel on every node', bad_right == 0,
+          '%d nodes disagree' % bad_right)
 
     g_to_a = links('C1_RdG', 'C1_RdA') + links('C1_RdA', 'C1_RdG')
     check('height jump beyond the deck radius rejected', not g_to_a, '%d links' % len(g_to_a))

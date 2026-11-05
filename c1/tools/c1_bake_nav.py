@@ -185,6 +185,42 @@ def main():
     if not nodes:
         raise RuntimeError('no nodes sampled')
 
+    # ---- 1b. travel direction from the chain geometry, not the spline tangent -----------
+    # get_direction_at_distance_along_spline returns a NEGATED tangent at isolated samples
+    # (24 samples on C1Full). The position is fine, but the node then points back down the
+    # road it just came from, which bakes a legal U-turn between two consecutive nodes.
+    # Derive the direction from the chord to the next sample of the same lane instead; the
+    # last node inherits the previous direction.
+    chains = {}
+    for idx, n in enumerate(nodes):
+        chains.setdefault((id(n['road']), n['lane']), []).append(idx)
+    fixed_dirs = 0
+    for key, idxs in chains.items():
+        for k in range(len(idxs) - 1):
+            i, j = idxs[k], idxs[k + 1]
+            dx = nodes[j]['loc'][0] - nodes[i]['loc'][0]
+            dy = nodes[j]['loc'][1] - nodes[i]['loc'][1]
+            dz = nodes[j]['loc'][2] - nodes[i]['loc'][2]
+            L = math.sqrt(dx * dx + dy * dy + dz * dz)
+            if L < 1.0:
+                continue
+            nd = (dx / L, dy / L, dz / L)
+            if nodes[i]['lane'] < 0:      # oncoming lanes travel against the spline
+                nd = (-nd[0], -nd[1], -nd[2])
+            cur = nodes[i]['dir']
+            if cur[0] * nd[0] + cur[1] * nd[1] + cur[2] * nd[2] < 0.9:
+                nodes[i]['dir'] = nd
+                fixed_dirs += 1
+        if len(idxs) >= 2:
+            nodes[idxs[-1]]['dir'] = nodes[idxs[-2]]['dir']
+    # keep the stored right vector consistent with the (corrected) travel direction:
+    # right-of-travel for Z-up is up x dir
+    for n in nodes:
+        dx, dy, _dz = n['dir']
+        L = math.hypot(dx, dy) or 1.0
+        n['right'] = (-dy / L, dx / L, 0.0)
+    log('direction fixed from chords: %d nodes' % fixed_dirs)
+
     # ---- 2. edges: along each lane, plus nearest neighbours at road ends ------------
     connect = float(cfg['connect_cm'])
     fdot = float(cfg['forward_dot'])
