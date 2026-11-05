@@ -59,6 +59,28 @@ of the staging dir.
 - **M13 — `MATS_SHA_MATCH`** against the built pak's sha256, and the geometry pak's sha256
   re-checked as unchanged in the same step.
 
+## Path gates — the namespace is part of the contract
+
+- **M19 — ship every asset at the package path its references use.** In this port that is
+  **`/Game/Mods/C1Full/…`**, never `/Game/Mods/C1/…`. An asset copied to a different namespace keeps
+  the package path baked into its bytes, and the references that point at it were written against
+  the old path; the result is a full-set fallback to the engine default (every material "broken" at
+  once). Before packing, assert for the shipped tree:
+  - every asset's parent directory matches the namespace the meshes/level reference (`C1Full`),
+  - no asset from another namespace (`C1`) is copied into the `C1Full` tree to "make it resolve",
+  - any asset that genuinely must live at its original path (a master the instances import by
+    absolute path) is shipped **at that path**, not relocated.
+  Repacking a release's material tree into our namespace is therefore not a copy operation: either
+  the instances are ours (correct `C1Full` paths) or they are the release's (correct `C1` paths) —
+  mixing the two under one directory is a guaranteed full-set failure.
+- **M20 — the material pak must address what the *installed* geometry pak references.** List the
+  material names the loaded geometry pak's meshes reference and diff them against the names in the
+  material pak. A geometry pak that changed since the last material build (measured here: geometry
+  replaced at 23:09, `FD746972…`, where v26 was `50956D9E…`) can reference a different set, in which
+  case **every material build is a no-op regardless of its content** and "still the same" says
+  nothing about the fix. Record the geometry pak's sha256 alongside the material pak's in every
+  iteration, and diff the name sets before concluding anything from a screenshot.
+
 ## On-screen decision (pre-committed in the plan)
 
 - **M14** — State, before installing, what each outcome means. Specifically: a build that changes
