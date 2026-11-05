@@ -49,5 +49,13 @@
         "cross_links": 2196,
         "lane_change": 7370,
         "dead_ends": 0
+    },
+    "expected_c1full": {
+        "_comment": "C1Full full-map baseline (155 C1_Rd roads + C1_Course excluded). Re-record after any road-set change.",
+        "roads": 155,
+        "nodes": 42578,
+        "cross_links": 9911,
+        "lane_change": 42700,
+        "dead_ends": 0
     }
 }

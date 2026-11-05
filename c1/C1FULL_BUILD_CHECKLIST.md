@@ -19,8 +19,12 @@ fallback name. Every step below has a gate that must pass before the next.
   gate spec with Y negated). They legitimately sit at `(0,0,0)` — do not "fix" that.
 - 40 `MotorTownRaceSection` actors **deleted** 2026-11-05: they carry no component, so
   their transform was the only thing placing them and all 40 sat stacked at the origin.
-- 155 roads / 209.72 km / 6,040 points; graph 42,578 nodes / 10,167 cross-links /
-  42,700 lane-change edges / 0 dead ends; 554 cell actors.
+- 155 `C1_Rd*` roads sampled by the nav baker (156 `MotorTownRoad` total; `C1_Course`
+  is excluded by the baker's label filter); graph **42,578 nodes / 9,911 cross-links /
+  42,700 lane-change edges / 0 dead ends / 1 island**, re-baked 2026-11-05 after the
+  race sections were removed. Baseline lives in `pipeline/constants.json`
+  → `expected_c1full`, and the stage only reads it with `C1_BAKE_SET=c1full`.
+- 554 cell actors.
 - Source assets: 554 meshes (555 including `uvquad`), 1,609 material instances + 30
   sibling aliases = 1,653 shipped MIs, 2,314 textures.
 - Cooked: `C1Full_Roads.uexp` 60,740,498 B, `C1Full.uexp` ~197 KB (moves with each
