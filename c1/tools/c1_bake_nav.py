@@ -377,12 +377,17 @@ def main():
     for idx, nd in enumerate(nodes):
         idx_of[(id(nd['road']), nd['k'], nd['lane'])] = idx
     lat = 0
+    lat_flat = 0
     for idx, nd in enumerate(nodes):
         for dl in (-1, 1):
             nl = nd['lane'] + dl
             if nd['lane'] * nl <= 0:
                 continue
-            for st in range(lane_step, 0, -1):
+            # step 2 first (9.5 deg), then 1 (19 deg), then 0 -- same station, i.e. the old
+            # perpendicular hop. Step 0 only ever fires at a chain end, where there is no
+            # station ahead to aim at; without it a lane that also failed its cross-road
+            # link ends with NO outgoing edge and AI vehicles halt there forever.
+            for st in range(lane_step, -1, -1):
                 j = idx_of.get((id(nd['road']), nd['k'] + st, nl))
                 if j is None:
                     continue
@@ -390,8 +395,32 @@ def main():
                 if d > 1.0:
                     edges[idx][j] = (lateral_cost, d)
                     lat += 1
+                    if st == 0:
+                        lat_flat += 1
                 break
-    log('lane-change edges=%d (step=%d stations)' % (lat, lane_step))
+    # rescue: nothing may end with zero outgoing edges. A truly isolated node makes the AI
+    # stop the vehicle, so link it to the nearest node on the same road that faces roughly
+    # the same way.
+    rescued = 0
+    for idx, nd in enumerate(nodes):
+        if edges[idx]:
+            continue
+        best = None
+        for j in range(len(nodes)):
+            if j == idx or nodes[j]['road'] is not nd['road']:
+                continue
+            dv = math.dist(nd['loc'], nodes[j]['loc'])
+            if dv > 3000.0:
+                continue
+            if sum(nd['dir'][q] * nodes[j]['dir'][q] for q in range(3)) < 0.5:
+                continue
+            if best is None or dv < best[1]:
+                best = (j, dv)
+        if best:
+            edges[idx][best[0]] = (lateral_cost, best[1])
+            rescued += 1
+    log('lane-change edges=%d (step=%d stations, %d flat at a chain end, %d rescued)'
+        % (lat, lane_step, lat_flat, rescued))
 
     # ---- 2d. island + crossroad ids -------------------------------------------------
     # Mirrors the two graph passes reconstructed from BuildNavigation (RE notes:
