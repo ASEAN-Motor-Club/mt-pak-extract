@@ -81,6 +81,22 @@ of the staging dir.
   nothing about the fix. Record the geometry pak's sha256 alongside the material pak's in every
   iteration, and diff the name sets before concluding anything from a screenshot.
 
+## Canonical-configuration gates (from engine documentation, see docs/ §0)
+
+- **M21 — no blend-mode override in a shipped pak.** Blend mode is compiled state
+  (`MaterialInstanceBasePropertyOverrides`), not a parameter; a cooked game cannot produce a new
+  permutation, and the failure is the UE-39754 lookup error. The instance must inherit the blend
+  from a parent that already has it (`M_AlphaTest` for cutouts, `M_C1_Surface_Trans` for
+  translucency). If a pak needs a blend different from its parent, the parent is wrong.
+- **M22 — parameters only.** An instance should set textures/scalars its parent declares. Anything
+  else is a compile-time change wearing a parameter's clothes.
+- **M23 — the parent must already wire Opacity Mask.** A masked parent that does not feed a texture
+  channel into Opacity Mask cannot cut, whatever the texture's alpha is. Verify by binding a texture
+  known to cut on that parent (e.g. `T_fenceMetal_01` on `M_AlphaTest`) rather than by reading alpha
+  statistics.
+- **M24 — mask format.** Cutout textures must be BC3/BC7. BC1/DXT1 has no usable alpha channel;
+  a mask stored there reads opaque, which is the black-background symptom.
+
 ## On-screen decision (pre-committed in the plan)
 
 - **M14** — State, before installing, what each outcome means. Specifically: a build that changes

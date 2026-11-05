@@ -10,6 +10,68 @@ master, or a texture with no alpha channel) never changes.
 
 ---
 
+## 0. The canonical model (web research, 2026-11-05)
+
+Everything below in §1+ was learned the hard way. This section is the same knowledge stated the
+way Unreal documents it, with sources, because the engine's own rules explain every failure we hit
+and predict the ones we had not hit yet.
+
+**Material instancing exists to change appearance without recompiling the shader.** Epic:
+*"Material instancing in Unreal Engine is used to change the appearance of a Material without
+incurring an expensive recompilation of the Material… a parameterized Material can be edited in a
+Material instance without such recompilation."* — Instanced Materials, Epic docs
+(`dev.epicgames.com/documentation/en-us/unreal-engine/instanced-materials-in-unreal-engine`).
+The inverse is the important half: **anything that is not a parameter is compiled state.**
+
+**Blend mode, shading model, two-sided and mask-clip are base-property overrides**, i.e. a separate
+struct from parameters (`unreal.MaterialInstanceBasePropertyOverrides`, Epic Python API). They
+change the compiled permutation. When the engine cannot find that permutation it says so, verbatim:
+
+> `Couldn't find Shader TShadowDepthVSVertexShadowDepth_OutputDepthfalse for Material Resource
+> BaseMaterial! … BlendMode=BLEND_Masked … Masked=1`
+
+— Epic issue **UE-39754**. That is a *missing cooked shader permutation*, and it is reached simply by
+overriding blend mode on an instance. In the editor the shader is compiled on demand so the override
+appears to work; **in a cooked game it can silently fail or crash the material lookup.**
+
+Consequence for modding a cooked game — this is the rule we should have followed from pak A:
+
+1. **A mod pak cannot add a shader permutation.** Never rely on a blend-mode override to create a
+   rendering mode the parent was not cooked with. Pick a parent that already has the blend you want.
+2. **Override parameters only** — textures and scalars the parent declares. That is the one thing
+   instancing guarantees is free of compilation.
+3. Therefore: opaque things get an opaque parent, cutouts get a parent that is *already*
+   `BLEND_Masked`, translucency gets a parent that is *already* translucent. The parent is the
+   blend mode; the instance is only the appearance.
+
+**Masked rendering is thresholded, not faded.** Epic: *"If BlendMode is BLEND_Masked, the surface is
+not rendered where OpacityMask < OpacityMaskClipValue"*, and the default clip value is **0.3333**
+(`MaterialInstanceBasePropertyOverrides.opacity_mask_clip_value`). A masked material with no
+texture-driven Opacity Mask never discards anything, whatever the texture contains.
+
+**Alpha has to survive compression.** BC1/DXT1 has **no explicit alpha channel** — only a 1-bit
+encoding trick that Unreal's BC1 setting does not use, so a mask stored there reads as fully opaque
+(the "black background" symptom). Use BC3/DXT5 or BC7 for anything that must cut.
+
+**What this means for our port, concretely:**
+
+- Foliage cutouts → parent `M_AlphaTest` (**already** `BLEND_Masked`, TwoSided, parameter `Color`).
+  Set `Color` to a BC3/BC7 texture whose alpha carries the mask. **Do not** add a blend override:
+  the parent already is the blend mode, and an override is precisely the thing that fails in a
+  cooked game.
+- Opaque → `M_PropMaster` / `M_PolygonMaster` / the author's `M_C1_Surface*`, no override.
+- Translucent markings → the author's **`M_C1_Surface_Trans`** (the fourth master, present in the
+  release and missed by our audit), not translucency forced onto an opaque master. Forcing it is
+  what turned the markings white.
+- A custom master in a mod pak is still the real shader-map wall (§3): its permutation is not in the
+  game's shader library. Parent choice is the only lever we have.
+
+Sources: Epic Instanced Materials docs; `unreal.MaterialInstanceBasePropertyOverrides` (5.8);
+Epic issue UE-39754; Epic forum "Using Material Property Overrides causes cooking failures";
+UE community threads on DXT1 1-bit alpha.
+
+---
+
 ## 1. The model
 
 Motor Town's own masters are the only materials that can render. A cooked `Material` from a
