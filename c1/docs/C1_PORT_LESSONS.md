@@ -46,13 +46,19 @@ Sources: `../GOTCHAS.md` (numbered entries), `../CHECKLIST.md`, `C1_PIPELINE.md`
   map ID`), and shipping builds compile that warning out. The falsification test: make
   the master emit magenta — if the world doesn't change, your material isn't on the
   surface. *(29)*
-- **Fix = reparent cooked MIs to a vanilla master** (`/Game/Env/Materials/Master/M_PropMaster`,
-  `M_PolygonMaster`, `M_DecalMaster`) and remap params onto its parameter set
-  (`BaseColor`, `Normal`, `Metallic`, `Roughness`, `Specular`, `Mask`;
-  `EmissiveTex`/`EmissiveStrength` have no equivalent and are dropped). *(29)*
-- That reparented set was shipped as a `zzzz_` **override pak**. That is a trap: it works
+- **RETRACTED — "fix = reparent cooked MIs to a vanilla master".** This rule was wrong and
+  it caused the C1Full "most materials missing" regression. C1's 1,633 MIs parent to four
+  masters shipped in the same pak (`M_C1_Surface`, `_Tex`, `_Masked`, `_Trans`) and render
+  correctly. Reparenting onto `M_PropMaster` renames `MetallicTex/RoughnessTex` so values
+  stop binding, and drops masking/translucency with no equivalent — those surfaces draw
+  nothing. *(corrected; supersedes 29)*
+- **Rule that replaces it:** an MI set travels with the masters it names. Ship every master
+  an MI references inside the same pak and gate it: resolve
+  `Parent (Object): Index=-N → Import[N-1].Name` for **all** MIs and require each resolved
+  name to be an asset in that pak. Bundling MIs without their masters fails silently.
+- That set was also shipped as a `zzzz_` **override pak**. That is a trap: it works
   only while the override exists and sorts last. **The content pak must carry the
-  correctly-parented MIs itself** — losing the override silently costs every material.
+  MIs and their masters itself** — losing the override silently costs every material.
 
 ### Pipeline / build
 
@@ -129,7 +135,7 @@ Measurement taken during this review, on the current C1Full project:
 | **mesh cooked bounds** | **x −1.5…3.6 km, y −10.5…1.6 km, z 0…1.2 km — all 554 inside the map area, 0 outside** |
 | mesh imports in cooked parent map | 873 refs → `/Game/Mods/C1/Meshes` |
 | pak mesh payload | 554 `.uasset` + 554 `.uexp`, 1,648.7 MB (geometry inline, no `.ubulk` needed) |
-| MI parent | **was `M_C1_Surface`** (broken, §29) → now `M_PropMaster` / `M_PolygonMaster` |
+| MI parent | **`M_C1_Surface` / `_Tex` / `_Masked` / `_Trans`** — correct, as shipped by the C1 pak (the earlier `M_PropMaster` reparent was the regression) |
 
 So: geometry exists, is correctly placed, hidden nowhere, and is packed with real
 vertices. The open question is therefore **runtime world contents**, which only the
