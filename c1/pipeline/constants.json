@@ -15,7 +15,7 @@
     "bake": {
         "step_cm": 1000.0,
         "connect_cm": 2500.0,
-        "connect_any_cm": 4000.0,
+        "connect_any_cm": 2000.0,
         "forward_dot": 0.85,
         "normal_dot": 0.85,
         "deck_dz_cm": 150.0,
@@ -47,7 +47,7 @@
         "_comment": "Baseline for the 54-road (bbox-filtered) build. Re-record after any road set change; the verifier fails on drift.",
         "roads": 54,
         "nodes": 7222,
-        "cross_links": 1884,
+        "cross_links": 1698,
         "lane_change": 7342,
         "dead_ends": 0
     },
