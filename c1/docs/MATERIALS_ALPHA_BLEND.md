@@ -344,8 +344,18 @@ no two-sampler masked master, and `AddAlpha` has no MT equivalent at all. So:
   at all levels, and these textures ship 2 mips, so a level-0-only bake makes the surface vanish as
   soon as the GPU leaves mip 0 — on a large flat quad, a few metres away. This is the same bake the port already uses for foliage, and it is why the
   opacity maps are carried in the pak under `MotorTown/Content/Mods/C1/Textures/<dir>/`.
-- `translucent` **without** an opacity map (7 materials here) has nothing to cut with → left opaque.
-  Do not invent a threshold for it.
+- `translucent` **without** an opacity map (7 materials here, e.g. `mat_mj_honsen` 本線,
+  `mat_mj_deguchi`) is **not** maskless: its colour map is DXT5 and already carries the glyph in its
+  alpha (measured 64–72 % transparent). Those panels are translucent in the source, which sorts
+  against an opaque road and can render as a haze with no visible glyph. Port them as
+  **masked off their own alpha** at clip 0.5 — same picture, no sorting, always visible.
+  Verify the alpha actually exists at build time; if the channel is flat the instance is skipped
+  and reported, never guessed at.
+
+**FName digits are not in the raw bytes.** UE stores a name's trailing digits as a separate number,
+so an instance's texture path reads as `area_zz_02_gtf_tex` when scanned as bytes and the `_134` is
+lost. Resolve texture imports through the tool's dump for any name that ends in digits, or the
+build silently reports "no texture" for exactly those materials.
 
 ### The stage that does this: `c1/pipeline/07c_build_materials.sh`
 

@@ -63,6 +63,18 @@ def mi_texture(mi_path: str) -> tuple[str, str] | None:
     return (m.group(1).decode(), m.group(2).decode()) if m else None
 
 
+def texture_from_dump(mi_path: str, tool: str, dotnet: str, cwd: str) -> tuple[str, str] | None:
+    """Resolve the texture import via the tool.
+
+    UE stores an FName's trailing digits as a separate number, so `area_zz_02_gtf_tex_134` shows up
+    in the raw bytes as plain `area_zz_02_gtf_tex`. The dump resolves the FName properly and is the
+    only reliable source for names that end in digits.
+    """
+    out = run([dotnet, tool, "--dump", mi_path], cwd=cwd)
+    m = re.search(r"Name=/Game/Mods/C1/Textures/([A-Za-z0-9_]+)/([A-Za-z0-9_]+)", out)
+    return (m.group(1), m.group(2)) if m else None
+
+
 def find_texture(textures_root: str, sub: str, name: str) -> str | None:
     for cand in (os.path.join(textures_root, sub, name), None):
         if cand and os.path.exists(cand + ".uexp"):
@@ -97,7 +109,12 @@ def classify(src: dict, key: str) -> tuple[str, float | None, str | None]:
         op = stage.get("opacityMap")
         if op:
             return "bake", BAKE_CLIP, op
-        return "opaque", None, None
+        # No separate mask: the colour map may still carry alpha (DXT5). Those panels are
+        # translucent in the source, which sorts badly over an opaque road and can end up
+        # invisible. Masked off their own alpha reads the same and never sorts. Whether the
+        # texture really has alpha is checked at build time; if not, the instance is skipped.
+        return "ownalpha", BAKE_CLIP, None
+    return "opaque", None, None
     return "opaque", None, None
 
 
@@ -139,7 +156,8 @@ def main() -> int:
     for sub in ("masked", "bake", "final", "content"):
         os.makedirs(os.path.join(work, sub), exist_ok=True)
 
-    groups: dict[str, list[tuple[str, float, str | None]]] = {"masked": [], "bake": [], "opaque": [], "unknown": []}
+    groups: dict[str, list[tuple[str, float, str | None]]] = {
+        "masked": [], "ownalpha": [], "bake": [], "opaque": [], "unknown": []}
     for f in sorted(os.listdir(a.materials)):
         if not f.endswith(".uasset"):
             continue
@@ -150,8 +168,8 @@ def main() -> int:
         kind, clip, opmap = classify(src, key)
         groups[kind].append((mi, clip or 0.0, opmap))
 
-    print(f"family={a.family or '*'} masked={len(groups['masked'])} bake={len(groups['bake'])} "
-          f"opaque={len(groups['opaque'])} unknown={len(groups['unknown'])}")
+    print(f"family={a.family or '*'} masked={len(groups['masked'])} ownalpha={len(groups['ownalpha'])} "
+          f"bake={len(groups['bake'])} opaque={len(groups['opaque'])} unknown={len(groups['unknown'])}")
     if a.dry_run:
         for kind in ("masked", "bake", "opaque", "unknown"):
             for mi, clip, _ in groups[kind][:40]:
@@ -200,6 +218,39 @@ def main() -> int:
     masked_final = finish(masked_dir, masked_names, "masked",
                           {mi: c for mi, c, _o in groups["masked"]})
 
+    # --- own-alpha group (translucent with no external mask) -----------------
+    ownalpha_dir = stage(a.materials, [mi for mi, _c, _o in groups["ownalpha"]], "ownalpha")
+    ownalpha_names = []
+    if groups["ownalpha"]:
+        import opacity_bake
+
+        for mi, _clip, _op in groups["ownalpha"]:
+            mi_path = os.path.join(ownalpha_dir, mi + ".uasset")
+            tex = mi_texture(mi_path)
+            base_path = find_texture(a.textures, *tex) if tex else None
+            if base_path is None:  # FName number was stripped from the raw bytes
+                tex = texture_from_dump(mi_path, a.tool, a.dotnet, tool_cwd)
+                base_path = find_texture(a.textures, *tex) if tex else None
+            if not base_path:
+                report["skipped"] = report.get("skipped", []) + [{"mi": mi, "why": "no texture"}]
+                continue
+            try:
+                fmt, w, h, blob = opacity_bake.read_tex(base_path)
+                px, _ = opacity_bake.decode_level0(fmt, w, h, blob)
+                alpha = px[3::4]
+                spread = max(alpha) - min(alpha)
+            except Exception as exc:
+                report["skipped"] = report.get("skipped", []) + [{"mi": mi, "why": str(exc)}]
+                continue
+            if spread < 32:  # no usable alpha: leave the source's translucent setup alone
+                report["skipped"] = report.get("skipped", []) + [
+                    {"mi": mi, "why": f"texture alpha flat (spread {spread})"}]
+                continue
+            ownalpha_names.append(mi)
+    ownalpha_final = (finish(ownalpha_dir, ownalpha_names, "ownalpha",
+                             {mi: BAKE_CLIP for mi in ownalpha_names})
+                      if ownalpha_names else None)
+
     # --- bake group ---------------------------------------------------------
     bake_names = [mi for mi, _c, _o in groups["bake"]]
     bake_dir = stage(a.materials, bake_names, "bake")
@@ -234,7 +285,7 @@ def main() -> int:
 
     # --- merge --------------------------------------------------------------
     final = os.path.join(work, "final")
-    for d in (masked_final, bake_final):
+    for d in (masked_final, ownalpha_final, bake_final):
         if not d:
             continue
         for f in os.listdir(d):
