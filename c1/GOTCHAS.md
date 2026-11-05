@@ -617,3 +617,18 @@ main pak. Textured corridor confirmed in-game.
   `Import[N-1].Name` (negative index is 1-based, so `-9` is `Import[8]`) and require that
   name to exist as an asset **inside the same pak**. Bundling the MIs but not their masters
   fails silently at load with no log line.
+- **A Texture2D written into a SCALAR parameter invalidates the instance → engine
+  checkerboard**: MT builds shader maps into its own library, so a master cooked in our
+  project can never render (its `.uexp` is ~3–8 KB, there is no shader data to ship). Only
+  instances of MT's own masters render. When retargeting `M_C1_Surface_Tex` instances onto
+  `M_PropMaster`, its parameter set is **`BaseColor` (texture), `Normal` (texture),
+  `Metallic` (scalar), `Roughness` (scalar), `Specular` (scalar), `UV_Tiling`** — prove it
+  from the master's `TextureStreamingData`, which lists exactly two textures (`T_Normal_N`,
+  `T_White_BC`). Renaming `MetallicTex → Metallic` and keeping the Texture2D value produces
+  an instance that fails to compile and draws the default checkerboard, exactly like a
+  missing material. Drop such parameters instead and let the scalar defaults apply.
+- **"Backface" of the same bug — probe disagrees with the screen**: `GetMaterial(0)` on the
+  component returns the assigned MI and reports `comp_default_material=0`, while the screen
+  shows checkerboard, because assignment succeeds and only compilation fails. Do not treat a
+  clean material-resolution probe as proof the materials render; a checkerboard screenshot
+  outranks it.

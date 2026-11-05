@@ -337,42 +337,41 @@ Stopping when the counts do not move is what prevents shipping a placebo build.
 Symptom → cause → fix. Every entry here cost real time; they are ordered by how much
 they mislead.
 
-### 5.0 Geometry invisible / materials missing: an MI set must ship with its masters
+### 5.0 Checkerboard / invisible materials: instances of our own masters can never render
 
-**This section previously said the opposite. Read it as corrected.**
+**This section has now been wrong twice. Read the evidence, not the rule.**
 
-**What the evidence shows.** The C1 build renders correctly and its material instances are
-parented to **four mod-owned masters shipped in the same pak**:
+MT compiles material shaders into its **own** library. Our cooked masters carry no usable
+shader data — `M_C1_Surface*.uexp` is ~3.6 KB, vanilla `M_PropMaster.uexp` is 7.9 KB — so a
+material instance parented to one of ours has no shader map in MT and draws the **engine
+checkerboard**. That is what "materials aren't applied to the geometry" looks like.
 
-```
-M_C1_Surface        M_C1_Surface_Tex
-M_C1_Surface_Masked M_C1_Surface_Trans
-```
-
-`M_C1_Surface_Tex` MIs carry `BaseColor / MetallicTex / Normal / RoughnessTex` — note the
-`*Tex` names, which is what that master declares.
-
-Flattening that set onto a vanilla master (`M_PropMaster`) is **not** a fix, it is a
-regression:
-
-- it renames the texture parameters (`MetallicTex → Metallic`, `RoughnessTex → Roughness`),
-  so values stop binding to the parameters the master actually declares
-- it destroys **masking** and **translucency** — `M_C1_Surface_Masked` / `_Trans` have no
-  equivalent in `M_PropMaster`, so those surfaces draw nothing at all
-- it leaves any MI you missed pointing at a master that is no longer in the pak, which
-  fails to load with no diagnostic
-
-Symptom exactly as reported: *"some materials load, most are missing — e.g. roads."*
-
-**Rule.** A material-instance set travels with the masters it names. Ship every master an
-MI references **inside the same pak**, and gate it:
+The only thing that renders is an instance of an **MT-owned master**, with parameters that
+master actually declares. For `M_PropMaster` (proven from its `TextureStreamingData`, which
+lists exactly two textures, `T_Normal_N` and `T_White_BC`):
 
 ```
-for each MI:  Parent (Object): Index=-N  ->  Import[N-1].Name   (remember: -1 is 0-based Import[0])
-pass when:    every resolved parent name is present as an asset in the pak
+BaseColor  texture      Normal     texture
+Metallic   scalar       Roughness  scalar
+Specular   scalar       UV_Tiling  scalar
 ```
 
-Reparenting to a vanilla master is only legitimate when the source master's parameter set
+Two ways to break this, both of which happened here:
+
+1. **Parent to a mod-owned master** — no shaders, checkerboard everywhere.
+2. **Parent correctly, then rename a texture parameter onto a scalar one** — e.g.
+   `MetallicTex → Metallic` keeping the Texture2D value. The instance fails to compile and
+   also draws checkerboard. Drop such parameters instead and let the scalar defaults apply.
+
+**Instrumentation lesson.** `GetMaterial(0)` returned the assigned instance for 628/628
+components and reported zero default-material fallbacks, while the screen was solid
+checkerboard — because assignment succeeds and only *compilation* fails. Do not treat a
+clean material-resolution probe as proof that materials render. A screenshot outranks it.
+
+**And check the simpler things first.** Both earlier "invisible geometry" incidents were not
+material problems at all: one was a texture namespace rename (§5.1), the other was every
+tile imported **100× too small** (§2.2). No collision means geometry, not materials.
+
 and blend/mask mode genuinely match, and only per material — never as a bulk rewrite.
 
 **And check the simpler things first.** Both "invisible geometry" incidents in this project

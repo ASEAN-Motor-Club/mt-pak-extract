@@ -70,34 +70,41 @@ Do not try to repair MIs in place: property writes report success and do not per
 
 ### 2b. Material parenting — MIs must ship with their masters
 
-**Corrected: this gate used to demand every MI be reparented to `M_PropMaster`. That was
-wrong and it caused the "most materials missing" regression.**
+**Corrected twice. Current rule, with the evidence behind it.**
 
-The C1 material set renders correctly with **four mod-owned masters in the same pak**:
-`M_C1_Surface`, `M_C1_Surface_Tex`, `M_C1_Surface_Masked`, `M_C1_Surface_Trans`.
-`M_C1_Surface_Tex` MIs carry `BaseColor / MetallicTex / Normal / RoughnessTex`.
+MT compiles material shaders into its **own** library. A master cooked in our project ships
+no usable shader data (`.uexp` 3.6–7.9 KB), so it renders the engine checkerboard no matter
+how correct its graph is. Only **instances of MT's own masters** render.
 
-Reparenting that set onto `M_PropMaster` renames the texture parameters so they stop
-binding, and destroys masking/translucency (`_Masked`/`_Trans` have no equivalent) — those
-surfaces then draw nothing. Symptom: some materials load, most don't, roads among them.
-
-Gate, run over **every** MI in the pak:
+Therefore every MI is retargeted onto a vanilla master and its parameters must match that
+master's declared set. For `M_PropMaster`, read from its `TextureStreamingData`:
 
 ```
-resolve  Parent (Object): Index=-N  ->  Import[N-1].Name      (-9 means Import[8])
-pass when every resolved parent name exists as an asset inside the same pak
+BaseColor  texture      Normal     texture
+Metallic   scalar       Roughness  scalar
+Specular   scalar       UV_Tiling  scalar
 ```
 
-v6 shipped 1,517 MIs on `M_PropMaster`, 77 on `M_PolygonMaster`, **15 with no MT master**,
-and **none of the four C1 masters** — exactly the materials that "existed in the C1 build"
-went missing. The C1 pak carries 1,633 MIs + all four masters; that is the set to ship.
+Renaming `MetallicTex → Metallic` / `RoughnessTex → Roughness` while keeping the Texture2D
+value yields an instance that **fails to compile** → checkerboard, indistinguishable from a
+missing material. Drop those parameters; let the scalar defaults apply.
 
-Also required: every `/Game/Mods/C1/Textures/...` ref present (see §2), and the MI set
-shipped inside the content pak, never as a separate override that can be retired.
+Gate, over every MI in the pak:
 
-The C1-pak MI set (1,633 MIs + all four `M_C1_Surface*` masters) belongs inside the
-content pak — shipping part of it as a separate override is what let it silently disappear
-during cleanup, and reparenting it to a vanilla master is what broke masking/translucency.
+```
+parent  = resolve Parent (Object): Index=-N -> Import[N-1].Name     (-9 means Import[8])
+pass    = parent is a vanilla MT master (M_PropMaster / M_PolygonMaster / M_plants)
+and       no TextureParameterValue names a parameter the master declares as SCALAR
+and       every /Game/Mods/C1/Textures/... ref exists in the pak
+```
+
+A clean material-resolution probe is **not** evidence of rendering: `GetMaterial(0)` returns
+the assigned instance and reports zero defaults even while the screen shows checkerboard.
+Screenshots outrank probes here.
+
+Ship the retargeted set **inside the content pak** (never as a separate override that can be
+retired), and never ship the mod-owned `M_C1_Surface*` masters expecting them to render —
+they exist only as authoring parents, and in `C1Full` they are removed entirely.
 
 ## 3. Cook
 
