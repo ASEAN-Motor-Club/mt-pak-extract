@@ -337,37 +337,57 @@ Stopping when the counts do not move is what prevents shipping a placebo build.
 Symptom → cause → fix. Every entry here cost real time; they are ordered by how much
 they mislead.
 
-### 5.0 Geometry invisible: materials parented to a custom master
+### 5.0 Geometry invisible / materials missing: an MI set must ship with its masters
 
-**This is the first thing to check when a map loads but renders nothing.**
+**This section previously said the opposite. Read it as corrected.**
 
-**Cause.** MT only compiles shaders for its **own** master materials
-(`/Game/Env/Materials/Master/M_PropMaster`, `M_PolygonMaster`, `M_DecalMaster`, …).
-A material instance whose parent is a third-party master (e.g. our `M_C1_Surface`)
-is accepted by the editor and by the cook, ships fine, and then renders **nothing at
-runtime** — no error, no log line, just invisible geometry. It looks identical to
-"geometry missing from the pak".
-
-**Diagnosis.** Dump a cooked MI and resolve its parent:
+**What the evidence shows.** The C1 build renders correctly and its material instances are
+parented to **four mod-owned masters shipped in the same pak**:
 
 ```
-Parent (Object): Index=-N      ->  Import[N-1] Name=<parent>
+M_C1_Surface        M_C1_Surface_Tex
+M_C1_Surface_Masked M_C1_Surface_Trans
 ```
 
-Parent must be an MT master. `M_C1_Surface` (or any mod-owned master) = broken.
-Also confirm the MI still carries its texture refs (`/Game/.../Textures/...`).
+`M_C1_Surface_Tex` MIs carry `BaseColor / MetallicTex / Normal / RoughnessTex` — note the
+`*Tex` names, which is what that master declares.
 
-**Fix.** Reparent every MI to the MT master that matches its original behaviour
-(opaque props → `M_PropMaster`, polygon/cutout → `M_PolygonMaster`, decals/markings →
-`M_DecalMaster`) and keep the MI's parameter values (BaseColor, EmissiveTex, …).
-Author it once, ship the resulting MI set, and treat it as part of the content — not a
-post-hoc override pak that can be forgotten or dropped during cleanup.
+Flattening that set onto a vanilla master (`M_PropMaster`) is **not** a fix, it is a
+regression:
 
-**Why a separate "mats pak" is a trap.** The corridor release shipped reparented MIs as
-`zzzz_AMC_C1Mats_P.pak` on top of a content pak containing the *unreparented* MIs. The
-override sorted later and won, so it worked — until the override was retired during
-cleanup, and the map silently lost every material. **The content pak must contain the
-correctly parented MIs itself.**
+- it renames the texture parameters (`MetallicTex → Metallic`, `RoughnessTex → Roughness`),
+  so values stop binding to the parameters the master actually declares
+- it destroys **masking** and **translucency** — `M_C1_Surface_Masked` / `_Trans` have no
+  equivalent in `M_PropMaster`, so those surfaces draw nothing at all
+- it leaves any MI you missed pointing at a master that is no longer in the pak, which
+  fails to load with no diagnostic
+
+Symptom exactly as reported: *"some materials load, most are missing — e.g. roads."*
+
+**Rule.** A material-instance set travels with the masters it names. Ship every master an
+MI references **inside the same pak**, and gate it:
+
+```
+for each MI:  Parent (Object): Index=-N  ->  Import[N-1].Name   (remember: -1 is 0-based Import[0])
+pass when:    every resolved parent name is present as an asset in the pak
+```
+
+Reparenting to a vanilla master is only legitimate when the source master's parameter set
+and blend/mask mode genuinely match, and only per material — never as a bulk rewrite.
+
+**And check the simpler things first.** Both "invisible geometry" incidents in this project
+were *not* material problems: one was a texture namespace rename (§5.1), the other was
+every tile imported **100× too small** (§2.2). A material whose texture parameter is null
+still renders (grey); geometry that is 100× small or absent gives no collision and no
+silhouette. If there is no collision, it is geometry, not materials.
+
+**Why a separate "mats pak" is a trap.** The corridor release shipped an override pak
+(`zzzz_AMC_C1Mats_P.pak`) carrying an MI set on top of a content pak with a different one.
+The override sorted later and won, so it worked — until it was retired during cleanup and
+the map silently lost the winning set. **Whatever the pak identity of the MIs, one pak must
+contain the full picture: the MIs *and* every master they name.** Splitting them across a
+content pak and an override pak means the two can drift, and a later-sorting pak silently
+decides the result.
 
 ### 5.1 Map loads, geometry invisible outside one area, "materials missing"
 

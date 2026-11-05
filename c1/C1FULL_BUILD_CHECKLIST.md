@@ -68,20 +68,36 @@ Gate: `verify_mi.py` → `resolved == params` (0 nulls).
 Do not try to repair MIs in place: property writes report success and do not persist
 (guide §5.2). Fix the path they already reference, or repoint the actors.
 
-### 2b. Material parenting — the invisible-geometry cause
+### 2b. Material parenting — MIs must ship with their masters
 
-Every MI must be parented to an **MT master** (`M_PropMaster`, `M_PolygonMaster`,
-`M_DecalMaster`). MIs parented to our own `M_C1_Surface` ship fine, load fine, and
-render **nothing** — MT refuses to compile third-party master shaders. This is what
-"geometry missing" actually was.
+**Corrected: this gate used to demand every MI be reparented to `M_PropMaster`. That was
+wrong and it caused the "most materials missing" regression.**
 
-Gate: dump a sample of cooked MIs; `Parent (Object): Index=-N` must resolve to an
-import named `M_PropMaster` / `M_PolygonMaster` / `M_DecalMaster`, and the MI must still
-carry its `/Game/Mods/C1/Textures/...` refs.
+The C1 material set renders correctly with **four mod-owned masters in the same pak**:
+`M_C1_Surface`, `M_C1_Surface_Tex`, `M_C1_Surface_Masked`, `M_C1_Surface_Trans`.
+`M_C1_Surface_Tex` MIs carry `BaseColor / MetallicTex / Normal / RoughnessTex`.
 
-The correctly-parented MI set is the one previously shipped as
-`zzzz_AMC_C1Mats_P.pak` (1,609 assets). **It now belongs inside the content pak** —
-shipping it as a separate override pak is what let it silently disappear during cleanup.
+Reparenting that set onto `M_PropMaster` renames the texture parameters so they stop
+binding, and destroys masking/translucency (`_Masked`/`_Trans` have no equivalent) — those
+surfaces then draw nothing. Symptom: some materials load, most don't, roads among them.
+
+Gate, run over **every** MI in the pak:
+
+```
+resolve  Parent (Object): Index=-N  ->  Import[N-1].Name      (-9 means Import[8])
+pass when every resolved parent name exists as an asset inside the same pak
+```
+
+v6 shipped 1,517 MIs on `M_PropMaster`, 77 on `M_PolygonMaster`, **15 with no MT master**,
+and **none of the four C1 masters** — exactly the materials that "existed in the C1 build"
+went missing. The C1 pak carries 1,633 MIs + all four masters; that is the set to ship.
+
+Also required: every `/Game/Mods/C1/Textures/...` ref present (see §2), and the MI set
+shipped inside the content pak, never as a separate override that can be retired.
+
+The C1-pak MI set (1,633 MIs + all four `M_C1_Surface*` masters) belongs inside the
+content pak — shipping part of it as a separate override is what let it silently disappear
+during cleanup, and reparenting it to a vanilla master is what broke masking/translucency.
 
 ## 3. Cook
 

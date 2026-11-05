@@ -603,3 +603,17 @@ main pak. Textured corridor confirmed in-game.
   vanilla `T_WorldMap_Jeju`, so the row itself is valid.
 - **FName Number vs Value**: `NavigationSystemModuleConfig_0` is stored as value
   `NavigationSystemModuleConfig` with `Number = 1`; string comparisons must rebuild the suffix.
+- **An MI set travels with its masters — reparenting to a vanilla master is a regression,
+  not a fix**: C1's 1,633 material instances parent to four masters shipped in the same pak
+  (`M_C1_Surface`, `M_C1_Surface_Tex`, `M_C1_Surface_Masked`, `M_C1_Surface_Trans`) and
+  render correctly. Flattening them onto `M_PropMaster` renames texture parameters
+  (`MetallicTex → Metallic`, `RoughnessTex → Roughness`) so values stop binding, and
+  destroys masking/translucency outright — `_Masked` and `_Trans` have no equivalent, so
+  those surfaces draw nothing. Result: "some materials load, most are missing, roads
+  among them". The earlier "MT rejects third-party master shaders" conclusion was wrong:
+  the two invisible-geometry incidents were a texture-namespace rename and a 100× scale
+  error, neither of which was a material fault.
+- **Gate for the above**: for every MI resolve `Parent (Object): Index=-N` to
+  `Import[N-1].Name` (negative index is 1-based, so `-9` is `Import[8]`) and require that
+  name to exist as an asset **inside the same pak**. Bundling the MIs but not their masters
+  fails silently at load with no log line.
