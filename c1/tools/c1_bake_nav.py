@@ -340,8 +340,33 @@ def main():
         log('readback_fail %s' % e)
     log('readback_nodes=%d' % n_back)
 
-    les.save_current_level()
-    log('saved %s' % OUT_LEVEL)
+    # Saving: the nav actor may live in a STREAMED SUBLEVEL (C1Full has it in
+    # C1Full_Roads), and save_current_level() only writes the level that is current -
+    # the parent. That silently discards the whole bake on the full map. Save the
+    # package that owns the actor explicitly, then sweep any other dirty package.
+    saved = []
+    pkg = ''
+    try:
+        pkg = str(nav.get_outermost().get_name())
+    except Exception as e:
+        log('pkg_lookup_fail %s' % e)
+    if pkg:
+        try:
+            unreal.EditorAssetLibrary.save_asset(pkg, only_if_is_dirty=False)
+            saved.append(pkg)
+        except Exception as e:
+            log('save_asset_fail %s' % e)
+    try:
+        unreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True)
+        saved.append('dirty_packages')
+    except Exception as e:
+        log('save_dirty_fail %s' % e)
+    try:
+        les.save_current_level()
+        saved.append(OUT_LEVEL)
+    except Exception as e:
+        log('save_level_fail %s' % e)
+    log('saved %s' % (', '.join(saved) or 'NOTHING'))
 
     report = {'roads': len(roads), 'nodes': len(nodes), 'step_cm': step,
               'readback_nodes': n_back, 'cross_links': linked, 'lane_change': lat, 'dead_ends': dead_ends,

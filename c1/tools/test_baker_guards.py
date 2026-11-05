@@ -118,6 +118,12 @@ class Actor:
     def set_actor_label(self, v):
         self._label = v
 
+    def get_name(self):
+        return self._label
+
+    def get_outermost(self):
+        return self
+
     def get_editor_property(self, k):
         if k == 'Spline':
             return self._p['Spline']
@@ -185,6 +191,8 @@ def install_unreal(roads, nav):
         def get_all_level_actors(self):
             return roads + [nav]
 
+    u.EditorAssetLibrary = types.SimpleNamespace(save_asset=lambda *a, **k: True)
+    u.EditorLoadingAndSavingUtils = types.SimpleNamespace(save_dirty_packages=lambda *a, **k: True)
     u.get_editor_subsystem = lambda cls: _LES() if cls == 'les' else _EAS()
     sys.modules['unreal'] = u
 

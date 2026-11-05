@@ -126,16 +126,38 @@ A node is one sample point on one lane. Node count ≈ `sum(points × lanes)`.
 - **Connect every node, not just road endpoints.** Endpoint-only linking leaves every
   mid-road merge and on-ramp with no outgoing edge; in game that is "the car drives a
   stretch then stops". Rule: each node links to the nearest node of a **different**
-  road within `connect_any_cm = 4000`, same lane sign, forward dot ≥ `0.55`.
+  road within `connect_any_cm = 4000`, same lane, passing the four guards below.
 - **Lane-change edges** between adjacent lanes at the same spline point, non-zero cost
   (`30.0`), so traveling straight stays preferred and no lane becomes its own island.
 - **Near-parallel guard:** skip a cross-road link when the candidate is closer than
-  `parallel_skip_cm = 400` **and** near-parallel (`dot > 0.90`). Junction links
-  survive because their tangents are perpendicular. On the current map this rejects
-  574 candidates and changes nothing (the graph is identical) — it is a guard against
-  future map edits, **not** a fix, and must not be presented as one.
+  `parallel_skip_cm = 400` **and** near-parallel (`dot > 0.90`).
+- **Turn guard** (`forward_dot = 0.85`, 31.8°): the old 0.55 allowed a 56° cut and the
+  graph used the whole allowance — AI turned across a merge instead of following it.
+- **Lateral-frame guard** (`normal_dot = 0.85`): the right vectors must agree. A link
+  that mirrors them hops to the far side of the carriageway. On planar roads this
+  tracks the turn guard and rejects nothing extra; it is there for crests and curved
+  merges.
+- **Deck guard** (`deck_dz_cm = 150`, `deck_dist_cm = 1200`): reject a link between
+  points that are metres apart in Z but close in plan — stacked decks of one
+  interchange. This is the one that stops AI driving at the barrier between two
+  bridges. Nothing in `FMTRoadGraphNode` marks "bridge above road", so the height
+  difference is the only signal available at bake time.
+- **Grade guard** (`grade_max = 0.5`): reject when `|dz| / horizontal > 0.5`, which
+  catches the long, low-slope version of the same defect.
 
-Acceptance: `dead_ends == 0`. Log the count on every bake.
+Measured cost of all four (C1Full 42,578 nodes / 155 roads, corridor 7,248 / 54):
+cross links 10,167 → 9,911 and 2,245 → 2,196, max turn 56.6° → 31.7°, deck jumps
+1,413 → 0, no road loses its cross links, no new stranded node.
+
+**The baker must save the level that OWNS the nav actor.** `save_current_level()`
+writes only the current level; on C1Full the actor lives in the streamed sublevel
+`C1Full_Roads`, so a bake reported "saved" and persisted nothing. `c1_bake_nav.py`
+now calls `EditorAssetLibrary.save_asset(<actor's outermost package>)` and
+`save_dirty_packages` before the level save, and logs every target it saved.
+
+Acceptance: `dead_ends == 0`. Log the counts on every bake, and re-export
+`graph_data` from the saved level afterwards — the in-script `readback_nodes` is
+always `-1` (the struct array has no `nodes` attribute in Python) and proves nothing.
 
 ---
 
