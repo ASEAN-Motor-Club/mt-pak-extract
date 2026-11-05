@@ -133,7 +133,18 @@ def main():
         # the spline. Stacking put lane 2 of a 2-lane road at 5.25 m on a road 3.5 m from the
         # centreline -- off the surface, which is why AI vehicles hit barriers and columns.
         total_w = width * float(nf + nb)
-        count = max(2, int(math.ceil(length / step)) + 1)
+        # Sample at multiples of step, then close the chain on the real end. The old
+        # `min(length, k*step)` loop emitted a second node a few CENTIMETRES past the last
+        # one whenever length was not a multiple of step (94 of 313 chains ended with a
+        # 10-27 cm "edge"), which reads as a duplicate waypoint and upsets speed lookahead.
+        s_list = []
+        k = 0
+        while k * step < length - 0.25 * step:
+            s_list.append(k * step)
+            k += 1
+        if not s_list or (length - s_list[-1]) >= 0.25 * step:
+            s_list.append(length)
+        count = len(s_list)
         first_index = len(nodes)
 
         for lane in lanes:
@@ -144,8 +155,7 @@ def main():
                 lateral = -total_w / 2.0 + (lane - 0.5) * width   # +1 = leftmost (LHT slow)
             else:
                 lateral = total_w / 2.0 - (abs(lane) - 0.5) * width   # -1 = rightmost
-            for k in range(count):
-                s = min(length, k * step)
+            for k, s in enumerate(s_list):
                 loc = spl.get_location_at_distance_along_spline(s, unreal.SplineCoordinateSpace.WORLD)
                 tan = spl.get_direction_at_distance_along_spline(s, unreal.SplineCoordinateSpace.WORLD)
                 rgt = spl.get_right_vector_at_distance_along_spline(s, unreal.SplineCoordinateSpace.WORLD)
