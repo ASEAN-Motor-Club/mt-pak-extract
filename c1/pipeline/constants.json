@@ -1,0 +1,41 @@
+{
+  "_comment": "Frozen constants for the C1 build. Changing any value here invalidates the recorded baselines in `expected`.",
+  "game_version": "0.7.19",
+  "level": {
+    "parent_map": "/Game/Mods/C1/Maps/C1",
+    "roads_sublevel": "/Game/Mods/C1/Maps/C1Roads",
+    "mount_point": "../../../MotorTown/Content/Mods/C1/"
+  },
+  "pack": {
+    "version": "V11",
+    "compression": "Zlib",
+    "server_pak": "zzz_AMC_C1_Server_v4_P.pak",
+    "client_pak": "zzz_AMC_C1_P.pak"
+  },
+  "bake": {
+    "step_cm": 1000.0,
+    "connect_cm": 2500.0,
+    "connect_any_cm": 4000.0,
+    "forward_dot": 0.55,
+    "parallel_dot": 0.9,
+    "parallel_skip_cm": 400.0,
+    "lateral_cost": 30.0,
+    "limit_roads": 0
+  },
+  "lanes": {
+    "traffic_side": "left",
+    "comment": "LHT map: +1 is the leftmost lane so the AI-preferred lane is the slow lane. total_w = lane_width * (nf+nb); offsets measured from the road edges."
+  },
+  "spawner": {
+    "keep_rows": ["Small", "Special", "Truck", "Bus"],
+    "zeroed_rows": "every other row, including Getaway and all service rows; the authoritative list is the embedded ROWS in tools/author_traffic_spawner.py — do not duplicate it here"
+  },
+  "expected": {
+    "_comment": "Baseline for the 54-road (bbox-filtered) build. Re-record after any road set change; the verifier fails on drift.",
+    "roads": 54,
+    "nodes": 7248,
+    "cross_links": 2245,
+    "lane_change": 7370,
+    "dead_ends": 0
+  }
+}
