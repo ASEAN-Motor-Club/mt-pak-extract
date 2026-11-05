@@ -17,13 +17,22 @@ Sources: `../GOTCHAS.md` (numbered entries), `../CHECKLIST.md`, `C1_PIPELINE.md`
 - **OBJ is metres, Unreal imports centimetres** → `import_uniform_scale = 100.0`. *(GOTCHAS 1)*
 - **Some BeamNG placements mix metres and centimetres**; classify by distance from the
   tile median and divide/multiply by 100. 9.8% of vertices needed it; 0 unmatched. *(2)*
-- **The OBJ importer negates Y** and reverses winding. Pre-negate Y in the OBJ
-  (`y = -y`) so the flip cancels. Detect by comparing **cooked asset bounds** against
-  source bbox axis by axis — comparing meshes to splines in source space can never catch
-  it, both are mirrored. *(23)*
-- **Component `RelativeLocation` does not move what renders** — these components come
-  from an actor chain and the vertices already carry world space. Bake offsets into the
-  **OBJ vertices** (cm ÷ 100), leave components at `(0,0,0)`. *(22)*
+- **The OBJ importer negates Y** and reverses winding. For a **BeamNG source that
+  negation is the conversion** (MT runs the opposite Y axis): leave the OBJ alone, carry
+  the sign in the actor transform (`y = -origin*100`), and mirror **V** in the UVs.
+  Pre-negating the OBJ is only right when the source frame must keep its own Y sign.
+  *(23 — superseded 2026-11-05)*
+- **Placement is an actor transform.** Cell meshes are imported cell-local, so
+  `StaticMeshActor.location = (origin_x*100, -origin_y*100, 0)` places the map — verified
+  on 554 actors, no re-import. "Components don't move what renders" applies only to
+  components owned by a **blueprint actor chain** (NS props), never to standalone
+  `StaticMeshActors`. Re-importing to move geometry discards collision. *(22 — scoped)*
+- **The OBJ importer creates no collision.** Gate on
+  `body_setup.collision_trace_flag == CTF_UseComplexAsSimple` per mesh; a write-command
+  marker (`C1COL_DONE`) is not state. *(17 — corrected)*
+- **Road splines are world-space**, so 156 `MotorTownRoad` actors legitimately sit at
+  `(0,0,0)`; `MotorTownRaceSection` actors have no component and were deleted rather
+  than positioned. *(2026-11-05)*
 - **Spawn placement is a geometry property, not an actor property:** the map must
   *contain* the origin (spline **centroid** at origin), not merely touch it. *(19, 21)*
 - **Cell actors can be `bHidden`.** A `--drop-mod-actors` sweep set `bHidden=true` on the

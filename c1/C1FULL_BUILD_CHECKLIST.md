@@ -14,16 +14,22 @@ fallback name. Every step below has a gate that must pass before the next.
 
 - Namespace: maps at `/Game/Mods/C1Full/Maps/`; content (meshes, materials, textures)
   stays at `/Game/Mods/C1/` — the MI→texture references are baked to that path.
+- 156 `MotorTownRoad` actors in `C1Full_Roads`, each carrying its spline in **world
+  space** (verified 2026-11-05: `C1_Course` p0 `(2349.8, -7694.0, 847.3) m` matches the
+  gate spec with Y negated). They legitimately sit at `(0,0,0)` — do not "fix" that.
+- 40 `MotorTownRaceSection` actors **deleted** 2026-11-05: they carry no component, so
+  their transform was the only thing placing them and all 40 sat stacked at the origin.
 - 155 roads / 209.72 km / 6,040 points; graph 42,578 nodes / 10,167 cross-links /
   42,700 lane-change edges / 0 dead ends; 554 cell actors.
-- Source assets: 554 meshes (555 including `uvquad`), 1,609 material instances, 2,314 textures.
-- Cooked: `C1Full_Roads.uexp` 60,740,498 B, `C1Full.uexp` 156,625 B. Tree 10,447 files:
-  1,108 mesh / 3,218 material / 6,113 texture cooked files + 4 map + 4 C1Full extras.
-- Pak: mount `../../../`, V11, zlib, `RAYON_NUM_THREADS=1`. v6 =
-  659,718,290 B, `3d437472dab693fff7eb339eef68667a6f14e7713001633a47c79b84d53d287e`.
-- Geometry: 554 tiles at metres→cm ×100 (bounds x −11.2..7.7 km, y −10.7..16.5 km),
-  single LOD, collision complex-as-simple. **~9.1 M tris, no LODs** — the parked
-  1.12 GB build differed only by carrying LODs.
+- Source assets: 554 meshes (555 including `uvquad`), 1,609 material instances + 30
+  sibling aliases = 1,653 shipped MIs, 2,314 textures.
+- Cooked: `C1Full_Roads.uexp` 60,740,498 B, `C1Full.uexp` ~197 KB (moves with each
+  re-authoring — never gate on an exact byte count, gate on the Roads size).
+- Pak: mount `../../../`, V11, zlib, `RAYON_NUM_THREADS=1`. v24 (2026-11-05) =
+  699,497,561 B, `60c18affc4f0e77be80ee5a8aeb8394c18444143774457ae5dcf0c9d7145943b`.
+- Geometry: 554 tiles at metres→cm ×100 (bounds x −11.2..8.0 km, y −10.7..16.9 km),
+  single LOD, collision `CTF_UseComplexAsSimple` on all 555. **~9.1 M tris, no LODs** —
+  the parked 1.12 GB build differed only by carrying LODs.
 
 ## 0. Preconditions
 
@@ -35,11 +41,14 @@ Gate: source counts match the facts block.
 
 ## 1. Level state
 
-- 554 `C1_cell_` actors, each with a static mesh
+- 554 `C1_cell_` actors, each with a static mesh, each at
+  `(origin_x*100, -origin_y*100, 0)` — metres→cm with the **opposite Y** axis
 - 0 hidden actors, 0 hidden-in-game, 0 invisible components
-- 155 road actors in `C1Full_Roads`
+- 156 road actors in `C1Full_Roads`, 0 `MotorTownRaceSection`
 - each mesh carries **collision** (full-map import resets per-asset collision; corridor
-  settings do not survive it) — `CTF_USE_COMPLEX_AS_SIMPLE`, 0 convex hulls
+  settings do not survive it) — `CTF_UseComplexAsSimple`. Do **not** gate on "0 convex
+  hulls": the cook emits `ConvexElems` regardless (measured: `BodySetup` ≈131 KB on a
+  mesh with the complex flag). Gate on the trace flag only.
 - **scale**: union of mesh bounds must be the same order as the road splines
   (`x -1,104,777..611,734 cm`, `y -1,002,062..1,658,899 cm`). A union spanning a few km
   instead of ~20 km means `import_uniform_scale=100` never applied and every tile is
@@ -48,8 +57,8 @@ Gate: source counts match the facts block.
 - **no LODs.** Project decision: shipped build is LOD0 only. `replace_existing=True` does
   **not** drop extra LODs (it rewrites LOD0 only) — delete the asset, then import.
 - **cooked bounds** of the fixed set must match the road span:
-  `x -11.0..6.1 km, y -10.0..16.6 km, z 0.8..0.9 km`, 0 tiles outside the map area
-  (catches the OBJ Y-mirror and unshifted imports)
+  `x ≈ -11.2..8.0 km, y ≈ -10.7..16.9 km, z ≈ 0.6..1.2 km`, 0 tiles outside the map area
+  (catches an unshifted import and a wrong-sign actor transform)
 
 Gate: `check_hidden.py` → `cells=554 hidden_actor=0 hidden_in_game=0 component_invisible=0`;
 `mesh_bounds.py` → `near_origin=554 far=0`.
@@ -188,10 +197,10 @@ for `PCD3D_SM6`.
 Tree must contain `MotorTown/Content/Mods/C1Full/Maps/*` **and**
 `MotorTown/Content/Mods/C1/{Meshes,Materials,Textures}/*`.
 
-Gate: `mod_explore --list` → mount `../../../`, 10,447 files
-(554 mesh / 1,609 material / 2,148 texture `.uasset` + 4 map files). Round-trip: extract
-the 4 map files, sha256 == tree copies (`946801611ede…` / `0ee8d0ab641c…` /
-`1787630c787a…` / `22cabe1bb54b…`).
+Gate: `mod_explore --list` → mount `../../../`, 4,359 files
+(554 mesh / 1,653 material / 2,148 texture `.uasset` + 4 map files). Round-trip: extract
+the 4 map files and sha256 them against the tree copies — the hashes change every
+re-authoring, so compare, never reuse a recorded hex.
 
 ## 6. Registration (`zzz_AMC_C1FullOffline_*`)
 

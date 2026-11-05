@@ -7,9 +7,31 @@ re-deriving.
 
 Toolchain paths
 - Cook host: `D:\UEProjects\C1` (Win64, UE 5.5.4 at `D:\UE_5.5`)
-- Level/asset patcher: `mt-pak-extract-wt-0719/csharp/UMapPatch`
+- Level/asset patcher: `mt-pak-extract-wt-0719/csharp/{UAssetTool,UMapPatch}`
 - Scratch work: `/opt/data/cache/scratch/c1`
 - Client paks: `D:\SteamLibrary\steamapps\common\Motor Town\MotorTown\Content\Paks`
+
+---
+
+## Audit 2026-11-05 — entries that were wrong and caused regressions
+
+Every entry was re-checked against live measurements. Three were actively harmful:
+
+- **§22 "bake offsets into vertices, leave components at origin" — over-broad, now scoped.**
+  Correct only for components inside a blueprint actor chain. Standalone `StaticMeshActor`
+  transforms do move what renders (554 actors, verified). Following it literally is why
+  placement was "fixed" by re-importing the whole mesh set over and over.
+- **§23 "pre-negate Y in the OBJ" — wrong for BeamNG sources, now scoped.** The importer
+  negating Y *is* the BeamNG→MT conversion (opposite Y axis). Cancelling it mirrors the
+  map against splines authored in MT space. Carry the sign in the actor transform instead
+  and mirror UV **V**.
+- **§17 "collision rc=1 but succeeds, gate on the marker" — not a collision gate.** The
+  marker counted write attempts; the meshes ended up with 0 simple collision and only 76
+  of 555 with `CTF_UseComplexAsSimple`. Gate on the per-mesh trace flag read back.
+
+Lesson that generalises: **a doc entry is a hypothesis about a specific build.** When a
+symptom reappears after a documented fix, re-measure before re-applying — a stale entry
+applied confidently is worse than no entry.
 
 ---
 
@@ -172,6 +194,16 @@ reported one after packing.
 and cooked meshes carry per-triangle (complex) collision. Treat rc as advisory,
 gate on the marker.
 
+> **CORRECTION 2026-11-05 — that marker is not a collision gate.** It counts write
+> *attempts*, not resulting state. Measured on the 555-mesh full map: **0 meshes had
+> simple collision and only 76 carried `CTF_UseComplexAsSimple`**; the remaining 479 sat
+> at `CTF_UseDefault` with an empty body setup — geometry you can see and fall straight
+> through. The only trustworthy check reads the flag back per mesh, in a fresh process:
+> `mesh.get_editor_property("body_setup").get_editor_property("collision_trace_flag")`.
+> Also note `get_collision_complexity()` disagrees with that property (see the
+> 2026-11-03 collision notes) — and that the cook still emits `ConvexElems`, so "0 convex
+> hulls" is not a state you can rely on either.
+
 ## 18. Everything must be installed AND verified from the installed pak
 
 **Pattern:** build → copy to `Paks` → pull the installed pak back → extract the
@@ -226,6 +258,18 @@ spawn area, not merely touch it.
 
 ## 22. Component `RelativeLocation` is ignored — bake offsets into vertices
 
+> **SCOPE CORRECTION 2026-11-05 — this entry caused repeated re-imports and a collision
+> regression; read the scope before applying it.** "Component transforms do nothing" is
+> true only for components that belong to a **blueprint actor chain** (the NS prop
+> hierarchy), where the parent transform wins and the vertices are already world-space.
+> It is **false for standalone `StaticMeshActor`s**: verified 2026-11-05 by moving 554
+> cell actors with `set_actor_location` — the world union went from a collapsed 5.1 ×
+> 12.1 km to the correct 19.2 × 27.6 km, with no re-import and no vertex edit.
+> Rule: fix **placement** with actor transforms (idempotent, cheap, keeps collision and
+> UVs); touch vertices only when the geometry itself is wrong. Re-importing to fix
+> placement discards `BodySetup`/`CollisionTraceFlag` — that is how a build ships with
+> no collision (see §17 correction).
+
 **Symptom:** the spline moves every build; the 3D geometry never moves. Player
 always spawns far from visible roads while the minimap shows a spline at their feet.
 **Cause:** writing `RelativeLocation` onto those static-mesh components has **no
@@ -258,6 +302,18 @@ was re-mirrored back out. It also silently reverses triangle winding.
 **Fix:** pre-negate Y in the OBJ (`y = -y`) before import, so the importer's flip
 cancels. Then verify the cooked asset bounds, not the source file:
 `c4_19` must span Y `201658 … 259718` to contain the spawn at Y `223603`.
+
+> **SUPERSEDED 2026-11-05 — do not apply this fix blindly.** The *observation* stands
+> (the OBJ importer negates Y; X and Z pass through). The *fix* only applies when the
+> source geometry must keep its own Y sign. For a **BeamNG source**, the negation **is
+> the conversion**: MT runs the opposite Y axis, so `y_MT = -y_BeamNG`. Pre-negating the
+> OBJ cancels that and puts the map back in the wrong handedness — the whole map ends up
+> mirrored against road splines that were authored in MT coordinates.
+> Correct handling for BeamNG sources: leave the OBJ alone, let the importer's negation
+> stand, and carry the offset in the actor transform (`y = -origin_y * 100`). Then mirror
+> **V** in the UVs, because the same mirror reverses the texture (checklist §2h, gate C).
+> Also: the "trace winding" note below means imported meshes are back-facing — this is
+> why masked/foliage surfaces need `TwoSided`.
 **Detection that works:** compare **cooked asset bounds** (`mesh.get_bounds()` /
 `get_bounding_box()` in UE python) against the source OBJ bbox, axis by axis. Any
 sign difference is a handedness bug. Comparing meshes to splines in source space can
@@ -687,3 +743,47 @@ main pak. Textured corridor confirmed in-game.
   (missing asset, dead parent, uncompilable master). White = material resolved and rendered with a
   sampler on its default (null `BaseColor`, or a parameter name the master does not declare). Seeing
   white after seeing checkerboard means the chain is connected and only the bindings are wrong.
+- **The mask flag and the parent are decided by different inputs — wire both or the surface stays opaque.**
+  A sectioned route list (`[veg]`/`[masked]`/`[trans]`) fed the parent choice but the
+  `isMasked` test only read the masked list, so vegetation was parented to `M_plants` **without**
+  the per-instance `BLEND_Masked` override and drew its texture's green backdrop. Symptom is
+  selective: instances that were *also* in the authored-masked list got the override and looked
+  fixed, which reads as "some trees work, some don't". Fix: vegetation implies masked
+  (`isMasked = isVeg || maskSet.Contains(name)`).
+- **Verify the override actually serialised, per instance, by dumping it — the write fails silently.**
+  `UAssetTool --dump <mi>.uasset` must show all three of `BasePropertyOverrides` →
+  `BlendMode (Enum): BLEND_Masked`, `TwoSided (Bool): True`, `OpacityMaskClipValue (Float): 0.3333`.
+  A struct that carries only `TwoSided` + clip (or `BlendMode (Byte): 0`) is opaque: the property
+  was dropped during serialisation and nothing logs it. Sample one instance per route, never one
+  instance total — the dropped-property case is per-asset.
+
+## 30. A pipeline stage that skips on a missing input reads as success
+
+**Symptom:** `06_postcook_patch.sh <wrong-path> <out>` printed
+`== parent map absent, skipping (delta build)` and **exited 0**, so the patch looked
+applied. Shipping that would have shipped an unpatched level (no game mode, no sunsky,
+no spawner classes) with a green log.
+
+**Cause:** the "delta build" convenience path treated a missing file the same as a
+deliberate partial build.
+
+**Fix:** absent parent map is now `exit 5` unless `ALLOW_DELTA=1` is set explicitly.
+
+**Rule:** any stage whose job is "patch X" must fail when X is absent. A skip is only
+legitimate when the caller asked for it. Same class of bug as trusting a printed counter
+(§6): the gate must observe the *output*, not the intent.
+
+## 31. `set_actor_location` can be a no-op on a component-less actor
+
+**Symptom:** `MotorTownRaceSection` gates: `set_actor_location` + `set_actor_rotation`
+returned without error, the script reported `placed=40`, and a re-read showed all 40
+still at `(0,0,0)` (`GATE_PLACE_FAIL`).
+
+**Cause:** not established; the actor class carries no components at all, so there is
+nothing for the transform to move and the write does not persist.
+
+**Fix applied:** deleted the actors instead of positioning them (they are not required
+by the map).
+
+**Rule:** after any transform write, re-read the value in the same process and include it
+in a gate. `set_*` returning cleanly is not a write (same trap as §6, §17).

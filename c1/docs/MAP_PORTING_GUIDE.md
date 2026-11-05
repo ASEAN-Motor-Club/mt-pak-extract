@@ -102,9 +102,10 @@ Pitfalls:
 
 ### 2.2 Geometry (stage 2)
 
-Tiles from the source map are converted to meshes and imported, then placed as
-`StaticMeshActor`s at world coordinates (the mesh geometry itself carries world space,
-so actors sit at origin).
+Tiles from the source map are converted to meshes and imported **cell-local** (each
+tile's pivot re-based to its 500 m grid origin), then placed as `StaticMeshActor`s:
+`location = (origin_x * 100, -origin_y * 100, 0)` — metres→cm with the **opposite Y**
+axis. Placement is an actor transform, never a vertex rewrite and never a re-import.
 
 Gate: mesh count == tile count, every actor has a mesh, **zero hidden actors**, every
 material instance the meshes use has an **MT master as its parent** (§5.0), each mesh
@@ -113,13 +114,16 @@ has **collision data**, and the whole set's **cooked bounds** match the source b
 ```
 cells=554  hidden_actor=0  hidden_in_game=0  component_invisible=0
 MI parent = M_PropMaster | M_PolygonMaster | M_DecalMaster   (never a mod-owned master)
-bounds_km  x -1.5..3.6  y -10.5..1.6  z 0..1.2      (0 tiles outside the map area)
+collision  body_setup.collision_trace_flag == CTF_UseComplexAsSimple  (555/555)
+bounds_km  x -11.2..8.0  y -10.7..16.9  z 0.6..1.2     (0 tiles outside the map area)
 ```
 
-Bounds are non-negotiable: the OBJ importer negates Y, and component transforms do not
-move world-space geometry, so a mirrored or unshifted import looks perfectly fine in the
-editor list while sitting kilometres away at runtime. Compare **cooked asset bounds**
-against the source bbox axis by axis (`C1_PORT_LESSONS.md`, gotchas 22/23).
+Bounds are non-negotiable, but read them as a *placement* gate: a union of only a few km
+means the meshes are cell-local and the actors never moved (the collapsed-import
+signature), not that the geometry is wrong. The OBJ importer negates Y — for a BeamNG
+source that negation **is** the conversion, so do not cancel it in the OBJ; carry the
+sign in the actor transform and mirror **V** in the UVs (`GOTCHAS.md` §23 correction,
+`C1FULL_BUILD_CHECKLIST.md` §2h).
 
 **LODs: project decision — none.** The shipped C1Full build uses LOD0 only. Note that
 there is no Python API that deletes LODs (`get_num_lods` exists, there is no setter or
