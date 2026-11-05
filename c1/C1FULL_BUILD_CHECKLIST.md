@@ -198,3 +198,33 @@ Gate: installed files `SHA_MATCH`; active pak list contains exactly one pak per 
   of the global shadermap`. MT ships only SM5 archives (`Global` 13,242,450 B, `MotorTown`
   56,636,716 B); our cook emits same-named partial ones. Mod paks cannot extend MT's shader
   library — instances of MT's own masters only.
+
+### §2c — Mesh → material coverage (HARD FAIL)
+
+For every mesh in the pak, every `/Game/Mods/<root>/Materials/MI_*` path it references must
+exist in the pak. Count it, do not eyeball it:
+
+```python
+pat = re.compile(rb"/Game/Mods/C1Full/Materials/(MI_[A-Za-z0-9_\-]+)")
+need = {n.decode() for mesh in meshes for n in pat.findall(open(mesh,'rb').read())}
+missing = need - {basename(f)[:-7] for f in glob("Materials/*.uasset")}
+assert not missing, missing
+```
+
+2026-11-05: **30 missing**, covering `MI_C1_mat_wal` (99 meshes), `MI_C1_mat_saku` (81),
+cameras (64+64), `MI_C1_mat_fence` (40), `MI_C1_sign` (28). Those slots had been drawing the
+engine default in every build. Restore by cloning the surviving sibling under the expected name
+(`MI_C1_mat_wal` → `MI_C1_mat_wal_15`).
+
+### §2d — Map import completeness, including the namespace root (HARD FAIL)
+
+Every `/Game/Mods/<root>/…` import in the shipped `.umap` must resolve inside the pak — not just
+meshes and maps. On 2026-11-05 the packer copied `Materials/ Maps/ Meshes/` only, so
+`BP_C1_Sky` and `BP_C1_Prop` (loose at the namespace root) were absent: the level had no sky
+actor, therefore no sun and no skylight, and every surface rendered unlit — visually identical to
+"materials not applied".
+
+### §2e — Ship one material shape
+
+Instances only, parented to MT's own masters, `BaseColor` texture + `Metallic`/`Roughness`
+scalars. No master assets in the pak. See `MAP_PORTING_GUIDE.md` §5.0.

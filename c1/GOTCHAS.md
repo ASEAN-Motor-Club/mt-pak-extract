@@ -656,3 +656,22 @@ main pak. Textured corridor confirmed in-game.
   names (`BaseColor`, `MetallicTex`, `Normal`, `RoughnessTex`, `EmissiveTex`, plus scalars), so
   original instances bind with no renaming. Editing `M_C1_Surface*` re-cooks the same 3,640 B
   failure every time.
+- **Meshes reference material names that were never created.** A mesh slot is a hard import of
+  `/Game/Mods/<root>/Materials/MI_<name>`; if no asset has that name the slot draws the engine
+  default and looks like a broken material. C1Full had 30 such names — `MI_C1_mat_wal` alone was
+  referenced by 99 meshes — because the instances were later renamed with suffixes
+  (`MI_C1_mat_wal_15`) and the meshes were never updated. Gate builds on mesh→material coverage
+  (checklist §2c). Fix by cloning the surviving sibling under the name the mesh expects.
+- **Loose assets at the namespace root are part of the map, not of the folders.** `BP_C1_Sky`
+  (carries the `SunSky` child component) and `BP_C1_Prop` live directly under
+  `/Game/Mods/C1Full/`. A packer that copies only `Materials/ Maps/ Meshes/` ships a level with
+  no sun and no skylight; the result is an unlit scene that is easy to misread as "materials not
+  applied". Gate: every `/Game/Mods/<root>/…` import in the map resolves inside the pak
+  (checklist §2d).
+- **Verify which namespace the *cooked map* references, not which one the project contains.** A
+  project can hold two full content trees while the level still points at the older one: C1Full
+  had `Mods/C1` (4,587 assets) and `Mods/C1Full` (5,300) with divergent mesh generations
+  (`c-10_-20` 71,574 B vs 72,890 B), and the map referenced `Mods/C1` until it was repointed.
+  Check `strings <map>.umap | grep -oE '/Game/Mods/[A-Za-z0-9_]+/Meshes'` on the *cooked* map.
+  Duplicated trees are the underlying defect — one namespace per release pair is the fix
+  (`.hermes/plans/2026-11-05-single-content-namespace.md`).

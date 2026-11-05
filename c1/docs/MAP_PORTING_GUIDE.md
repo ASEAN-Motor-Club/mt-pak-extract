@@ -337,18 +337,58 @@ Stopping when the counts do not move is what prevents shipping a placebo build.
 Symptom → cause → fix. Every entry here cost real time; they are ordered by how much
 they mislead.
 
-### 5.0 Checkerboard / invisible materials: instances of our own masters can never render
+### 5.0 Checkerboard / "materials aren't applied": four separate causes, in likelihood order
 
-**This section has now been wrong twice. Read the evidence, not the rule.**
+**This section has been wrong three times. Everything below is anchored to a measurement.**
 
-MT compiles material shaders into its **own** library. Our cooked masters carry no usable
-shader data — `M_C1_Surface*.uexp` is ~3.6 KB, vanilla `M_PropMaster.uexp` is 7.9 KB — so a
-material instance parented to one of ours has no shader map in MT and draws the **engine
-checkerboard**. That is what "materials aren't applied to the geometry" looks like.
+#### 5.0.1 Materials the meshes reference but which do not exist (most common)
 
-The only thing that renders is an instance of an **MT-owned master**, with parameters that
-master actually declares. For `M_PropMaster` (proven from its `TextureStreamingData`, which
-lists exactly two textures, `T_Normal_N` and `T_White_BC`):
+Before any theory about shaders, count. For every mesh, extract the
+`/Game/Mods/<root>/Materials/MI_*` paths it references and check each one exists in the pak.
+On C1Full the answer was **30 missing**, and they were the biggest surfaces:
+
+```
+MI_C1_mat_wal            99 meshes     MI_C1_mat_saku      81
+MI_C1_mat_camera         64            MI_C1_mat_camerapilar 64
+MI_C1_mat_fence          40            MI_C1_sign           28
+(+ 24 more)
+```
+
+Those slots draw the engine default in **every** build — including ones that "worked" —
+because the instance named by the mesh was never created. Each missing name had a surviving
+sibling (`MI_C1_mat_wal` → `MI_C1_mat_wal_15`, `MI_C1_mat_box` → `MI_C1_mat_box_1`), which is
+how they were restored: clone the sibling, keep the name the mesh expects. Gate: **coverage
+must be zero missing**, counted per mesh, never eyeballed.
+
+#### 5.0.2 The sky/GameMode blueprints not shipped (looks identical to 5.0.1)
+
+The level's sky is `BP_C1_Sky_C_0`, whose `SunSky` child component lives in
+`/Game/Mods/<root>/BP_C1_Sky`. Because the packer copied only `Materials/ Maps/ Meshes/`, the
+**loose root blueprints were absent from the pak**: no sky actor, no sun, no skylight, every
+surface unlit. Unlit geometry is indistinguishable from "materials not applied" on a
+screenshot. Gate: every `/Game/Mods/<root>/…` import in the map must resolve inside the pak,
+including assets that sit at the namespace root.
+
+#### 5.0.3 Custom masters can never render — shader code cannot ship
+
+MT stores material shader code in `ShaderArchive-<lib>-<platform>.ushaderbytecode`, and only
+two exist: `Global-PCD3D_SM5` (13,242,450 B) and `MotorTown-PCD3D_SM5` (56,636,716 B). There is
+no SM6 archive, so MT runs SM5. A cook of our project emits the same two names but partial
+(13,181,977 B / 6,186,317 B); mounting them shadows MT's files and the client dies at boot with
+`LowLevelFatalError [GlobalShader.cpp:803] Could not load section 11 (of 330) of the global
+shadermap`. **Therefore an instance parented to a master we ship has no shader code MT can
+load, no matter how cleanly it compiles.** Instances of MT's own masters only.
+
+Compiler sanity is still worth checking, because it separates a bad asset from a bad plan: a
+master that never compiled cooks at **~3.6 KB with zero shader strings**; a compiled one is
+**17–32 KB with `PCD3D_SM5`/`PCD3D_SM6` and `TBasePass*` names**. Compiling requires
+`TargetedRHIs` in `DefaultEngine.ini`, and repairing a broken master never works — rebuild it
+(`M_C1_Tex2`, `M_C1_TexMasked2` are the rebuilds that kept the original parameter names).
+
+#### 5.0.4 Parameter type mismatches on a valid parent
+
+For `M_PropMaster` (proven from its `TextureStreamingData`, which lists exactly two textures,
+`T_Normal_N` and `T_White_BC`):
 
 ```
 BaseColor  texture      Normal     texture
@@ -356,21 +396,28 @@ Metallic   scalar       Roughness  scalar
 Specular   scalar       UV_Tiling  scalar
 ```
 
-Two ways to break this, both of which happened here:
+Writing a Texture2D into `Metallic`/`Roughness` produces an instance that fails to compile and
+draws checkerboard. Drop those parameters and let the scalar defaults apply.
 
-1. **Parent to a mod-owned master** — no shaders, checkerboard everywhere.
-2. **Parent correctly, then rename a texture parameter onto a scalar one** — e.g.
-   `MetallicTex → Metallic` keeping the Texture2D value. The instance fails to compile and
-   also draws checkerboard. Drop such parameters instead and let the scalar defaults apply.
+#### The recipe that actually shipped
 
-**Instrumentation lesson.** `GetMaterial(0)` returned the assigned instance for 628/628
-components and reported zero default-material fallbacks, while the screen was solid
-checkerboard — because assignment succeeds and only *compilation* fails. Do not treat a
-clean material-resolution probe as proof that materials render. A screenshot outranks it.
+The old C1 material pak is the reference implementation: **1,609 instances, zero masters**,
+every instance parented to `/Game/Env/Materials/Master/M_PropMaster`, `BaseColor` as the only
+texture parameter, `Metallic`/`Roughness` scalars. Ship that shape.
 
-**And check the simpler things first.** Both earlier "invisible geometry" incidents were not
-material problems at all: one was a texture namespace rename (§5.1), the other was every
-tile imported **100× too small** (§2.2). No collision means geometry, not materials.
+#### Instrumentation lesson
+
+`GetMaterial(0)` returned the assigned instance for 628/628 components, `parent_nil=0`, and the
+probe reported zero default-material fallbacks, while the screen was solid checkerboard —
+because assignment succeeds and only rendering fails. A clean probe is not proof. Conversely,
+UE4SS cannot call `GetTextureParameterValue` (`TrivialObject` error), so parameter values are
+not observable at runtime; verify them in the asset, not in-game.
+
+#### And check the simpler things first
+
+Both earlier "invisible geometry" incidents were not material problems: one was a texture
+namespace rename (§5.1), the other was every tile imported **100× too small** (§2.2). No
+collision means geometry, not materials.
 
 and blend/mask mode genuinely match, and only per material — never as a bulk rewrite.
 
