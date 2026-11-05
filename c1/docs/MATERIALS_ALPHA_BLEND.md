@@ -310,6 +310,71 @@ Two consequences that cost real time before this was read:
   bushes, on the author's opaque master, which is why they showed a backdrop while the ground
   bushes did not.
 
+## 3d. Pavement text (`mat_mj_*`) — the family with two different constructions
+
+The Japanese road text on the tarmac (destination names, "stop", speed limits) is one family of
+**91 source materials**, and the port ships **92 instances** of it. It fails in two different ways
+because the source builds it two different ways — read the JSON per material, never by family:
+
+**Pattern A — alpha-tested, single texture** (18 instances). `alphaTest: true` with its own
+`alphaRef`; one `colorMap` (`mat_mj_<word>_file0.dds`, DXT5) whose **alpha channel already holds
+the glyph mask** (measured 61–79 % transparent). Examples and thresholds: `mat_mj_line` 252,
+`mat_mj_yokoyokodouro` 245, `mat_mj_kisen` / `mat_mj_kisarazu` 234, `mat_mj_asada` 215,
+`mat_mj_tokyo` 194, `mat_mj_0m` 181, `mat_mj_40m` 177.
+
+Port defect: all 18 sat on `M_PropMaster` — **opaque**, so the mask was simply not evaluated and
+the texture's black background drew. This is the black panel with white kanji.
+
+**Pattern B — additive translucent, colour + separate opacity map** (66 instances).
+`translucent: true`, `translucentBlendOp: "AddAlpha"`, stage 0 has a `baseColorMap` **and** an
+`opacityMap`. The colour map is BC7 with **zero alpha**; the mask is a separate G8 `_o.data`
+texture (e.g. `mat_mj_wangan_file0_d.color` + `mat_mj_wangan_file0_o.data`) — measured ~35 %
+white, i.e. the glyph coverage. Examples: `wangan`, `daikoku`, `ginza`, `shibuya`, `shinbashi`,
+`haneda`, `kousoku`, `ariake`, `bukuro`, `cyuuou`.
+
+Port defect: all 66 sat on `M_GlassTrans` with a translucent override and no binding to their
+opacity map — a washed sheet, not text.
+
+**What the port can express.** MT's masked master samples exactly one texture (`Color`); there is
+no two-sampler masked master, and `AddAlpha` has no MT equivalent at all. So:
+
+- Pattern A → masked master, `BaseColor` renamed to `Color`, `OpacityMaskClipValue = alphaRef/255`.
+- Pattern B → **bake the `_o.data` mask into the colour texture's alpha**, then treat as Pattern A
+  with a 0.5 threshold. This is the same bake the port already uses for foliage, and it is why the
+  opacity maps are carried in the pak under `MotorTown/Content/Mods/C1/Textures/<dir>/`.
+- `translucent` **without** an opacity map (7 materials here) has nothing to cut with → left opaque.
+  Do not invent a threshold for it.
+
+### The stage that does this: `c1/pipeline/07c_build_materials.sh`
+
+```
+bash c1/pipeline/07c_build_materials.sh mat_mj [out.pak]
+```
+
+It is not a script of remembered commands — it re-derives every decision from
+`merged.materials.json` on each run (`c1/tools/build_materials.py` + `c1/tools/opacity_bake.py`):
+
+1. classify each instance by the source's own keys into masked / bake / opaque;
+2. per material, compute the clip from its own `alphaRef`;
+3. for the bake group, locate `<x>_d_color` and its `_o_data` sibling, decode both, write the mask
+   into the colour alpha, re-encode level 0 in the **same** format (byte count unchanged), and ship
+   the texture in the pak;
+4. reparent to `M_AlphaTest`, rename the texture parameter, clear the stale overrides, write the
+   per-material clip;
+5. pack, and emit `materials_report.json` (per-instance clip, per-texture bake stats or the reason
+   it was skipped).
+
+Two tool facts this stage depends on:
+
+- `UAssetTool` resolves `Mappings.usmap` **from the current working directory**, not from the DLL
+  path, so it must be invoked from the tool repo root — otherwise it prints usage and exits 0.
+- It also exits 0 when it prints `Error:`. A stage that trusts the exit code alone reports success
+  while writing nothing; the driver treats `Error:` as failure.
+
+Result of the first run (`mat_mj`): 84 instances in the pak (18 masked, 66 baked), 66 textures
+baked (0 errors), mask coverage 0.649–0.755, e.g. `mat_mj_0m` verified as parent `M_AlphaTest`,
+parameter `Color`, clip 0.7098 (=181/255).
+
 ## 4. Diagnosis procedure — follow it in order
 
 Do these in sequence and stop at the first hit. Do not skip ahead to blend flags.
