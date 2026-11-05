@@ -28,7 +28,26 @@ OUT_LEVEL = os.environ.get('C1_LEVEL', '/Game/Mods/C1/Maps/C1Roads')
 REPORT = os.environ.get('C1_BAKE_REPORT', 'D:/UEProjects/C1/Scripts/c1_nav_bake_report.json')
 
 CM_PER_KMH = 1000.0 / 36.0     # 27.7778 cm/s per km/h
-DEFAULTS = {'limit_roads': 0, 'step_cm': 1000.0, 'connect_cm': 2500.0, 'forward_dot': 0.55}
+DEFAULTS = {
+    'limit_roads': 0,
+    'step_cm': 1000.0,
+    'connect_cm': 2500.0,
+    # 0.85 = 31.8 deg. The old 0.55 allowed a 56 deg cut, and the graph used the whole
+    # allowance: AI turned across a merge instead of following it ("turns into
+    # perpendicular traffic").
+    'forward_dot': 0.85,
+    # Belt-and-braces on the lateral frame. On planar roads it tracks forward_dot, so it
+    # costs nothing today; it catches a crest or curved merge where the tangents agree
+    # but the frames twist.
+    'normal_dot': 0.85,
+    # Stacked decks: two corridors 10-12 m apart horizontally but metres apart in Z look
+    # like a legal successor at 4 m link range and the AI drives into the barrier
+    # between them.
+    'deck_dz_cm': 150.0,
+    'deck_dist_cm': 1200.0,
+    # and the long shallow version of the same defect
+    'grade_max': 0.5,
+}
 
 
 def log(m):
@@ -179,6 +198,10 @@ def main():
     # at a real junction the tangents are perpendicular, so legit links are unaffected.
     parallel_dot = float(cfg.get('parallel_dot', 0.90))
     parallel_skip = float(cfg.get('parallel_skip_cm', 400.0))
+    normal_dot = float(cfg.get('normal_dot', 0.85))
+    deck_dz = float(cfg.get('deck_dz_cm', 150.0))
+    deck_dist = float(cfg.get('deck_dist_cm', 1200.0))
+    grade_max = float(cfg.get('grade_max', 0.5))
     cell2 = 2000.0
 
     def cellkey2(p):
@@ -190,6 +213,9 @@ def main():
 
     linked = 0
     skipped_parallel = 0
+    skipped_normal = 0
+    skipped_deck = 0
+    skipped_grade = 0
     for idx, n in enumerate(nodes):
         cx, cy = int(n['loc'][0] // cell2), int(n['loc'][1] // cell2)
         best = None
@@ -213,12 +239,31 @@ def main():
                     if dot > parallel_dot and d < parallel_skip:
                         skipped_parallel += 1
                         continue
+                    # lateral frame must agree: a link that mirrors the right vector is a
+                    # hop to the far side of the carriageway, not a merge
+                    rdot = (n['right'][0] * m['right'][0] + n['right'][1] * m['right'][1]
+                            + n['right'][2] * m['right'][2])
+                    if rdot < normal_dot:
+                        skipped_normal += 1
+                        continue
+                    # stacked decks: near in plan, metres apart in Z. Nothing in the graph
+                    # format marks "this is a bridge above that road", so the only signal
+                    # is the height difference itself.
+                    dz = m['loc'][2] - n['loc'][2]
+                    if abs(dz) > deck_dz and d < deck_dist:
+                        skipped_deck += 1
+                        continue
+                    horiz = math.hypot(m['loc'][0] - n['loc'][0], m['loc'][1] - n['loc'][1])
+                    if abs(dz) / max(horiz, 1.0) > grade_max:
+                        skipped_grade += 1
+                        continue
                     if best is None or d < best[0]:
                         best = (d, j)
         if best is not None and best[1] not in edges[idx]:
             edges[idx][best[1]] = (0.0, best[0])
             linked += 1
-    log('cross-road links=%d (skipped_parallel=%d)' % (linked, skipped_parallel))
+    log('cross-road links=%d (skipped_parallel=%d normal=%d deck=%d grade=%d)'
+        % (linked, skipped_parallel, skipped_normal, skipped_deck, skipped_grade))
 
     # ---- 2c. lane-change edges: same spline point, adjacent lane, non-zero cost ------------
     lateral_cost = float(cfg.get('lateral_cost', 30.0))
@@ -300,6 +345,8 @@ def main():
 
     report = {'roads': len(roads), 'nodes': len(nodes), 'step_cm': step,
               'readback_nodes': n_back, 'cross_links': linked, 'lane_change': lat, 'dead_ends': dead_ends,
+              'skipped_parallel': skipped_parallel, 'skipped_normal': skipped_normal,
+              'skipped_deck': skipped_deck, 'skipped_grade': skipped_grade,
               'bounds': [min(xs), min(ys), min(zs), max(xs), max(ys), max(zs)]}
     with open(REPORT, 'w') as f:
         json.dump(report, f, indent=1)

@@ -4,7 +4,11 @@
   "step_cm": 1000.0,
   "connect_cm": 2500.0,
   "connect_any_cm": 4000.0,
-  "forward_dot": 0.55,
+  "forward_dot": 0.85,
+  "normal_dot": 0.85,
+  "deck_dz_cm": 150.0,
+  "deck_dist_cm": 1200.0,
+  "grade_max": 0.5,
   "parallel_dot": 0.9,
   "parallel_skip_cm": 400.0,
   "lateral_cost": 30.0
