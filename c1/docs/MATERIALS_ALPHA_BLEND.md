@@ -70,6 +70,29 @@ Sources: Epic Instanced Materials docs; `unreal.MaterialInstanceBasePropertyOver
 Epic issue UE-39754; Epic forum "Using Material Property Overrides causes cooking failures";
 UE community threads on DXT1 1-bit alpha.
 
+### Master contracts, read out of the shipped masters (not guessed)
+
+Dumped from `client-0.7.19.pak`. These are the *actual* parameter names each master declares —
+the only names an instance may legally bind.
+
+- **`/Game/AssetsvilleTown/Materials/MasterMaterials/M_Plants`** — the foliage master.
+  `BLEND_Masked`, TwoSided, `MSM_Subsurface`, `DitheredLODTransition`,
+  `bUsedWithInstancedStaticMeshes`, grass-wind via `SimpleGrassWind`, default texture `T_leaf_01`.
+  Parameters: **`Base_Color`** (texture), `Base_Color_Tint`, `Roughness`, `SubSurface_Color`,
+  `SubSurface_Power`, `WindPower`.
+  → This is the master for trees, bushes and grass. Note the underscore in `Base_Color`.
+- **`/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTest`** — a generic masked master used
+  for fences and metal. `BLEND_Masked`, TwoSided, default texture `T_fenceMetal_01`.
+  Parameters: `Color`, `Roughness`.
+  → It will cut a texture correctly, but it shades like metal. Putting foliage on it produces
+  **correct cutout, wrong appearance** — which reads as "these are no longer trees".
+- **`/Game/Mods/C1/Materials/M_C1_Surface*`** — the author's own masters (opaque, opaque-PBR,
+  masked, and `M_C1_Surface_Trans` for translucency).
+- **`M_PropMaster` / `M_PolygonMaster`** — opaque. They declare `Use_Opacity` /
+  `Use_OpacityFromAlpha` scalars, and setting those to 1 does **not** turn a foliage billboard into
+  a cutout: the bounding rectangle still paints its texture's backdrop, which is black on these
+  atlases. Do not route foliage here.
+
 ---
 
 ## 1. The model
@@ -85,13 +108,23 @@ So the port has exactly three usable targets, plus the translucent one:
   `Metallic`, `Specular`, `Mask`, `Use_MaskTexture`, `UV_Tiling`. **Never routes alpha.**
 - `M_PolygonMaster` — opaque, no `BlendMode`. **Never routes alpha**; masked instances there
   clip to black.
-- `M_plants` (Stylized_Forest) — cuts cutouts from **`BaseColor` alpha**. This is the only
-  master that produces a real alpha cutout.
+- `M_Plants` (`/Game/AssetsvilleTown/Materials/MasterMaterials/M_Plants`) — the foliage master:
+  `BLEND_Masked`, TwoSided, `MSM_Subsurface`, dithered LOD, grass wind. Cuts from its colour
+  texture's alpha. **Its colour parameter is `Base_Color`, with an underscore** — binding
+  `BaseColor` leaves it drawing its default `T_leaf_01`. This is the only master that produces a
+  real alpha cutout *and* shades like foliage.
+- `M_AlphaTest` (`/Game/AssetsvilleTown2/...`) — generic masked master (fences, metal): cuts
+  correctly, parameter `Color`, but shades like metal. Use it for fences and grates, never for
+  vegetation.
 - `M_GlassTrans` — the translucent target for surfaces that must blend rather than cut.
 
 There is **no master in Motor Town that samples a separate opacity texture**. The author's
 `M_C1_Surface_Masked` reads a dedicated `OpacityTex` parameter, but that design cannot be
-reproduced with a vanilla master — the mask has to be moved into `BaseColor`'s alpha channel.
+reproduced with a vanilla master — the mask has to be moved into the colour texture's alpha
+channel (`Base_Color` on `M_Plants`, `Color` on `M_AlphaTest`).
+
+Correction to what this document said earlier: the foliage master's parameter is **`Base_Color`**,
+not `BaseColor`. Seven builds bound `BaseColor` and silently rendered the master's default leaf.
 
 ### The author's ground truth (what we are porting *from*)
 
@@ -152,14 +185,40 @@ looping.
 - **E — 178 further instances masked + constant alpha baked into the three marking textures.**
   Result: *"still the same"*. Two things were true at once: the foliage we needed was on a
   master whose parameter name didn't match, and the markings were the opposite problem.
-- **F — parameter rename on the `M_AlphaTest` lineage.** 25 instances had been authored
-  against `M_AlphaTest` (colour parameter `Color`), reparented to `M_plants` (expects
-  `BaseColor`) — the binding was dead, so they rendered the master default: **black
-  background**. Renaming `Color` → `BaseColor` on exactly those 25 was the fix. Proved rule 2,
-  and proved that "black background" is a *binding* symptom, not a blend symptom.
+- **F — parameter rename on the `M_AlphaTest` lineage.** 25 instances carried `Color` after being
+  reparented to the foliage master; renaming them to `BaseColor` restored a live binding. Proved
+  that "black background" is a *binding* symptom, not a blend symptom — but the rename still used
+  the wrong target name (see P4).
+- **G — the release's whole material tree, repacked into our namespace.** Result: **every material
+  broken at once.** Cause: the release's assets carry `/Game/Mods/C1/…` inside their bytes while we
+  filed them under `/Game/Mods/C1Full/…`, so the set fell back to the engine default. Proved the
+  namespace rule (checklist M19).
+- **D1/D2 — magenta probes on the tree atlas.** `area_zz_02_gtf_tex_191` replaced in place with
+  solid magenta, then with 75 % transparent blocks. Result: *"some of the trees have a magenta
+  texture"* — so texture overrides from a material pak do reach the screen, and those trees were
+  rendering **opaque**. Proved the texture path works and localised the failure to the material,
+  not the pak machinery.
+- **I1/I2 — parent swapped to `M_AlphaTest`, then pointed at `T_fenceMetal_01`.** Still black.
+  Proved the fence master cuts fine but is not the foliage master, and that a blend override cannot
+  rescue a wrong master.
+- **P1/P2 — blend-mode override removed (`--clear-overrides`).** P1 still black *because the
+  override was still in the file*: it had been written back in the D chain and every rebuild carried
+  it forward. Only after adding a real `--clear-overrides` op (verified by dumping the shipped pak)
+  was the canonical configuration actually shipped. P2: still black — because of population (step 0).
+- **P3 — all 19 remaining foliage instances moved to `M_AlphaTest`, `BaseColor`→`Color`.**
+  Result: *"they no longer look like trees, but they do seem cut out"*. Cutout correct, master
+  wrong.
+- **P4 — all 20 foliage instances moved to `M_Plants` with the parameter renamed `BaseColor` →
+  `Base_Color`.** The master's own name map declares `Base_Color` (underscore) alongside
+  `Base_Color_Tint`, `SubSurface_Color`, `SubSurface_Power`, `WindPower`. Everything before this
+  bound `BaseColor`, so the master always drew its default `T_leaf_01`. This is the first build
+  that binds the real tree atlases on the real foliage master, with no overrides.
 
-The pattern to notice: A–E were all arguments about blending. The actual defects were a dead
-parameter binding and textures with no alpha. Blending was never the problem.
+The pattern to notice: A–E were all arguments about blending, and blending was never the problem.
+F–P4 were all *binding* failures, and the last one was a single character: `BaseColor` vs
+`Base_Color`. Three separate rules converge here — count the population (step 0), read the
+master's real parameter names (step 3), and never carry an override forward without verifying the
+shipped bytes.
 
 ---
 
@@ -167,6 +226,12 @@ parameter binding and textures with no alpha. Blending was never the problem.
 
 Do these in sequence and stop at the first hit. Do not skip ahead to blend flags.
 
+0. **Count the population before you touch one of it.** A reported symptom is almost never one
+   instance. Query the whole family — e.g. every instance whose bound texture lives under
+   `/Textures/vegetation/` — and print parent, parameter name and override state for each. Twenty
+   foliage instances existed; nineteen were on an opaque master and only one was on a masked one, so
+   three consecutive builds changed exactly one tree while a forest stayed black. Fixing "the"
+   instance you dumped is not fixing the symptom.
 1. **Identify the instance.** A coordinate plus a screenshot beats any amount of statistics.
    From the coordinate, get the cell, then the mesh, then the material slot. Name the MI
    before changing anything.
@@ -195,7 +260,14 @@ Do these in sequence and stop at the first hit. Do not skip ahead to blend flags
 - **Marking clips / punches through when walked over** → masked material writes depth.
   Translucent does not.
 - **Some trees correct, others not** → they are on different parents, or carry different
-  parameter names. Diff two instances rather than guessing at the group.
+  parameter names. Diff two instances rather than guessing at the group — and count the group first
+  (step 0), because "some" is usually the majority.
+- **Cut out correctly but no longer look like trees** → the cutout is right and the *master* is
+  wrong: the instance is bound to a master that does not shade like foliage (or the colour parameter
+  is dead and the master is drawing its own default texture). Check the master's own name map.
+- **A one-character parameter difference** (`BaseColor` vs `Base_Color`, `Color` vs `BaseColor`) is
+  not a typo to fix casually: parameter names are a contract, and a mismatch is a silent, total
+  failure of that binding.
 
 ---
 
@@ -213,6 +285,11 @@ All of these are in `mt-pak-extract` (C# `UAssetTool`) unless stated otherwise.
 - `--set-texparam <in> <out> <list|-> <param> <texPkg> <texName>` — repoint one texture
   parameter. The list accepts `MI<TAB>textureName` lines so one pass can give each instance
   its own texture.
+- `--clear-overrides <in> <out> <list|->` — remove `BasePropertyOverrides` entirely so the
+  instance inherits the parent's blend state. Added after discovering that a blend override
+  written by an earlier stage survives every later rebuild: P1 was meant to be "no override" and
+  still shipped one. Use this whenever a build claims to be canonical; then dump the *shipped*
+  pak to confirm the block is gone.
 - `build_matspak.sh <mats-dir> <out.pak> [extra-content-dir]` — material-only pak. Gates out
   `ShaderArchive` and non-material content.
 
@@ -225,6 +302,12 @@ All of these are in `mt-pak-extract` (C# `UAssetTool`) unless stated otherwise.
 - **Assert the counts.** Materials out must equal materials in.
 - **Verify on the asset, not on the exit code.** Dump the patched instance and read the
   parameter name, the parent index and the blend mode before packaging.
+- **Verify a whole family, not a representative instance.** Better: assert on the set — parent,
+  parameter name and override presence for every instance in the reported family. One correct
+  instance proves nothing about the other nineteen.
+- **Edits are cumulative, so verify the shipped bytes.** Property blocks written in an earlier
+  stage persist through every subsequent pass. Dump out of the built `.pak`, not out of the
+  staging directory.
 
 ---
 

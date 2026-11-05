@@ -97,6 +97,21 @@ of the staging dir.
 - **M24 — mask format.** Cutout textures must be BC3/BC7. BC1/DXT1 has no usable alpha channel;
   a mask stored there reads opaque, which is the black-background symptom.
 
+- **M25 — count the family before editing one of it.** For a reported symptom, enumerate every
+  instance in that family (e.g. all whose bound texture is under `/Textures/vegetation/`) and print
+  parent, colour-parameter name and override state for each. Twenty foliage instances existed;
+  nineteen were on an opaque master, and three successive builds fixed the one that wasn't.
+- **M26 — bind the parameter names the master actually declares.** Read them from the master's own
+  name map, not from the previous build or from memory: `M_Plants` declares **`Base_Color`**
+  (underscore) with `Base_Color_Tint`, `SubSurface_Color`, `SubSurface_Power`, `WindPower`;
+  `M_AlphaTest` declares `Color`; `M_PropMaster` declares `BaseColor`. A one-character mismatch is
+  a dead binding, and the master then draws its own default texture — cut out correctly, wrong
+  appearance.
+- **M27 — verify the shipped bytes, not the staging directory.** Property blocks written by an
+  earlier stage persist through later passes: a pak that was supposed to have no blend override
+  still shipped one. Dump the instance out of the built `.pak` and assert on `BasePropertyOverrides`
+  absence, parent index and parameter name together.
+
 ## On-screen decision (pre-committed in the plan)
 
 - **M14** — State, before installing, what each outcome means. Specifically: a build that changes
