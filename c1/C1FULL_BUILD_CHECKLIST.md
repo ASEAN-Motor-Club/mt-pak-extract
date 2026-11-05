@@ -106,6 +106,43 @@ Ship the retargeted set **inside the content pak** (never as a separate override
 retired), and never ship the mod-owned `M_C1_Surface*` masters expecting them to render —
 they exist only as authoring parents, and in `C1Full` they are removed entirely.
 
+## 2h. Geometry gates (placement, collision, UV)
+
+Placement is an **actor** problem, not an import problem. The imported mesh assets are
+cell-local (asset bounds = OBJ coords minus the 500 m cell origin, Y negated by the
+importer), so the level is placed correctly by moving actors:
+
+```
+actor.location = (origin_x * 100, -origin_y * 100, 0)     # metres -> cm, opposite Y
+```
+
+Never re-import the mesh set to fix placement — re-import rebuilds each asset from the
+OBJ and discards collision and UV state (this is how a build ships with no collision).
+
+Gate A — placement. Actor world union must match the road spline span, not a few km:
+
+```
+expected  x ~ -11.0 .. 6.1 km, y ~ -10.0 .. 16.6 km
+pass      |min_x + 11.0km| < 0.5km and |max_y - 16.6km| < 0.5km
+```
+
+A union spanning only a few km means the meshes are local and the actors never moved.
+
+Gate B — collision. The OBJ importer never creates collision. Every mesh in the set must
+have `CollisionTraceFlag = CTF_UseComplexAsSimple` (trimesh collision); a mesh left at
+`CTF_UseDefault` with no convex elements has an empty body setup and the player falls
+through it.
+
+```
+unreal.StaticMeshEditorSubsystem.get_simple_collision_count(mesh)   # 0 is expected
+mesh.get_editor_property("body_setup").get_editor_property("collision_trace_flag")
+    == unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE          # required
+```
+
+Gate C — UV orientation. The level frame is a pure Y mirror of the source, which reverses
+the texture. Mirror V at import time (`v' = 1 - v` in the OBJ). Upside-down surfaces mean
+V was not mirrored; a V flip must be done as an import, never as a post-hoc material hack.
+
 ## 3. Cook
 
 Cook `C1Full` + `C1Full_Roads` from the mirror client project (Windows target) to
@@ -242,3 +279,15 @@ dotnet UAssetTool.dll --dump <Materials>/MI_x.uasset | grep 'ParameterValue (Obj
 Sample one instance per material family. 2026-11-05: the cook output and the `C1Full` tree copies
 were null; only the shipped `C1` pak's instances carried textures, and swapping the source is what
 turned white into a textured world.
+### §2g — Masked override serialised (HARD FAIL, per route)
+
+For one instance per route (`[veg]` → `M_plants`, `[masked]` → `M_AlphaTest`), the dump must show
+the blend mode, two-sided flag and clip value together:
+
+```bash
+dotnet UAssetTool.dll --dump mats/MI_C1_mat_tree_01.uasset | grep -E 'BlendMode \(Enum\)|TwoSided|OpacityMaskClip'
+# BLEND_Masked + TwoSided True + 0.3333 — all three, else the surface is opaque
+```
+
+A structure with only `TwoSided` and clip (or `BlendMode (Byte): 0`) means the property was dropped
+silently — check that the material routed as vegetation also set the mask flag.
