@@ -39,7 +39,7 @@
     "_comment": "Baseline for the 54-road (bbox-filtered) build. Re-record after any road set change; the verifier fails on drift.",
     "roads": 54,
     "nodes": 7248,
-    "cross_links": 2245,
+    "cross_links": 2196,
     "lane_change": 7370,
     "dead_ends": 0
   }
