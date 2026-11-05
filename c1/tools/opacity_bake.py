@@ -61,8 +61,67 @@ def decode_level0(fmt, w, h, blob):
     return bytearray(dec(bytes(blob[:need]), w, h)), need
 
 
+def _mip_chain(fmt: str, w: int, h: int, blob_len: int):
+    """Offsets and sizes of every mip present in the bulk blob."""
+    if fmt in ("PF_G8", "PF_A8", "PF_R8"):
+        bpp = 1
+    elif fmt in ("PF_DXT1", "PF_BC1"):
+        bpp = 8
+    else:  # BC3/BC7 and friends: 16 bytes per 4x4 block
+        bpp = 16
+    chain, off, cw, ch = [], 0, w, h
+    while True:
+        if bpp == 1:
+            size = cw * ch
+        else:
+            size = max(1, (cw + 3) // 4) * max(1, (ch + 3) // 4) * bpp
+        chain.append((cw, ch, off, size))
+        off += size
+        if off >= blob_len:
+            break
+        cw, ch = max(1, cw // 2), max(1, ch // 2)
+    if off != blob_len:
+        raise RuntimeError(f"mip chain does not tile bulk: {off} != {blob_len}")
+    return chain
+
+
+def _mask_values(fmt, w, h, blob):
+    """Per-pixel 0-255 visibility from the opacity map, level 0 only."""
+    px, _ = decode_level0(fmt, w, h, blob)
+    a = px[3::4]
+    if (max(a) - min(a)) > 8:
+        return list(a), "mask-alpha"
+    return [(px[i * 4] * 299 + px[i * 4 + 1] * 587 + px[i * 4 + 2] * 114) // 1000
+            for i in range(w * h)], "mask-luma"
+
+
+def _downsample(vals, w, h, nw, nh):
+    """Box filter to the mip's size."""
+    if (nw, nh) == (w, h):
+        return vals
+    out = [0] * (nw * nh)
+    sx, sy = w / nw, h / nh
+    for y in range(nh):
+        y0, y1 = int(y * sy), max(int(y * sy) + 1, int((y + 1) * sy))
+        for x in range(nw):
+            x0, x1 = int(x * sx), max(int(x * sx) + 1, int((x + 1) * sx))
+            tot, n = 0, 0
+            for yy in range(y0, min(y1, h)):
+                row = yy * w
+                for xx in range(x0, min(x1, w)):
+                    tot += vals[row + xx]
+                    n += 1
+            out[y * nw + x] = tot // max(1, n)
+    return out
+
+
 def bake(base_noext, op_noext, out_dir, rel_path):
-    """Write the baked texture (uasset/uexp/ubulk) under out_dir/rel_path. Returns stats."""
+    """Write the baked texture (uasset/uexp/ubulk) under out_dir/rel_path. Returns stats.
+
+    Every mip is rebaked, not just level 0: the source colour maps carry alpha = 0 everywhere, so
+    leaving the lower mips alone makes the whole surface disappear as soon as the GPU stops
+    sampling mip 0 - which on a big flat quad is almost immediately.
+    """
     bfmt, bw, bh, bblob = read_tex(base_noext)
     ofmt, ow, oh, oblob = read_tex(op_noext)
     if (bw, bh) != (ow, oh):
@@ -70,25 +129,22 @@ def bake(base_noext, op_noext, out_dir, rel_path):
     if bfmt not in FMT or FMT[bfmt][2] is None:
         raise RuntimeError("base format not encodable: " + bfmt)
 
-    bpx, need = decode_level0(bfmt, bw, bh, bblob)
-    opx, _ = decode_level0(ofmt, ow, oh, oblob)
+    enc = FMT[bfmt][2]
+    mask, alpha_source = _mask_values(ofmt, ow, oh, oblob)
+    chain = _mip_chain(bfmt, bw, bh, len(bblob))
 
-    alpha = opx[3::4]
-    use_alpha = (max(alpha) - min(alpha)) > 8
     holes = 0
-    for i in range(bw * bh):
-        if use_alpha:
-            v = opx[i * 4 + 3]
-        else:
-            v = (opx[i * 4] * 299 + opx[i * 4 + 1] * 587 + opx[i * 4 + 2] * 114) // 1000
-        bpx[i * 4 + 3] = v
-        if v < 10:
-            holes += 1
-
-    enc = FMT[bfmt][2](bpx, bw, bh)
-    if len(enc) != need:
-        raise RuntimeError(f"encoded {len(enc)} != {need}")
-    bblob[:need] = enc
+    for cw, ch, off, size in chain:
+        px, _ = decode_level0(bfmt, cw, ch, bblob[off : off + size])
+        mv = _downsample(mask, ow, oh, cw, ch)
+        for i in range(cw * ch):
+            px[i * 4 + 3] = mv[i]
+        if off == 0:
+            holes = sum(1 for v in mv if v < 10) / (cw * ch)
+        data = enc(px, cw, ch)
+        if len(data) != size:
+            raise RuntimeError(f"mip {cw}x{ch}: encoded {len(data)} != {size}")
+        bblob[off : off + size] = data
 
     dst = os.path.join(out_dir, rel_path)
     os.makedirs(dst, exist_ok=True)
@@ -104,6 +160,7 @@ def bake(base_noext, op_noext, out_dir, rel_path):
         "texture": stem,
         "fmt": bfmt,
         "size": [bw, bh],
-        "alpha_source": "mask-alpha" if use_alpha else "mask-luma",
-        "holes": round(holes / (bw * bh), 3),
+        "mips": len(chain),
+        "alpha_source": alpha_source,
+        "holes": round(holes, 3),
     }

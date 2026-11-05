@@ -116,11 +116,14 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
-    # UAssetTool resolves Mappings.usmap relative to its CWD, not to the DLL path, so every
-    # invocation has to run from the tool repo root (…/csharp/UAssetTool/bin/Release/net8.0/X.dll
-    # -> five levels up). Running from anywhere else fails with "Access to the path
-    # '/opt/data/Mappings.usmap' is denied" and the pipeline dies on the first stage.
-    tool_cwd = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(a.tool)), *[".."] * 5))
+    # UAssetTool computes RootDir as CWD/../.. and reads <RootDir>/Mappings.usmap, so it must be
+    # launched from <repo>/csharp/UAssetTool (three levels up from bin/Release/net8.0). Any other
+    # CWD silently picks a Mappings.usmap from a *different* repo — or none at all, which surfaces
+    # as an unhandled IOException rather than "file not found".
+    tool_cwd = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(a.tool)), *[".."] * 3))
+    usmap = os.path.abspath(os.path.join(tool_cwd, "..", "..", "Mappings.usmap"))
+    if not os.path.exists(usmap):
+        raise SystemExit(f"no Mappings.usmap at {usmap} (tool CWD {tool_cwd})")
 
     # Preflight: a wrong master package path doesn't error anywhere - the instance fails to compile
     # and the mesh draws with the engine default (grey checkerboard). Verify against the real pak.

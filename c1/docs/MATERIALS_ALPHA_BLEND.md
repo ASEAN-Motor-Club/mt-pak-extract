@@ -340,7 +340,9 @@ no two-sampler masked master, and `AddAlpha` has no MT equivalent at all. So:
 
 - Pattern A → masked master, `BaseColor` renamed to `Color`, `OpacityMaskClipValue = alphaRef/255`.
 - Pattern B → **bake the `_o.data` mask into the colour texture's alpha**, then treat as Pattern A
-  with a 0.5 threshold. This is the same bake the port already uses for foliage, and it is why the
+  with a 0.5 threshold. Bake **every mip**, not just level 0: the source colour maps are alpha = 0
+  at all levels, and these textures ship 2 mips, so a level-0-only bake makes the surface vanish as
+  soon as the GPU leaves mip 0 — on a large flat quad, a few metres away. This is the same bake the port already uses for foliage, and it is why the
   opacity maps are carried in the pak under `MotorTown/Content/Mods/C1/Textures/<dir>/`.
 - `translucent` **without** an opacity map (7 materials here) has nothing to cut with → left opaque.
   Do not invent a threshold for it.
