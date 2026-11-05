@@ -145,9 +145,26 @@ A node is one sample point on one lane. Node count ≈ `sum(points × lanes)`.
 - **Grade guard** (`grade_max = 0.5`): reject when `|dz| / horizontal > 0.5`, which
   catches the long, low-slope version of the same defect.
 
-Measured cost of all four (C1Full 42,578 nodes / 155 roads, corridor 7,248 / 54):
+**Slope cost of all four** (C1Full 42,578 nodes / 155 roads, corridor 7,248 / 54):
 cross links 10,167 → 9,911 and 2,245 → 2,196, max turn 56.6° → 31.7°, deck jumps
 1,413 → 0, no road loses its cross links, no new stranded node.
+
+**Island / crossroad / flags pass (`crossroad_min_nodes = 2`).** After the edge set is
+final, the baker reproduces the two graph passes recovered from `BuildNavigation`:
+
+- `IslandId` = connected-component index over the finished edge graph (direction
+  ignored). C1Full collapses to a single island once the deck jumps are gone; before
+  the guards it was 7 components all labelled 0.
+- junction candidates = nodes on a link between two **different** roads, merged when
+  they are inside `max(5 m, carriageway width)` of each other — the game's own radius.
+- a group of one node is not a junction, so singletons keep `CrossroadId = -1`
+  (`crossroad_min_nodes = 2`). Measured: 9,911 candidate nodes → 8,278 raw groups,
+  6,953 singletons dropped → **1,325 groups / 2,958 nodes**.
+- `Flags` bit `0x4` marks junction nodes, edge bit `0` marks edges inside one group.
+
+This is metadata, not a proven behavioural fix: the RE shows the passes exist and what
+they write, but not that the pathfinder reads `IslandId`/`CrossroadId`. Compare AI
+behaviour on a known multi-component stretch before claiming anything.
 
 **The baker must save the level that OWNS the nav actor.** `save_current_level()`
 writes only the current level; on C1Full the actor lives in the streamed sublevel

@@ -202,7 +202,7 @@ def main():
     os.environ.setdefault('C1_BAKE_REPORT', os.path.join(WORK, 'test_bake_report.json'))
     cfg = {'limit_roads': 0, 'step_cm': 1000.0, 'connect_cm': 2500.0, 'connect_any_cm': 4000.0,
            'forward_dot': 0.85, 'normal_dot': 0.85, 'deck_dz_cm': 150.0,
-           'deck_dist_cm': 1200.0, 'grade_max': 0.5, 'parallel_dot': 0.9,
+           'deck_dist_cm': 1200.0, 'grade_max': 0.5, 'crossroad_min_nodes': 2, 'parallel_dot': 0.9,
            'parallel_skip_cm': 400.0, 'lateral_cost': 30.0}
     json.dump(cfg, open(os.environ['C1_BAKE_CONFIG'], 'w'))
 
@@ -264,10 +264,30 @@ def main():
     # sampling regression: 1 lane, 10 m spacing => 7 nodes for a 60 m road
     check('node count sane', len(nodes) >= 30, '%d nodes' % len(nodes))
 
+    # --- RE pass: island / crossroad / flags consistency ---
+    isl = [nodes[i].get_editor_property('island_id') for i in range(len(nodes))]
+    xid = [nodes[i].get_editor_property('crossroad_id') for i in range(len(nodes))]
+    flg = [nodes[i].get_editor_property('flags') for i in range(len(nodes))]
+
+    check('island ids are per-component', len(set(isl)) >= 2,
+          '%d islands' % len(set(isl)))
+    check('flags bit 0x4 matches crossroad_id',
+          all((f & 4 != 0) == (x != -1) for f, x in zip(flg, xid)),
+          '%d junction nodes' % sum(1 for x in xid if x != -1))
+    edge_ok = True
+    for i in range(len(nodes)):
+        for e in nodes[i].get_editor_property('edges'):
+            ef = e.get_editor_property('flags')
+            t = e.get_editor_property('node_index')
+            if ef == 1 and not (xid[i] != -1 and xid[i] == xid[t]):
+                edge_ok = False
+    check('edge flags only inside one crossroad group', edge_ok)
+
     report = json.load(open(os.environ['C1_BAKE_REPORT']))
-    print('\nreport guards:', {k: report[k] for k in
-                               ('cross_links', 'skipped_parallel', 'skipped_normal',
-                                'skipped_deck', 'skipped_grade') if k in report})
+    print('\nreport:', {k: report[k] for k in
+                        ('cross_links', 'skipped_parallel', 'skipped_normal',
+                         'skipped_deck', 'skipped_grade', 'islands', 'crossroads',
+                         'junction_merges') if k in report})
 
     bad = [c for c in checks if not c[1]]
     print('\n%d/%d checks passed' % (len(checks) - len(bad), len(checks)))

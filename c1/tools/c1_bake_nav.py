@@ -166,7 +166,7 @@ def main():
                     'road': road, 'lane': lane, 'side': 1 if lane > 0 else -1,
                     's': s, 'loc': (px, py, pz),
                     'dir': (tx, ty, tz), 'right': (rx, ry, rz),
-                    'lateral': lateral, 'kmh': kmh,
+                    'lateral': lateral, 'kmh': kmh, 'width': total_w,
                     'road_start': first_index, 'k': k, 'count': count,
                 })
 
@@ -286,6 +286,95 @@ def main():
                     lat += 1
     log('lane-change edges=%d' % lat)
 
+    # ---- 2d. island + crossroad ids -------------------------------------------------
+    # Mirrors the two graph passes reconstructed from BuildNavigation (RE notes:
+    # mt-sdk-2026-11-04/ROADGRAPH-SYMBOLS.md - FUN_14572e820 labels islands over the
+    # edge graph, FUN_14572e030 clusters junction nodes at max(5 m, carriageway width)).
+    # IslandId is a connected-component index; CrossroadId is -1 unless the node sits on
+    # a link between two different roads and lands inside another road's junction
+    # radius; Flags bit 0x4 marks those nodes and edge bit 0 marks merge-eligible edges.
+    # The shipping AI may only read Edges - the RE does not prove otherwise - so this is
+    # metadata that makes the graph self-consistent, not a claim that it fixes anything.
+    def make_uf(n):
+        p = list(range(n))
+
+        def find(a):
+            while p[a] != a:
+                p[a] = p[p[a]]
+                a = p[a]
+            return a
+
+        def union(a, b):
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                p[rb] = ra
+        return find, union
+
+    find, union = make_uf(len(nodes))
+    for i, es in enumerate(edges):
+        for j in es:
+            union(i, j)
+    remap = {}
+    island = [0] * len(nodes)
+    for i in range(len(nodes)):
+        r = find(i)
+        if r not in remap:
+            remap[r] = len(remap)
+        island[i] = remap[r]
+
+    cand = set()
+    for i, es in enumerate(edges):
+        for j in es:
+            if id(nodes[i]['road']) != id(nodes[j]['road']):
+                cand.add(i)
+                cand.add(j)
+
+    find2, union2 = make_uf(len(nodes))
+    merges = 0
+    for i in cand:
+        wi = float(nodes[i].get('width', 0.0))
+        radius_sq = max(250000.0, wi * wi)      # max(5 m, carriageway width), in cm^2
+        for j in edges[i]:
+            if j not in cand or id(nodes[i]['road']) == id(nodes[j]['road']):
+                continue
+            dx = nodes[i]['loc'][0] - nodes[j]['loc'][0]
+            dy = nodes[i]['loc'][1] - nodes[j]['loc'][1]
+            dz = nodes[i]['loc'][2] - nodes[j]['loc'][2]
+            if dx * dx + dy * dy + dz * dz < radius_sq:
+                union2(i, j)
+                merges += 1
+    gmap = {}
+    cross = [-1] * len(nodes)
+    for i in cand:
+        r = find2(i)
+        if r not in gmap:
+            gmap[r] = len(gmap)
+        cross[i] = gmap[r]
+    # A junction group of one node is not a junction: it just means "this node links to
+    # another road but no other node is inside the merge radius". Keep those nodes at
+    # CrossroadId -1 (same as the game's "not at a junction" value) instead of handing
+    # the AI thousands of single-node crossroads.
+    min_nodes = int(cfg.get('crossroad_min_nodes', 2))
+    sizes = {}
+    for i in cand:
+        if cross[i] != -1:
+            sizes[cross[i]] = sizes.get(cross[i], 0) + 1
+    kept_groups = {g for g, k in sizes.items() if k >= min_nodes}
+    dropped = 0
+    for i in cand:
+        if cross[i] != -1 and cross[i] not in kept_groups:
+            cross[i] = -1
+            dropped += 1
+    final_groups = {}
+    for i in cand:
+        if cross[i] != -1:
+            final_groups.setdefault(cross[i], len(final_groups))
+    for i in cand:
+        if cross[i] != -1:
+            cross[i] = final_groups[cross[i]]
+    log('islands=%d crossroads=%d (singletons dropped=%d nodes, groups with >=%d nodes=%d)'
+        % (len(remap), len(final_groups), dropped, min_nodes, len(final_groups)))
+
     dead_ends = sum(1 for e in edges if not e)
     log('dead_ends=%d' % dead_ends)
 
@@ -303,11 +392,11 @@ def main():
         nd.set_editor_property('spline_point_index', -1)
         nd.set_editor_property('lateral_distance', float(n['lateral']))
         nd.set_editor_property('lateral_offset', 0.0)
-        nd.set_editor_property('flags', 0)  # 0 is the most common value in Jeju (6,352 of 17,619)
+        nd.set_editor_property('flags', 4 if cross[i] != -1 else 0)
         nd.set_editor_property('auto_connect_distance', -1.0)
         nd.set_editor_property('speed_limit', float(n['kmh']) * CM_PER_KMH)
-        nd.set_editor_property('island_id', 0)
-        nd.set_editor_property('crossroad_id', -1)
+        nd.set_editor_property('island_id', int(island[i]))
+        nd.set_editor_property('crossroad_id', int(cross[i]))
         nd.set_editor_property('right_side_clearance', -1.0)
 
         earr = []
@@ -316,7 +405,7 @@ def main():
             e.set_editor_property('node_index', int(tgt))
             e.set_editor_property('cost', float(cost))
             e.set_editor_property('distance', float(dist))
-            e.set_editor_property('flags', 0)
+            e.set_editor_property('flags', 1 if cross[i] != -1 and cross[tgt] == cross[i] else 0)
             earr.append(e)
         nd.set_editor_property('edges', earr)
         node_array.append(nd)
@@ -372,6 +461,9 @@ def main():
               'readback_nodes': n_back, 'cross_links': linked, 'lane_change': lat, 'dead_ends': dead_ends,
               'skipped_parallel': skipped_parallel, 'skipped_normal': skipped_normal,
               'skipped_deck': skipped_deck, 'skipped_grade': skipped_grade,
+              'islands': len(remap), 'crossroads': len(final_groups),
+              'crossroad_nodes': len(nodes) - sum(1 for x in cross if x == -1),
+              'junction_merges': merges,
               'bounds': [min(xs), min(ys), min(zs), max(xs), max(ys), max(zs)]}
     with open(REPORT, 'w') as f:
         json.dump(report, f, indent=1)

@@ -9,6 +9,7 @@
   "deck_dz_cm": 150.0,
   "deck_dist_cm": 1200.0,
   "grade_max": 0.5,
+  "crossroad_min_nodes": 2,
   "parallel_dot": 0.9,
   "parallel_skip_cm": 400.0,
   "lateral_cost": 30.0
