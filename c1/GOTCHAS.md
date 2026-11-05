@@ -460,6 +460,14 @@ is a separate axis from shader *presence*. Verify the platform string, not just 
 
 ## 29. Materials cooked in a separate project NEVER render in Motor Town — reparent to a vanilla master
 
+> Six material paks were shipped chasing "the blend mode is wrong" before the real defects (a
+> dead parameter binding, and textures carrying no alpha) were found. Read
+> `docs/MATERIALS_ALPHA_BLEND.md` before building a second variant on alpha or blending — it
+> carries the attempt ledger and the diagnosis order. The single most expensive rule in it:
+> **reparenting changes the parent, not the parameter names**; an instance reparented onto
+> `M_plants` while its colour parameter is still `Color` binds nothing and renders a *black*
+> background, which is indistinguishable from a broken mask.
+
 **Symptom**: the whole map renders flat-coloured with checkerboard patches. Textures,
 UVs, MI parameters, master graph, import paths, shader platform (SM5 *and* SM6) all
 verified correct, yet nothing changes after any material edit.
