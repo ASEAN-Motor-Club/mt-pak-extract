@@ -364,26 +364,34 @@ def main():
     log('cross-road links=%d (skipped_parallel=%d normal=%d deck=%d grade=%d lateral=%d)'
         % (linked, skipped_parallel, skipped_normal, skipped_deck, skipped_grade, skipped_lateral))
 
-    # ---- 2c. lane-change edges: same spline point, adjacent lane, non-zero cost ------------
+    # ---- 2c. lane-change edges: diagonal, two stations ahead ------------------------------
+    # The old edges joined the same station on the adjacent lane: 3.4 m sideways with zero
+    # forward progress, i.e. a 90 deg corner at a 10 m station grid. The AI has to slow to
+    # walking pace to obey one, which is the "crawls while changing lanes" report. Pointing
+    # the same edge at the neighbouring lane two stations ahead (20 m) makes it a 9.5 deg
+    # diagonal: identical lane change, executable at speed. One station ahead is the fallback
+    # near a chain end (19 deg), still far from perpendicular.
     lateral_cost = float(cfg.get('lateral_cost', 30.0))
-    by_point = {}
-    for idx, n in enumerate(nodes):
-        by_point.setdefault((id(n['road']), n['k']), []).append(idx)
+    lane_step = int(cfg.get('lane_change_step', 2))
+    idx_of = {}
+    for idx, nd in enumerate(nodes):
+        idx_of[(id(nd['road']), nd['k'], nd['lane'])] = idx
     lat = 0
-    for key, idxs in by_point.items():
-        for a in idxs:
-            for b in idxs:
-                if a == b:
+    for idx, nd in enumerate(nodes):
+        for dl in (-1, 1):
+            nl = nd['lane'] + dl
+            if nd['lane'] * nl <= 0:
+                continue
+            for st in range(lane_step, 0, -1):
+                j = idx_of.get((id(nd['road']), nd['k'] + st, nl))
+                if j is None:
                     continue
-                if abs(nodes[a]['lane'] - nodes[b]['lane']) != 1:
-                    continue
-                if nodes[a]['lane'] * nodes[b]['lane'] <= 0:
-                    continue
-                d = math.dist(nodes[a]['loc'], nodes[b]['loc'])
+                d = math.dist(nd['loc'], nodes[j]['loc'])
                 if d > 1.0:
-                    edges[a][b] = (lateral_cost, d)
+                    edges[idx][j] = (lateral_cost, d)
                     lat += 1
-    log('lane-change edges=%d' % lat)
+                break
+    log('lane-change edges=%d (step=%d stations)' % (lat, lane_step))
 
     # ---- 2d. island + crossroad ids -------------------------------------------------
     # Mirrors the two graph passes reconstructed from BuildNavigation (RE notes:
