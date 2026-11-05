@@ -240,6 +240,7 @@ def main():
     # ---- 2. edges: along each lane, plus nearest neighbours at road ends ------------
     connect = float(cfg['connect_cm'])
     fdot = float(cfg['forward_dot'])
+    back_cos = float(cfg.get('back_cos', 0.2))
     by_road = {}
     for idx, n in enumerate(nodes):
         by_road.setdefault((id(n['road']), n['lane']), []).append(idx)
@@ -292,6 +293,7 @@ def main():
     linked = 0
     skipped_parallel = 0
     skipped_normal = 0
+    skipped_backward = 0
     skipped_deck = 0
     skipped_grade = 0
     skipped_lateral = 0
@@ -312,6 +314,16 @@ def main():
                     dot = (n['dir'][0] * m['dir'][0] + n['dir'][1] * m['dir'][1]
                            + n['dir'][2] * m['dir'][2])
                     if dot < fdot:
+                        continue
+                    # Headings agreeing is not enough: at a junction where two roads end facing
+                    # each other, the reverse of every forward link passes the heading test while
+                    # pointing BACKWARDS along the road (179 deg). A vehicle that obeys one halts
+                    # and reverses. Require the hop itself to make forward progress.
+                    fwd = ((m['loc'][0] - n['loc'][0]) * n['dir'][0]
+                         + (m['loc'][1] - n['loc'][1]) * n['dir'][1]
+                         + (m['loc'][2] - n['loc'][2]) * n['dir'][2]) / max(d, 1.0)
+                    if fwd < back_cos:
+                        skipped_backward += 1
                         continue
                     # Continuity: a link must continue the lane the car is in, so the target
                     # has to sit on the source's own heading line. Lane numbers are NOT
@@ -361,8 +373,9 @@ def main():
             linked += 1
     log('u-turn edges blocked=%d' % u_turn_blocked)
     log('lanes rebalanced from painted width=%d' % rebalanced)
-    log('cross-road links=%d (skipped_parallel=%d normal=%d deck=%d grade=%d lateral=%d)'
-        % (linked, skipped_parallel, skipped_normal, skipped_deck, skipped_grade, skipped_lateral))
+    log('cross-road links=%d (skipped_parallel=%d normal=%d deck=%d grade=%d lateral=%d backward=%d)'
+        % (linked, skipped_parallel, skipped_normal, skipped_deck, skipped_grade, skipped_lateral,
+           skipped_backward))
 
     # ---- 2c. lane-change edges: diagonal, two stations ahead ------------------------------
     # The old edges joined the same station on the adjacent lane: 3.4 m sideways with zero
@@ -605,6 +618,7 @@ def main():
               'readback_nodes': n_back, 'cross_links': linked, 'lane_change': lat, 'dead_ends': dead_ends,
               'u_turn_blocked': u_turn_blocked,
               'skipped_parallel': skipped_parallel, 'skipped_normal': skipped_normal,
+              'skipped_backward': skipped_backward,
               'skipped_deck': skipped_deck, 'skipped_grade': skipped_grade,
               'islands': len(remap), 'crossroads': len(final_groups),
               'crossroad_nodes': len(nodes) - sum(1 for x in cross if x == -1),
