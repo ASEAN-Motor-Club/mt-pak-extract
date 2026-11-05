@@ -8,11 +8,15 @@
   "Campy_C"
  ],
  "Truck": [
-  "/Game/Cars/Models/Maity",
-  "Maity_C"
+  "/Game/Cars/Models/Campy",
+  "Campy_C"
  ],
  "Bus": [
   "/Game/Cars/Models/Liliput",
   "Liliput_C"
+ ],
+ "Police": [
+  "/Game/Cars/Models/Muscle_01/Stinger",
+  "Stinger_C"
  ]
 }
