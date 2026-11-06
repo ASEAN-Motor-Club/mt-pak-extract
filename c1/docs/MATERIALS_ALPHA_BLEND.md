@@ -585,6 +585,13 @@ All of these are in `mt-pak-extract` (C# `UAssetTool`) unless stated otherwise.
 - **Edits are cumulative, so verify the shipped bytes.** Property blocks written in an earlier
   stage persist through every subsequent pass. Dump out of the built `.pak`, not out of the
   staging directory.
+- **Never copy the original `.uexp` next to a written `.uasset`.** On these cooked assets the
+  property payload lives in the `.uexp`; `UAsset.Write(path)` emits both halves. Copying the
+  source `.uexp` over the written one produces a file that *looks* patched — new imports, new
+  name map, bigger `.uasset` — and behaves exactly as before. It cost a full debugging cycle on
+  `--apply-plan`: parent and parameter names verified as written, while the dump still showed the
+  old clip value and the old parameter because the dump read the stale payload. If a patch
+  "writes fine but changes nothing", diff the `.uexp` bytes and search for the float you wrote.
 
 ---
 
