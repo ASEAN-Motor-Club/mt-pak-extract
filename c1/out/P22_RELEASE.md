@@ -88,3 +88,31 @@ Pack consolidated/full paks the way the game pak itself is packed: **V11 + Zlib*
 
 Diagnose a pak's real version before repacking — read the footer magic `E1 12 6F 5A`, then
 `<iqq` at +4 gives version / index offset / index size.
+
+## Server pak — zzz_AMC_Shuto_Server_v1_P.pak
+
+First dedicated-server pak for the `C1Full` tree (the existing `zzz_AMC_C1_Server_v*`
+paks belong to the older `Mods/C1` generation and carry no `C1Full` records).
+
+| | value |
+|---|---|
+| file | `zzz_AMC_Shuto_Server_v1_P.pak` |
+| size / sha256-16 | 253,264,659 B / `0b8b3c3296d53b2b` |
+| records | 4,422 — exactly the client pak's `Mods/C1Full/*` set, 0 extras, 0 `.ubulk` |
+| format | V11 + Zlib |
+
+Built as a real WindowsServer cook of `D:\C1FullMirror`, not a file strip:
+
+- cook PATH must include the game's `Binaries\Win64` and the project's plugin DLL dirs, or
+  `UnrealEditor-MotorTown.dll` fails with `GetLastError=126` / "game module could not be loaded"
+- 58 material-instance records the cook skipped were filled from client pak bytes
+  (versioned on both sides)
+- the cooked `Collision\` folder (570 MB) is not in the client record set and is not shipped;
+  BodySetup/NavCollision are inline in the mesh `.uexp`
+- maps are byte-identical to the client pak (`C1Full` `ecc89591a1d66e9d`,
+  `C1Full_Roads` `3e4ed7651f725441`)
+- collision parity spot-check on `c-1_-3`: BodySetup 3,591,109 B and NavCollision
+  5,345,307 B identical on both sides, StaticMesh export 4,569,713 → 45,536 B
+
+Server wiring (not yet applied): `enableExternalMods` must name
+`zzz_AMC_Shuto_Server_v1_P` and `mapName` must be `/Game/Mods/C1Full/Maps/C1Full`.
