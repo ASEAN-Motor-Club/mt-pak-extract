@@ -14,6 +14,34 @@ Nothing executed. Gates marked [ ].
 
 That is the system defect the family-by-family patches could never fix.
 
+## 1a. Source availability — checked, and it is a live blocker
+
+`merged.materials.json` **no longer exists on this machine**. The BeamNG extraction lived at
+`/opt/data/cache/scratch/beamng/x/…`, which the scratch GC pruned; a full search finds no copy on
+disk, none in any git history, and none on the Windows client. `07c_build_materials.sh` still
+defaults `MATJSON` to that dead path, so the stage cannot run as written.
+
+What survives, and is enough to proceed if we choose to:
+
+- **The author's own instances encode the blend decision per material** — every `MI_*` carries
+  `BasePropertyOverrides` with `BlendMode`, `TwoSided` and `OpacityMaskClipValue` (sampled 6 of 6:
+  `BLEND_Masked`, two-sided, clip 0.3333). That is a port-side contract for mask/opaque/blend,
+  independent of the lost JSON.
+- **`tex_alpha_all.json`** (1,190 textures, format + transparency ratio) survives in scratch and
+  answers "can this texture cut" without the source.
+- The measured census in §2 is preserved in this plan and in `MATERIALS_ALPHA_BLEND.md` §3f, so the
+  numbers are not lost even though the file is.
+
+Two ways forward, and they differ in fidelity:
+
+1. **Re-acquire the source** (Shuto C1 BeamNG archive) and keep the plan exactly as written —
+   per-material `alphaRef` thresholds (177–252) survive.
+2. **Re-point the contract at the author's instances** — recovers blend/two-sided/clip but collapses
+   every cutout to the author's uniform 0.3333, losing the per-material thresholds.
+
+Decision pending with freeman. Whichever wins, the canonical inputs must live in the repo
+(`c1/source/`), not in scratch: a 24-hour GC deleted the single source of truth for this port.
+
 ## 2. Exhaustive property matrix (measured on the 1,619 instances that resolve)
 
 Every key that exists anywhere in the file, its count over the instances, and how it is translated.
