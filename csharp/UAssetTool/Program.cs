@@ -120,8 +120,9 @@ class Program
         if (args.Contains("--apply-plan"))
         {
             int ai = Array.IndexOf(args, "--apply-plan");
-            if (ai + 3 >= args.Length) { Console.WriteLine("usage: --apply-plan <inDir> <outDir> <plan.json>"); return; }
-            ApplyPlan(args[ai + 1], args[ai + 2], args[ai + 3]);
+            if (ai + 3 >= args.Length) { Console.WriteLine("usage: --apply-plan <inDir> <outDir> <plan.json> [masters.txt]"); return; }
+            var mastersArg = ai + 4 < args.Length && !args[ai + 4].StartsWith("--") ? args[ai + 4] : null;
+            ApplyPlan(args[ai + 1], args[ai + 2], args[ai + 3], mastersArg);
             return;
         }
 
@@ -5648,15 +5649,46 @@ class Program
     // with a single set of overrides, which is how 1,653 instances ended up with TwoSided=true and
     // a uniform clip. Here the parent, the colour parameter NAME and the overrides all come from
     // the row, so an instance can never inherit another instance's decision.
-    static void ApplyPlan(string inDir, string outDir, string planPath)
+    // Full object path of whatever an instance is currently parented to, e.g.
+    // "/Game/Env/Materials/Master/M_PropMaster" (null when unresolved). The package import holds the
+    // directory and the parent import holds only the asset name, so the two must be joined.
+    static string ParentPath(UAsset asset, ObjectPropertyData parent)
+    {
+        // FPackageIndex encodes imports as NEGATIVE numbers: -9 means the 9th import (1-based).
+        // Reading `Index <= 0` as "no parent" silently disabled the whole keep-parent rule.
+        if (parent == null) return null;
+        int ip = -parent.Value.Index;
+        if (ip <= 0 || ip > asset.Imports.Count) return null;
+        var pim = asset.Imports[ip - 1];
+        var name = pim.ObjectName?.Value?.Value;
+        if (name == null) return null;
+        // A package import's name IS the full object path ("/Game/Env/.../M_PropMaster"); only the
+        // Material import carries the bare name. Return the package path, never the two joined —
+        // joining produces ".../M_PropMaster/M_PropMaster" and matches nothing.
+        int op = -(pim.OuterIndex?.Index ?? 0);
+        if (op > 0 && op <= asset.Imports.Count)
+        {
+            var dir = asset.Imports[op - 1].ObjectName?.Value?.Value;
+            if (!string.IsNullOrEmpty(dir)) return dir;
+        }
+        return name;
+    }
+
+    static void ApplyPlan(string inDir, string outDir, string planPath, string mastersFile = null)
     {
         Directory.CreateDirectory(outDir);
+        // Packages of Material assets that actually exist in the shipped game. An opaque instance
+        // already parented to one of these renders; reparenting it is a change with no reason.
+        var liveMasters = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (mastersFile != null && File.Exists(mastersFile))
+            foreach (var line in File.ReadAllLines(mastersFile))
+            { var t = line.Trim(); if (t.Length != 0) liveMasters.Add(t); }
         using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(planPath));
         var rows = new Dictionary<string, System.Text.Json.JsonElement>(StringComparer.OrdinalIgnoreCase);
         foreach (var r in doc.RootElement.GetProperty("rows").EnumerateArray())
             rows[r.GetProperty("mi").GetString() ?? ""] = r.Clone();
 
-        int changed = 0, copied = 0, failed = 0, reparented = 0, renamed = 0, overridden = 0;
+        int changed = 0, copied = 0, failed = 0, reparented = 0, renamed = 0, overridden = 0, keptElse = 0;
         foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
         {
             var stem = Path.GetFileNameWithoutExtension(path);
@@ -5681,25 +5713,35 @@ class Program
 
                 // ---- parent ------------------------------------------------------------------
                 var parent = props.OfType<ObjectPropertyData>().FirstOrDefault(p => p.Name?.Value?.Value == "Parent");
-                // Reuse an existing import of the master if one is already there; AddImportChain does
-                // not dedupe and a second copy only bloats the table the engine has to resolve.
-                int reuse = 0;
-                for (int i = 0; i < asset.Imports.Count; i++)
+                // An opaque instance already parented to a master that ships in the game renders
+                // correctly today. Reparenting it is a change with no reason behind it — that is how
+                // the concrete and median-guardrail families lost their textures, because
+                // M_PolygonMaster was chosen on a NameMap guess that never had a texture bound to it.
+                var curPath = ParentPath(asset, parent);
+                bool keepParent = treatment == "opaque" && curPath != null && liveMasters.Contains(curPath);
+                if (keepParent) keptElse++;
+                else
                 {
-                    var im = asset.Imports[i];
-                    if (im.ObjectName?.Value?.Value == masterName
-                        && im.ClassName?.Value?.Value == "Material"
-                        && im.ClassPackage?.Value?.Value == "/Script/Engine")
-                    { reuse = i + 1; break; }
+                    // Reuse an existing import of the master if one is already there; AddImportChain
+                    // does not dedupe and a second copy only bloats the table the engine resolves.
+                    int reuse = 0;
+                    for (int i = 0; i < asset.Imports.Count; i++)
+                    {
+                        var im = asset.Imports[i];
+                        if (im.ObjectName?.Value?.Value == masterName
+                            && im.ClassName?.Value?.Value == "Material"
+                            && im.ClassPackage?.Value?.Value == "/Script/Engine")
+                        { reuse = i + 1; break; }
+                    }
+                    int idx;
+                    if (reuse > 0) idx = reuse;
+                    else { var (_, ni) = AddImportChain(asset, "/Script/Engine", "Material", pkg, masterName); idx = ni; }
+                    if (parent != null) { parent.Value = FPackageIndex.FromImport(idx - 1); reparented++; }
                 }
-                int idx;
-                if (reuse > 0) idx = reuse;
-                else { var (_, ni) = AddImportChain(asset, "/Script/Engine", "Material", pkg, masterName); idx = ni; }
-                if (parent != null) { parent.Value = FPackageIndex.FromImport(idx - 1); reparented++; }
 
                 // ---- colour parameter name (belongs to the MASTER, never to the project) ------
                 var arr = props.OfType<ArrayPropertyData>().FirstOrDefault(a => a.Name.Value.Value == "TextureParameterValues");
-                if (arr != null && !string.IsNullOrEmpty(colourParam))
+                if (!keepParent && arr != null && !string.IsNullOrEmpty(colourParam))
                     foreach (var el in arr.Value.OfType<StructPropertyData>())
                     {
                         var info = el.Value.OfType<StructPropertyData>().FirstOrDefault(s => s.Name.Value.Value == "ParameterInfo");
@@ -5761,7 +5803,7 @@ class Program
             }
             catch (Exception ex) { CopyPair(path, uexp, outDir); Console.WriteLine("FAIL " + stem + ": " + ex.Message); failed++; }
         }
-        Console.WriteLine($"apply_plan changed={changed} copied={copied} failed={failed} reparented={reparented} renamed={renamed} overrides={overridden}");
+        Console.WriteLine($"apply_plan changed={changed} copied={copied} failed={failed} reparented={reparented} kept_parent={keptElse} renamed={renamed} overrides={overridden} masters={liveMasters.Count} mastersFile={mastersFile ?? "(none)"}");
     }
 
     static void SetMiParent(string inDir, string outDir, string listFile, string masterPkg, string masterName)
