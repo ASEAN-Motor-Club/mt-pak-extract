@@ -37,6 +37,12 @@ in **`BaseColor`**; `M_BaseColor` has no texture slot at all (`Color` is a vecto
 reads that from the plan row, so an instance can never be written with a parameter its master does
 not have.
 
+## Also fixed
+
+Bushes: the background behind foliage and the balcony bushes is gone. That was never a
+vegetation-specific defect — it was the same unbound parameter as the road markings, fixed by the
+reimport without any per-family rule.
+
 ## Known gaps
 
 - 95 secondary texture references (mostly `*em`/`*EM` emissive maps and a few `TNL`/`SMO` normals)

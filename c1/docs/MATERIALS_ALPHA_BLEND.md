@@ -307,6 +307,15 @@ saying so is a one-build experiment rather than an argument.
 - Corollary: the geometry pak's instances come from the author. They are the reference. Compare
   against them before replacing them.
 
+### The vegetation saga, closed
+
+The bush backgrounds (P5–P9: white fringes, then a black background behind the balcony bushes) were
+never a foliage-specific problem. They were the same defect as the road markings: instances written
+with a parameter name their master does not have, so the mask was never bound and the master's
+default texture showed through. The full reimport (P15) fixed them without a single
+vegetation-specific rule, which is the tell — if a fix needs a per-family exception, the model is
+wrong somewhere upstream.
+
 ## 3c. The source's own material definitions — the contract to port against
 
 The BeamNG map carries its materials as data, so there is no need to infer intent:
