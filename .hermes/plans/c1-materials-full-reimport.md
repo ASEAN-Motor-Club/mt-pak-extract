@@ -14,6 +14,12 @@ Nothing executed. Gates marked [ ].
 
 That is the system defect the family-by-family patches could never fix.
 
+## Status
+
+**Shipped.** P16 is the release (`c1/out/P16_RELEASE.md`, tag `c1-materials-p16`). The plan's phases
+all ran; the one assumption that had to be thrown out was "opaque goes to `M_PolygonMaster`" — see
+P16 notes and `MASTER_CONTRACTS.md`.
+
 ## 1a. Source availability — was a blocker, now RESOLVED (reacquired)
 
 **Resolved 2026-11-06.** The source was missing (scratch GC deleted

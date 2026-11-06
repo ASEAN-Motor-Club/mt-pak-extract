@@ -1,5 +1,10 @@
 # P15 — full material reimport
 
+> **Superseded by P16.** P15 reparented all 1,173 opaque instances onto `M_PolygonMaster` and
+> stripped the textures off the concrete, guardrail and other opaque families. P16 keeps each
+> opaque instance's existing parent and is the build to use. Kept for history: the masking work is
+> identical in both.
+
 The first build derived from the whole canonical source rather than patched family by family.
 Confirmed in game by freeman ("this is looking better").
 
