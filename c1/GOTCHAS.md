@@ -920,6 +920,12 @@ Rules that follow — **one level asset, one pak**, enforced by `c1/tools/build_
 | `C1Full_Roads.umap` | nav pak (`zzzzzzzz_AMC_C1NavTest_v2`) | roads + nav graph |
 
 The script takes exactly one stem and fails if a second level asset appears in the staging dir.
+
+**Materials are their own pak too** (`zzzzz_AMC_C1Mats_P*`, all 1,653 instances). An experiment
+that changes a material instance must be folded INTO that pak, never shipped as a second mats pak:
+two paks claiming the same MI is the same shadowing bug, only silent at the shader level. The
+roughness trial (4 road MIs moved to `MI_GroundMaster` with a real `Roughness` texture) was
+delivered as its own pak first; that was wrong and it was folded into `P21`.
 A nav pak that also shipped `C1Full.umap` evicted the sublevel reference on filename sort alone
 and the lights vanished again — that is a build error, not a sort-order policy to manage.
 - Always-Loaded by streaming class, not by a `b_always_loaded` property: that property does not
