@@ -532,6 +532,69 @@ def main():
                     seam_stubs += 1
         log('seam links=%d (stub links from overrunning tails=%d)' % (seam_links, seam_stubs))
 
+    # ---- 2b2b. soften: a road-to-road link must be as gentle as a lane change -----------
+    # The linker joins a node to the NEAREST node of the other road. Where two road objects
+    # overlap, that nearest node is often 0.2-2 m away, so the link turns 60-90 deg in one
+    # station: the AI brakes hard or refuses it. Re-aim such a link at a node further ahead
+    # on the target chain (and optionally one station later on the source), which walks the
+    # same lateral shift over ~10 m, exactly like a lane change.
+    softened = 0
+    if float(cfg.get('cross_soften_deg', 0.0)) > 0.0:
+        smax = float(cfg['cross_soften_deg'])
+        look = int(cfg.get('cross_soften_look', 4))
+        smax_d = float(cfg.get('cross_soften_max_cm', 4500.0))
+        chains, pos = {}, {}
+        for idx, n in enumerate(nodes):
+            chains.setdefault((id(n['road']), abs(int(n['lane']))), []).append(idx)
+        for key, lst in chains.items():
+            lst.sort(key=lambda i: nodes[i]['k'])
+            for o, i in enumerate(lst):
+                pos[i] = o
+
+        def _worse(i, j):
+            a, b = nodes[i]['loc'], nodes[j]['loc']
+            u = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
+            d = math.sqrt(sum(c * c for c in u)) or 1.0
+            u = (u[0] / d, u[1] / d, u[2] / d)
+            c1 = sum(x * y for x, y in zip(u, nodes[i]['dir']))
+            c2 = sum(x * y for x, y in zip(u, nodes[j]['dir']))
+            return max(math.degrees(math.acos(max(-1.0, min(1.0, c1)))),
+                       math.degrees(math.acos(max(-1.0, min(1.0, c2)))))
+
+        for i in range(len(nodes)):
+            for j in list(edges[i]):
+                n, m = nodes[i], nodes[j]
+                if id(n['road']) == id(m['road']) or _worse(i, j) <= smax:
+                    continue
+                ci = chains[(id(n['road']), abs(int(n['lane'])))]
+                cj = chains[(id(m['road']), abs(int(m['lane'])))]
+                oi, oj = pos[i], pos[j]
+                best = None
+                for da in range(0, 3):
+                    for db in range(0, look + 1):
+                        if oi + da >= len(ci) or oj + db >= len(cj):
+                            continue
+                        ii, jj = ci[oi + da], cj[oj + db]
+                        if ii == i and jj == j:
+                            continue
+                        if abs(nodes[jj]['loc'][2] - nodes[ii]['loc'][2]) > 50.0:
+                            continue
+                        d = math.dist(nodes[ii]['loc'], nodes[jj]['loc'])
+                        if d > smax_d or d < 200.0:
+                            continue
+                        w = _worse(ii, jj)
+                        key = (0 if w <= 15.0 else 1, w if w > 15.0 else 0.0, d)
+                        if best is None or key < best[0]:
+                            best = (key, ii, jj)
+                if best is None:
+                    continue
+                _, ii, jj = best
+                val = edges[i].pop(j)
+                if jj not in edges[ii] or edges[ii][jj] > val:
+                    edges[ii][jj] = val
+                softened += 1
+        log('soften: re-aimed %d steep cross links (>%.0f deg)' % (softened, smax))
+
     # ---- 2b3. dedupe: one link per target zone -----------------------------------------
     # A junction produces ONE link, not one per station. At Shibaura the same road pair
     # emitted seven links from consecutive stations onto the same target head, and the AI
@@ -877,6 +940,7 @@ def main():
               'skipped_deck': skipped_deck, 'skipped_grade': skipped_grade,
               'skipped_pos': skipped_pos, 'seam_links': seam_links, 'seam_stubs': seam_stubs,
               'dedupe_dropped': deduped, 'excluded_roads': len(excluded_roads),
+              'softened': softened,
               'islands': len(remap), 'crossroads': len(final_groups),
               'crossroad_nodes': len(nodes) - sum(1 for x in cross if x == -1),
               'junction_merges': merges,
