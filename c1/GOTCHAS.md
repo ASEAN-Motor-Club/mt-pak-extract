@@ -911,10 +911,17 @@ Fix: the lights live in their own sublevel, `C1Full_Lights`, attached to the per
 `C1Full.umap` + `C1Full_Lights.umap` but **never** `C1Full_Roads`
 (`c1/tools/build_lightspak.sh` fails if it leaks in). Nav keeps `C1Full_Roads`.
 
-Rules that follow:
-- The persistent level is now the only place the sublevel reference can live, so **only one pak
-  may ship `C1Full.umap`**. A nav pak that ships its own copy evicts the reference on filename
-  sort alone and the lights vanish again.
+Rules that follow — **one level asset, one pak**, enforced by `c1/tools/build_levelpak.sh`:
+
+| asset | owner pak | contents |
+|---|---|---|
+| `C1Full.umap` | map pak (`zzzzzz_AMC_C1Map_v2`) | persistent level; the only place the sublevel references live |
+| `C1Full_Lights.umap` | lights pak (`zzzzzzzzzz_AMC_Shuto_Lights_v10`) | all 10,474 light actors |
+| `C1Full_Roads.umap` | nav pak (`zzzzzzzz_AMC_C1NavTest_v2`) | roads + nav graph |
+
+The script takes exactly one stem and fails if a second level asset appears in the staging dir.
+A nav pak that also shipped `C1Full.umap` evicted the sublevel reference on filename sort alone
+and the lights vanished again — that is a build error, not a sort-order policy to manage.
 - Always-Loaded by streaming class, not by a `b_always_loaded` property: that property does not
   exist on `LevelStreamingAlwaysLoaded` in this build (`Failed to find property 'b_always_loaded'`).
 - Sublevels are for packaging isolation, **not** performance. Streaming corridor lights by distance
