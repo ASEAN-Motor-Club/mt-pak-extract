@@ -148,6 +148,23 @@ having LODs at all). Deleting the asset *before* importing is what actually yiel
 single-LOD asset: `replace_existing=True` on a multi-LOD asset rewrites **LOD0 only** and
 keeps the extra levels.
 
+**Import from the REBASED OBJ, never the absolute one.** `meshes_local/*.obj` are produced by
+`rebase_obj.py` — x/y shifted by `-floor(min_xy/500)*500`, V mirrored (`v' = 1 - v`). Every
+cell actor already sits at `origin*100` with Y negated (`set_transforms.py`), so importing a
+copy taken from `meshes/*.obj` applies the origin a second time: the tile lands ~1.5 km away
+and reads in game as "that cell is completely missing". The tell is the component transform
+(`comp_loc = (-100000, +200000)` for origin `[-1000, -2000]`), not the asset. Two gates catch
+it before a build ships:
+
+- asset bounds must equal `(obj_metres - origin) * 100`, Y negated;
+- cooked `.uexp` must land within a few percent of the shipped copy for that cell — a +38%
+  delta means the import is not reproducing the shipped asset, and re-importing an
+  **untouched** cell as a control is how the importer itself gets tested.
+
+**Un-hiding a BeamNG dummy volume is geometry work, not material work.** `dum` is a
+collision-only material (`colorMap: null.dds`). Reparenting `MI_C1_dum` to `M_Hidden` or to a
+0-alpha `M_AlphaTestOneSided` instance does not hide it; the 12 faces have to go.
+
 **Scale gate — the one that matters most.** Cell OBJs are authored in metres; Unreal
 imports 1 unit = 1 cm. If `import_uniform_scale = 100` fails to land, every tile ends up
 **100× too small** and the whole map collapses into a miniature clustered near the
