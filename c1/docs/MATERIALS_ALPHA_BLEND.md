@@ -90,15 +90,32 @@ the only names an instance may legally bind.
   → This is the master for trees, bushes and grass. Note the underscore in `Base_Color`.
 - **`/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTest`** — a generic masked master used
   for fences and metal. `BLEND_Masked`, TwoSided, default texture `T_fenceMetal_01`.
-  Parameters: `Color`, `Roughness`.
-  → It will cut a texture correctly, but it shades like metal. Putting foliage on it produces
-  **correct cutout, wrong appearance** — which reads as "these are no longer trees".
+  NameMap: `Color`, `Roughness`, `Texture`, `T_fenceMetal_01`.
+  → **`Color` is almost certainly a vector tint and `Texture` the texture slot** — the same layout as
+  `M_BaseTexture`, which is confirmed by 51 game instances (`Texture`=texture, `Color`=vector).
+  No sampled instance parents to `M_AlphaTest`, so this is *not yet proven*; a two-variant test
+  (`Texture` vs `Color`) settles it. **Binding the colour map to `Color` here is the leading
+  explanation for P10–P13's "missing texture" → "not rendering at all".**
+  → It cuts a texture correctly but shades like metal. Putting foliage on it produces **correct
+  cutout, wrong appearance** — which reads as "these are no longer trees".
 - **`/Game/Mods/C1/Materials/M_C1_Surface*`** — the author's own masters (opaque, opaque-PBR,
   masked, and `M_C1_Surface_Trans` for translucency).
-- **`M_PropMaster` / `M_PolygonMaster`** — opaque. They declare `Use_Opacity` /
-  `Use_OpacityFromAlpha` scalars, and setting those to 1 does **not** turn a foliage billboard into
-  a cutout: the bounding rectangle still paints its texture's backdrop, which is black on these
-  atlases. Do not route foliage here.
+- **`M_PropMaster`** — `BaseColor`, `Normal`, `Mask`, `Use_MaskTexture`, `Use_NormalTexture`,
+  `Metallic`, `Roughness`, `UV_Tiling`. Opaque PBR, no emissive.
+- **`M_PolygonMaster`** (`/Game/Env/Materials/Master`) — the game's default prop master (its own
+  `MI_BaseColor` wrapper parents to `MI_PolygonMaster`). Confirmed from 6+ instances:
+  `BaseColor` (texture), `BaseColor_Tint` (vector), `Normal`, `Metallic`, `Roughness` (textures),
+  **`Emissive` (texture) + `Emissive_Tint` (vector) + `EmissiveIntensity` (scalar)** — set together
+  by the game's `MI_MatteWhite_01`. Also declares `Opacity`, `Use_Opacity`, `Use_OpacityFromAlpha`.
+  → Setting `Use_Opacity` on a foliage billboard does **not** produce a cutout: the rectangle still
+  paints its atlas backdrop (black on these). Do not route foliage here. Masking road decals through
+  `Opacity` is a different question and is untested.
+- **`M_BaseTexture`** (`/Game/AssetsvilleTown2/...`) — `Texture` (texture), `Color` (**vector tint**),
+  `Roughness` (scalar), `UV`. Simple opaque signage master.
+- **`M_BaseColor`** — `Color` (vector), `Roughness` (scalar). **No texture slot at all**; flat colour.
+- **`M_GenericBase`** — the richest: `BaseTexture`, `NormalTexture`, `MetallicRoughnessTexture`,
+  `EmissiveTexture`, `OverlayTexture`, `ColorChangeMask` (textures), vector offsets/tints,
+  `AmbientOcculusion`, `Metallic`, `Roughness`, `SeaLevel` (scalars).
 
 ---
 
@@ -109,12 +126,18 @@ mod pak carries no shader graph — the game's shader maps are baked into its ow
 mod pak cannot extend them. A custom master cooks to ~3.6 KB with zero shader data and
 renders as the default-material checkerboard.
 
-So the port has exactly three usable targets, plus the translucent one:
+So the usable targets are these (measured, see `c1/docs/MASTER_CONTRACTS.md` for the full table):
 
 - `M_PropMaster` — opaque, full PBR. Parameters: `BaseColor`, `Normal`, `Roughness`,
-  `Metallic`, `Specular`, `Mask`, `Use_MaskTexture`, `UV_Tiling`. **Never routes alpha.**
-- `M_PolygonMaster` — opaque, no `BlendMode`. **Never routes alpha**; masked instances there
-  clip to black.
+  `Metallic`, `Mask`, `Use_MaskTexture`, `Use_NormalTexture`, `UV_Tiling`. **Never routes alpha.**
+- `M_PolygonMaster` — the game's default prop master. Full PBR **plus an emissive chain**
+  (`Emissive` texture, `Emissive_Tint`, `EmissiveIntensity`) and opacity gating (`Opacity`,
+  `Use_Opacity`, `Use_OpacityFromAlpha`). This is the primary target for anything with a colour
+  map, and the only route to emissive without switching masters.
+- `M_BaseTexture` — colour map + tint + roughness, for flat signage.
+- `M_BaseColor` — flat colour only, no texture slot; the target for `diffuseColor` materials.
+- `M_GenericBase` — richest of all (separate normal / metallic-roughness / emissive maps, AO
+  scalar, overlays, triplanar), used by character and environment assets.
 - `M_Plants` (`/Game/AssetsvilleTown/Materials/MasterMaterials/M_Plants`) — the foliage master:
   `BLEND_Masked`, TwoSided, `MSM_Subsurface`, dithered LOD, grass wind. Cuts from its colour
   texture's alpha. **Its colour parameter is `Base_Color`, with an underscore** — binding
@@ -125,6 +148,10 @@ So the port has exactly three usable targets, plus the translucent one:
   vegetation.
 - `M_GlassTrans` — the translucent target for surfaces that must blend rather than cut.
 
+**AO is the one channel with no general home.** `M_PlantMaster` declares an `AO` parameter and
+`M_GenericBase` declares `AmbientOcculusion` (a scalar intensity, not a map) — nothing else takes an
+AO map. Treat AO as the first channel to drop, and report it.
+
 There is **no master in Motor Town that samples a separate opacity texture**. The author's
 `M_C1_Surface_Masked` reads a dedicated `OpacityTex` parameter, but that design cannot be
 reproduced with a vanilla master — the mask has to be moved into the colour texture's alpha
@@ -132,6 +159,13 @@ channel (`Base_Color` on `M_Plants`, `Color` on `M_AlphaTest`).
 
 Correction to what this document said earlier: the foliage master's parameter is **`Base_Color`**,
 not `BaseColor`. Seven builds bound `BaseColor` and silently rendered the master's default leaf.
+
+**A parameter's name is not its type.** `Color` is a *texture* on `M_Plants`' sibling masters and a
+*vector tint* on `M_BaseTexture`, `M_BaseColor` and (by layout) `M_AlphaTest`. Writing a texture into
+a vector parameter does not error — the instance keeps the master's default texture and you get a
+"missing texture" or "nothing renders" symptom that no amount of blending analysis explains. The
+only safe contract is a **game-authored instance that sets the parameter**, dumped and read:
+`c1/docs/MASTER_CONTRACTS.md`. Do this before binding any name you have not seen an instance set.
 
 ### The author's ground truth (what we are porting *from*)
 
@@ -147,7 +181,7 @@ Extracted from the original pak, not inferred:
 
 ---
 
-## 2. The five rules
+## 2. The rules
 
 1. **Never ship a custom or author master.** It renders checkerboard. Reparent to a vanilla
    master and move the data into that master's parameters.
@@ -164,6 +198,14 @@ Extracted from the original pak, not inferred:
 5. **An opaque texture cannot be blended by a flag.** If a marking texture is 100% opaque
    (`t = 0.0`), setting `BLEND_Translucent` blends nothing — you get a white sheet. The alpha
    has to exist in the texture.
+6. **A parameter's name is not its type.** `Color` is a texture on some masters and a vector tint
+   on others. Writing the wrong type silently does nothing and the master keeps its default
+   texture. Bind only names you have seen a **game-authored instance** set — see
+   `MASTER_CONTRACTS.md`. This rule alone explains the P10→P13 failure chain.
+7. **Check that the parent exists in the pak before debugging anything else.** A dangling parent
+   is not an error you see — the engine substitutes a default material, or nothing. If "a lot of
+   materials are broken" includes unrelated families at once, verify parents before touching a
+   single parameter.
 
 ---
 
@@ -393,6 +435,51 @@ Result of the first run (`mat_mj`): 84 instances in the pak (18 masked, 66 baked
 baked (0 errors), mask coverage 0.649–0.755, e.g. `mat_mj_0m` verified as parent `M_AlphaTest`,
 parameter `Color`, clip 0.7098 (=181/255).
 
+## 3e. Additive materials (`translucentBlendOp: "AddAlpha"`) — decided: masked
+
+Motor Town has no additive blend mode on any usable master: `M_PolygonMaster`, `M_PropMaster`,
+`M_AlphaTest`, `M_GlassTrans` are all opaque, masked or alpha-blended. BeamNG's `AddAlpha`
+(63 of the 91 pavement-text materials) therefore cannot be reproduced exactly.
+
+Decision: **mask them.** Evidence gathered before deciding, over all 62 distinct colour maps:
+
+- They are *not* self-lit. Mean luminance 25–110 out of 255 (`kyuukabu_02` 26, `kurumaisu` 110),
+  peaks at 255. Additive is what makes them read as bright paint on dark asphalt.
+- Masked keeps every glyph legible; the loss is punch, worst on dense small text (駐停車禁止).
+- Leaving them translucent keeps the "closer to additive" feel but re-introduces the sorting
+  failure that made them vanish against the road — the one behaviour we know is broken.
+
+If masked text reads too flat in game, the cheap upgrade is **masked + `Emissive`** on
+`M_PolygonMaster`: the emissive chain is a real texture + tint + intensity, and self-lit paint is
+what the source was approximating. Do not brighten the colour map instead — the gain would be
+per-texture (a brown accessibility plate would go beige).
+
+## 3f. Source property → UE translation (the port contract)
+
+Per-instance counts from the 1,619 instances that resolve to `merged.materials.json`:
+
+- `alphaTest` → `BLEND_Masked`, clip `alphaRef/255` (351 instances). No `alphaRef` → 0.5 (14).
+  `alphaRef` without `alphaTest` → inert, do not apply (52).
+- `translucent` (80) → three cases: with `opacityMap` (68) bake the mask into colour alpha and
+  mask; without a map but with alpha in the colour texture (12) mask off that alpha; and
+  `opacityMap` on a material that is *not* translucent (10) is still a cutout — mask it.
+- `translucentBlendOp: AddAlpha` (63) → masked, see §3e. `translucentZWrite` /
+  `translucentRecvShadows` have no instance-level switch; record, do not fake.
+- `doubleSided` (77) → `TwoSided` only when true. Never set it "to be safe": none of the
+  translucent materials are double-sided.
+- colour: `colorMap` (1,316) and `baseColorMap` (285) are the same slot; `diffuseColor` (40) is a
+  flat colour and needs a vector parameter, not a texture; 3 materials have neither.
+- `normalMap` (170) linear, `roughnessMap` (217), `metallicMap` (153), `ambientOcclusionMap` (156).
+  Map wins over scalar; the scalar applies only when there is no map.
+- emissive (184): `emissiveMap` (65), `emissiveFactor` (68), `instanceEmissive` (15), flag only
+  (116) → `Emissive` + `Emissive_Tint` + `EmissiveIntensity` on `M_PolygonMaster`.
+  `glow`/`glowFactor` (4/2) ride the same path as an approximation.
+- not translatable, always reported: `groundType` (103, physics/audio surface), `useAnisotropic`
+  (1,370, sampler), `detailMap`/`detailNormalMap`/`detailScale` (4/4/2, needs a second UV set),
+  `castShadows`, `invertBackFaceNormals`, `translucentZWrite`, `translucentRecvShadows`.
+- animation: `animFlags`/`sequenceFramePerSec`/`sequenceSegmentSize` (4) are flipbooks — exclude
+  them from baking and masking.
+
 ## 4. Diagnosis procedure — follow it in order
 
 Do these in sequence and stop at the first hit. Do not skip ahead to blend flags.
@@ -403,7 +490,14 @@ Do these in sequence and stop at the first hit. Do not skip ahead to blend flags
    foliage instances existed; nineteen were on an opaque master and only one was on a masked one, so
    three consecutive builds changed exactly one tree while a forest stayed black. Fixing "the"
    instance you dumped is not fixing the symptom.
-1. **Identify the instance.** A coordinate plus a screenshot beats any amount of statistics.
+1. **Check the parent exists in the pak at all.** Cheap and decisive: scan the shipped pak for the
+   parent's package path. On Windows, `findstr /M /C:"/Mods/C1/Materials" <pak>` answers it in
+   seconds; a PowerShell byte loop over 700 MB does not finish. If the whole path is missing, every
+   instance in the family is dead no matter what its parameters say, and no per-family patch can
+   help. This was the actual state of the C1 port from the beginning: 1,653 instances, 3,306
+   material entries, **zero `Material` assets** — every `MI_*` pointed at
+   `/Game/Mods/C1/Materials/M_C1_Surface*`, a package the pak does not contain.
+2. **Identify the instance.** A coordinate plus a screenshot beats any amount of statistics.
    From the coordinate, get the cell, then the mesh, then the material slot. Name the MI
    before changing anything.
    The player position is readable without asking: UE4SS writes
@@ -426,6 +520,8 @@ Do these in sequence and stop at the first hit. Do not skip ahead to blend flags
 
 ### Symptom → cause table
 
+- **Many unrelated families broken at once** → dangling parents (step 1). Not a blend problem, not
+  a parameter problem: the master package does not exist in the shipped pak.
 - **Checkerboard everywhere** → a custom/author master is being referenced (rule 1).
 - **Flat colour, no texture** → the parameter name does not match the parent's parameter, or
   no texture is bound at all.
@@ -498,7 +594,11 @@ What works instead: patch the **cooked** texture in place.
 - Decode level 0 from the `.ubulk` (`texture2ddecoder` / `etcpak`), composite the alpha you
   want, re-encode in the **same** format, and write it back. Same format means the same byte
   count, so the `.ubulk` can be overwritten without touching any headers.
-- Level 0 only is acceptable: lower mips only affect distant LODs and RGB is unchanged.
+- **Bake every mip level, not just level 0.** This is not optional and it is not about distance
+  detail: a BC7/BC3 colour map ships its own alpha at every mip, and those lower-mip alphas are
+  usually *zero*. Cutting on level 0 gives glyphs that vanish a few metres away, because the
+  distant mips are fully transparent. Box-filter the mask to each level and re-encode each one
+  in the same format. P11 shipped mip-0-only and looked like "the bake did nothing" in game.
 - Ship `uasset` + `uexp` + `ubulk` under the **original** asset path in the material pak, so
   every instance that references it picks up the new alpha with no repoint at all.
 
