@@ -660,3 +660,57 @@ content pak mounting `Mods/<X>/` overrides the new one.
 - [ ] no other pak mounts the same namespaces
 - [ ] in-game: correct name, intended game mode, player controllable, geometry
       visible **and textured**, traffic present
+
+## 7. Lighting: port the source's units, not an eyeballed number
+
+Lighting is the one part of a port where the source map gives you exact numbers, so use them. Both
+BeamNG and Unreal are physically based; the trap is that "intensity" means a different unit in each.
+
+**Source (BeamNG)** — `documentation.beamng.com/modding/lighting/pbl`, `/lights/`:
+
+- `SpotLight` intensity is **candelas (cd)**; `PointLight` is **lumens (lm)**.
+- Legacy `brightness` converts directly: **1 brightness ≈ 5,000 cd** (spot), **≈ 62,832 lm** (point).
+- `range` / `radius` **only clamp** the contribution; falloff is inverse-square, the value does not
+  shape it. Port it as `AttenuationRadius = range_m × 100` (cm).
+- Colour is **linear RGBA**.
+- Author guidance: street lamp 10,000–50,000 cd at 25–60 m; tunnel fixtures moderate cd, short range.
+
+**Target (Unreal)** — Epic, *Using Physical Lighting Units*:
+
+- Point/spot expose **Intensity Units** = Candela / Lumen / Unitless (and EV).
+- **1 cd = 625 unitless**; **1 cd = 1 lm/sr**. Unitless numbers are not comparable to source values.
+
+**Mapping**
+
+```python
+intensity = brightness * 5000.0    # spot  -> CANDELAS
+intensity = brightness * 62832.0   # point -> LUMENS
+attenuation_radius = range_m * 100.0
+inner_angle, outer_angle = source_inner, source_outer   # degrees, same meaning in both engines
+color = srgb(source_linear_rgb) * 255                  # NOT linear * 255
+```
+
+**Rules**
+
+- **Use one actor per row when rows differ.** A blueprint light component is a class default shared by
+  every instance, and per-instance overrides are not reliably cooked. Differing brightness, cone,
+  range or colour ⇒ native `SpotLight`/`PointLight` actors.
+- **Convert colour linear → sRGB.** Skipping it turns amber into red and sends you tuning the wrong
+  variable.
+- **Never clamp a source angle to make it look better.** A 170° outer cone is the level author's
+  choice; port it and raise any change with them.
+- **Do not calibrate by eye against unitless.** If the result looks wrong, check the *unit* and the
+  exposure range first (Epic: raise Max EV100 before touching intensity), then tune.
+- **Aim is separate from brightness.** A spot with no rotation points along +X; bake pitch −90 into the
+  template and verify the component's rotation, not the actor's.
+
+**Verification** (same discipline as §3, applied to a 2,169-light set):
+
+- [ ] per-group counts sum to the corridor inventory (spot vs point declared per group)
+- [ ] intensity histogram matches the source brightness histogram
+- [ ] attenuation histogram matches the source range histogram
+- [ ] every row carries non-default values (no silent fallback)
+- [ ] the cooked level no longer references a blueprint that all rows replaced (expected)
+- [ ] in-game: lamps lit on their fixtures at a checkpoint near spawn, not only on a far cluster
+
+Gotcha log: `c1/GOTCHAS.md` §32.

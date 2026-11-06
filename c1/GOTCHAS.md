@@ -795,3 +795,63 @@ by the map).
 
 **Rule:** after any transform write, re-read the value in the same process and include it
 in a gate. `set_*` returning cleanly is not a write (same trap as §6, §17).
+
+## 32. Ported lights: unitless intensity and sRGB colour (2026-11-06)
+
+Four separate defects presented as one symptom — "the lights are too dim / too red / not on the
+poles" — and three of them were unit errors, not lighting bugs.
+
+**Symptom 1 — a brightness ladder where every rung looked wrong.**
+Lamps at 20000 unitless read as a match flame; 200,000 still looked dim; the ladder
+60k / 200k / 600k / 2,000,000 produced "all of them too bright" and "still dim" in the same session.
+
+**Cause:** the two engines were never in the same unit.
+- BeamNG: `SpotLight` intensity is **candelas**, `PointLight` is **lumens**, and the legacy
+  `brightness` fallback is **1 brightness ≈ 5,000 cd (spot) / ≈ 62,832 lm (point)**; `range` only
+  clamps an inverse-square falloff.
+- UE: point/spot accept Candela / Lumen / Unitless, with **1 cd = 625 unitless**.
+
+So 200,000 unitless ≈ **320 cd** — ~30× *dimmer* than the 10,000 cd that brightness 2 actually
+means, and the 2M rung only reached ~3,200 cd. There was no value on the ladder that corresponded to
+the source lamp, which is why the reports conflicted.
+
+**Fix:** set `intensity_units = CANDELAS` (LUMENS for point lamps) and compute from the source:
+`cd = brightness × 5000`, `lm = brightness × 62832`, `attenuation_radius = range_m × 100`.
+Result on 2,169 lights: 10,000 cd ×1,083, 7,500 ×107, 5,000 ×623, 62,832 lm ×356.
+
+**Symptom 2 — "they're all too red".**
+Source colour `[1, 0.392, 0, 1]` written into `unreal.Color` came out as `(255,100,0)`.
+
+**Cause:** source colours are **linear RGBA**; `unreal.Color` / the `light_color` editor property is
+**sRGB**. Turning a linear value into a byte by multiplying by 255 saturates the hue.
+
+**Fix:** convert `s = 12.92x if x <= 0.0031308 else 1.055·x^(1/2.4) − 0.055`, then ×255. Linear
+0.392 → sRGB 168, not 100. The amber then reads as amber.
+
+**Symptom 3 — `/lampcolor` turned the lamps black.**
+`SetLightColor({r=…, g=…, b=…}, true)` via UE4SS produced a black light.
+
+**Cause:** the Lua table did not cross into `FLinearColor` as anything but zero. Not a setter defect —
+a marshalling one, and it silently *succeeded*.
+
+**Rule:** never conclude "runtime colour control works" from a call that returned without error. Read
+the component's colour back in the same call, and treat "the light went black" as a zeroed struct
+before blaming the engine.
+
+**Symptom 4 — per-lamp values could not be expressed.**
+One `BP_C1_Lamp` produced identical lamps; trying to vary intensity per instance changed nothing.
+
+**Cause:** a blueprint's light component is a **class default**. Every instance of the BP shares it,
+and per-instance component overrides are not reliably cooked (a per-instance `visible=true` was lost).
+
+**Fix:** when rows differ, author **native** `unreal.SpotLight` / `unreal.PointLight` actors — their
+component properties serialise per actor. Keep a blueprint only for a lamp type that is genuinely
+uniform. Consequence: after converting to native actors the level no longer references
+`BP_C1_Lamp`, so the BP drops out of the cook (`MISSING Blueprints/BP_C1_Lamp`) and the pak contains
+only the map. That is correct, not a regression.
+
+**Rule:** choose the primitive from the data, not from convenience — uniform lamps can be a BP,
+per-row lamps must be native actors.
+
+**Docs:** BeamNG `documentation.beamng.com/modding/lighting/pbl` + `/lights/`; Epic *Using Physical
+Lighting Units*. Skill: `motortown-map-lighting`, `references/light-units-beamng-to-ue.md`.
