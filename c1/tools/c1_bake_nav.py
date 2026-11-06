@@ -115,9 +115,13 @@ def main():
 
     # ---- 1. sample nodes -----------------------------------------------------------
     lanes_from_width = int(cfg.get('lanes_from_width', 1)) == 1
+    excluded_roads = {str(x) for x in cfg.get('exclude_roads', [])}
     rebalanced = 0
     nodes = []          # plain dicts first; unreal structs come later
     for road in roads:
+        if road.get_actor_label() in excluded_roads:
+            log('EXCLUDED %s (traffic policy)' % road.get_actor_label())
+            continue
         spl = get_spline(road)
         if spl is None:
             log('NO_SPLINE %s' % road.get_actor_label())
@@ -528,6 +532,48 @@ def main():
                     seam_stubs += 1
         log('seam links=%d (stub links from overrunning tails=%d)' % (seam_links, seam_stubs))
 
+    # ---- 2b3. dedupe: one link per target zone -----------------------------------------
+    # A junction produces ONE link, not one per station. At Shibaura the same road pair
+    # emitted seven links from consecutive stations onto the same target head, and the AI
+    # took them as seven separate merges. Keep the shortest link per target zone.
+    deduped = 0
+    if float(cfg.get('dedupe_zone_cm', 0.0)) > 0.0:
+        zone = float(cfg['dedupe_zone_cm'])
+
+        def _ck(n):
+            return (id(n['road']), abs(int(n['lane'])))
+
+        groups = {}
+        for idx, n in enumerate(nodes):
+            for j in edges[idx]:
+                m = nodes[j]
+                if id(m['road']) != id(n['road']):
+                    groups.setdefault((_ck(n), _ck(m)), []).append((idx, j))
+        drop_pairs = set()
+        for key, lst in groups.items():
+            lst.sort(key=lambda p: math.dist(nodes[p[0]]['loc'], nodes[p[1]]['loc']))
+            kept_targets = []
+            for i, j in lst:
+                if any(math.dist(nodes[j]['loc'], nodes[k]['loc']) < zone for k in kept_targets):
+                    drop_pairs.add((i, j))
+                else:
+                    kept_targets.append(j)
+        # repair: a chain tail must keep at least one cross-road exit
+        tails = {}
+        for idx, n in enumerate(nodes):
+            k = _ck(n)
+            if k not in tails or n['k'] > nodes[tails[k]]['k']:
+                tails[k] = idx
+        for t in set(tails.values()):
+            cross = [(t, j) for j in edges[t] if id(nodes[j]['road']) != id(nodes[t]['road'])]
+            if cross and all(p in drop_pairs for p in cross):
+                best = min(cross, key=lambda p: math.dist(nodes[p[0]]['loc'], nodes[p[1]]['loc']))
+                drop_pairs.discard(best)
+        for i, j in drop_pairs:
+            edges[i].pop(j, None)
+            deduped += 1
+        log('dedupe: dropped %d duplicate cross links (zone %.1f m)' % (deduped, zone / 100.0))
+
     # ---- 2c. lane-change edges: diagonal, two stations ahead ------------------------------
     # The old edges joined the same station on the adjacent lane: 3.4 m sideways with zero
     # forward progress, i.e. a 90 deg corner at a 10 m station grid. The AI has to slow to
@@ -830,6 +876,7 @@ def main():
               'skipped_backward': skipped_backward,
               'skipped_deck': skipped_deck, 'skipped_grade': skipped_grade,
               'skipped_pos': skipped_pos, 'seam_links': seam_links, 'seam_stubs': seam_stubs,
+              'dedupe_dropped': deduped, 'excluded_roads': len(excluded_roads),
               'islands': len(remap), 'crossroads': len(final_groups),
               'crossroad_nodes': len(nodes) - sum(1 for x in cross if x == -1),
               'junction_merges': merges,
