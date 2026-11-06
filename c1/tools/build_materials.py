@@ -247,6 +247,15 @@ def main() -> int:
                     {"mi": mi, "why": f"texture alpha flat (spread {spread})"}]
                 continue
             ownalpha_names.append(mi)
+            # Ship the verified texture with the instance: the client's geometry pak is rebuilt
+            # between sessions and its copy of this map may no longer carry alpha, in which case a
+            # masked instance cuts everything and the panel disappears entirely.
+            for ext in (".uasset", ".uexp", ".ubulk"):
+                srcf = base_path + ext
+                if os.path.exists(srcf):
+                    dstdir = os.path.join(work, "content", "Mods/C1/Textures", tex[0])
+                    os.makedirs(dstdir, exist_ok=True)
+                    shutil.copy(srcf, dstdir)
     ownalpha_final = (finish(ownalpha_dir, ownalpha_names, "ownalpha",
                              {mi: BAKE_CLIP for mi in ownalpha_names})
                       if ownalpha_names else None)

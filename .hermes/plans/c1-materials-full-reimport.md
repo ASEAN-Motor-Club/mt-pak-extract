@@ -14,7 +14,19 @@ Nothing executed. Gates marked [ ].
 
 That is the system defect the family-by-family patches could never fix.
 
-## 1a. Source availability — checked, and it is a live blocker
+## 1a. Source availability — was a blocker, now RESOLVED (reacquired)
+
+**Resolved 2026-11-06.** The source was missing (scratch GC deleted
+`/opt/data/cache/scratch/beamng/`), so it was re-downloaded and is now committed at
+**`c1/source/merged.materials.json`** (739 KB) with provenance in `c1/source/README.md`.
+Version check passed against the port's baseline exactly — 1,605 materials, `alphaTest` 351,
+`alphaRef` 389, `translucent` 80, `AddAlpha` 63, `doubleSided` 77, `colorMap` 1,317,
+`baseColorMap` 285, `diffuseColor` 40, `opacityMap` 78 — so this is the same revision the port
+was built from, not a newer map release.
+
+`07c_build_materials.sh` now defaults `MATJSON` into the repo instead of scratch.
+
+The original note, kept for the lesson:
 
 `merged.materials.json` **no longer exists on this machine**. The BeamNG extraction lived at
 `/opt/data/cache/scratch/beamng/x/…`, which the scratch GC pruned; a full search finds no copy on

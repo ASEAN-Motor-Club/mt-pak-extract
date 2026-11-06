@@ -10,14 +10,16 @@
 # paks that changed nothing; this stage derives each instance's contract and applies it.
 #
 # The stage needs the geometry pak extracted (MATSRC) and the source material definitions
-# (MATJSON). Both default to where the port already keeps them.
+# (MATJSON). The source JSON is COMMITTED at c1/source/merged.materials.json — it used to live in
+# scratch and a 24h GC deleted it, which is why the default now points into the repo.
 set -euo pipefail
 source "$(dirname "$0")/00_env.sh"
 
 FAMILY="${1:-mat_mj}"
 OUT="${2:-$C1_WORK/zzzzz_AMC_C1Mats_${FAMILY}_P.pak}"
 
-MATJSON="${MATJSON:-$C1_WORK/../beamng/x/levels/c1/art/models/merged.materials.json}"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+MATJSON="${MATJSON:-$REPO_ROOT/c1/source/merged.materials.json}"
 MATSRC="${MATSRC:-$C1_WORK/geom_unpack/MotorTown/Content/Mods/C1Full/Materials}"
 TEXSRC="${TEXSRC:-$C1_WORK/geom_unpack/MotorTown/Content/Mods/C1/Textures}"
 WORK="${MATWORK:-$C1_WORK/matbuild_$FAMILY}"
