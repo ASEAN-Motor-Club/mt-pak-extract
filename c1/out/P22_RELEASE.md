@@ -57,3 +57,34 @@ Measured: `Island` 1→0→1, `Town Circuit 1` 2→1→2, `C1 Full Shuto Express
 release is `/Game/Mods/C1Full/` and depends on `zzzz_AMC_C1Test_P.pak` (699 MB, not published).
 The two lineages do not overlap, so uploading only the paks above would not give players a
 working map — publish the C1Full base first, or retire the old set deliberately.
+
+## Consolidated release — one pak, "Shuto", no C1 in the name
+
+The six client paks are now a single file:
+
+| | before | after |
+|---|---|---|
+| client paks | `zzzz_AMC_C1Test_P`, `zzzzz_AMC_C1Mesh_P`, `zzzzz_AMC_C1Mats_P20_P`, `zzz_AMC_C1FullOffline_v4_P`, `zzz_AMC_C1FullCourses_v3_P`, `zzzzzz_AMC_C1Map_P` | **`zzz_AMC_Shuto_P.pak`** |
+| size | 699 MB + 15 MB across 6 files | 697,691,828 B |
+| sha256-16 | — | `7c1ede80e752cb1e` |
+
+Built by unpacking the geometry base, overlaying the five override paks on the same tree
+(10,535 + 4 new files = 10,539 entries), and repacking. Verified by extracting 7 assets back
+out of the new pak and comparing against the source tree (7/7 match), including the rotated
+`C1Full.umap` (`ecc89591a1d66e9d`) and `GameResource` (`ce5426cf94ab4802`).
+
+Internal asset paths are unchanged (`/Game/Mods/C1Full/...`) — only the pak filename changed.
+Renaming the internal mod folder would break the map's own references.
+
+### Packaging invariant (cost me two client crashes to learn)
+
+Pack consolidated/full paks the way the game pak itself is packed: **V11 + Zlib**.
+
+- V8B + **Zstd** mounts but every read fails with
+  `LowLevelFatalError IPlatformFilePak.cpp:3555 "Retry was NOT successful."` — this build has
+  no Zstd decompressor compiled in. Zlib is part of the engine, Zstd is a plugin.
+- Evidence for Zlib being the game's own method: V11+Zlib repack is 697,691,828 B vs the
+  shipped base pak's 699,251,135 B (0.2%), while V11+Zstd came out at 704 MB and V11+none at 1.99 GB.
+
+Diagnose a pak's real version before repacking — read the footer magic `E1 12 6F 5A`, then
+`<iqq` at +4 gives version / index offset / index size.
