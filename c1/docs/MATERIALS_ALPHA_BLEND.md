@@ -91,11 +91,16 @@ the only names an instance may legally bind.
 - **`/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTest`** — a generic masked master used
   for fences and metal. `BLEND_Masked`, TwoSided, default texture `T_fenceMetal_01`.
   NameMap: `Color`, `Roughness`, `Texture`, `T_fenceMetal_01`.
-  → **`Color` is almost certainly a vector tint and `Texture` the texture slot** — the same layout as
-  `M_BaseTexture`, which is confirmed by 51 game instances (`Texture`=texture, `Color`=vector).
-  No sampled instance parents to `M_AlphaTest`, so this is *not yet proven*; a two-variant test
-  (`Texture` vs `Color`) settles it. **Binding the colour map to `Color` here is the leading
-  explanation for P10–P13's "missing texture" → "not rendering at all".**
+  → **Confirmed: `Texture` is the texture slot, `Color` is a vector tint.** Evidence: the game's own
+  `MI_AlphaTestOneSided` (AssetsvilleTown2/Materials) is an instance of this exact master family and
+  sets `Texture` as a **TextureParameterValue** (`T_hay`) and `Color` as a **VectorParameterValue**
+  (LinearColor), with `Roughness` as a scalar. Both masters carry the same NameMap
+  (`Color`, `Roughness`, `Texture`, `T_fenceMetal_01`), so the layout is the same graph with the
+  sidedness switch flipped.
+  → **This is the root cause of P10–P13.** Those builds bound the colour map to `Color`, i.e. wrote a
+  texture into a vector parameter. The write is silently ignored and the master keeps its default
+  `T_fenceMetal_01` — which is exactly "translucent but missing texture", then "not rendering at
+  all", with no error anywhere. The correct binding is `Texture`.
   → It cuts a texture correctly but shades like metal. Putting foliage on it produces **correct
   cutout, wrong appearance** — which reads as "these are no longer trees".
 - **`/Game/Mods/C1/Materials/M_C1_Surface*`** — the author's own masters (opaque, opaque-PBR,

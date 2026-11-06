@@ -160,15 +160,18 @@ texture slot at all** (flat `Color` vector).
 (untyped — no sampled instance sets it) and `M_GenericBase.AmbientOcculusion` (a scalar, not a map).
 AO therefore remains droppable-and-reported everywhere except foliage.
 
-**New blocking finding.** No instance in the 283-sample is parented to `M_AlphaTest`, and its
-NameMap layout matches `M_BaseTexture` — where the colour map is `Texture` and `Color` is a vector
-tint. P10–P13 bound the colour map to `Color`. If that layout holds, the writes landed on a vector
-parameter and the real `Texture` slot kept its default `T_fenceMetal_01` — which fits both
-"translucent but missing texture" and "not rendering at all".
+**Root cause found and settled offline (no game test needed).** `M_AlphaTest`'s colour map binds to
+**`Texture`**; `Color` is a **vector tint**. Proven by the game's own `MI_AlphaTestOneSided`, which
+sets `Texture` as a TextureParameterValue (`T_hay`) and `Color` as a VectorParameterValue, on a
+master with an identical NameMap.
 
-This is settled by **test, not inference**: after Phase 4, build two variants of a single instance
-(`Texture` vs `Color`) and have one in-game look. Until then `M_PolygonMaster` is the default masked
-target, so the reimport does not depend on `M_AlphaTest` at all.
+P10–P13 bound the colour map to `Color` — a vector parameter — so every write was ignored and the
+master kept its default `T_fenceMetal_01`. That is the whole "missing texture" → "not rendering at
+all" chain, explained without a build.
+
+Consequence for Phase 2: binding parameter per target master is `Texture` on `M_AlphaTest`,
+`BaseColor` on `M_PolygonMaster`, `Texture` on `M_BaseTexture`, `Color` (vector) on `M_BaseColor`.
+The compiler must carry the parameter name **per master**, never globally.
 
 ### 3.1b Original Phase 0 checklist (for the record)
 

@@ -39,20 +39,24 @@ typo in the shipped name), `Color` (vector), `Metallic`/`Roughness`/`Specular`/`
 **`MI_GlassTrans` / `MI_GlassNonDirection`** — `BaseColor` (texture), `GlassTint` (vector),
 `Opacity` (scalar), `Roughness` (scalar).
 
-## NOT confirmed by any instance — treat as unproven
+**`M_AlphaTest` / `M_AlphaTestOneSided`** — confirmed, from a game-authored instance.
 
-**`M_AlphaTest` / `M_AlphaTestOneSided`** — no instance in the 283-sample is parented to either.
-Its NameMap is `{Color, Roughness, T_fenceMetal_01, Texture, Texture2D}`, which is *structurally
-identical* to `M_BaseTexture` (`{Color, Roughness, T_planks_01, Texture, Texture2D, …}`), where
-`Color` is a vector and `Texture` is the texture slot.
+`MI_AlphaTestOneSided` (`/Game/AssetsvilleTown2/Materials/MI_AlphaTestOneSided`) parents
+`M_AlphaTestOneSided` and sets:
 
-**Consequence:** the pavement-text paks (P10–P13) bound the colour map to a parameter named `Color`.
-If `M_AlphaTest` follows the same layout, that write landed on a **vector** parameter and the
-material's actual `Texture` slot stayed at its default `T_fenceMetal_01` — which is consistent with
-"translucent but missing texture" and then "not rendering at all".
+- `Texture` — **texture** parameter (`T_hay`)
+- `Color` — **vector** parameter (LinearColor)
+- `Roughness` — scalar (3.0)
 
-This must be settled by test, not by inference: one instance, two builds (`Texture` vs `Color`),
-one in-game look. Phase 0 deliverable.
+Both masters carry the identical NameMap (`Color`, `Roughness`, `T_fenceMetal_01`, `Texture`,
+`Texture2D`), i.e. the same graph with the sidedness switch flipped, so the contract transfers.
+No instance of `M_AlphaTest` itself was sampled, but the sibling settles the layout.
+
+**Consequence, and it is a real bug:** the pavement-text paks (P10–P13) bound the colour map to
+`Color`. That is a **vector** parameter, so the write was ignored and the material's real `Texture`
+slot kept its default `T_fenceMetal_01`. That is the explanation for "translucent but missing
+texture" and then "not rendering at all". **Bind the colour map to `Texture`** on this master —
+`Color` is the tint.
 
 **`M_PlantMaster`** — `AO` parameter exists in the NameMap but no sampled instance sets it, so its
 type is unknown. Only candidate for an AO slot; `M_GenericBase` has `AmbientOcculusion` (scalar) but
