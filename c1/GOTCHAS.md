@@ -896,3 +896,44 @@ instead of the legacy-brightness default.
 and only 217 of 1,605 source materials declare roughness at all. That constant is invented during the
 material build, so every ported surface has a specular lobe the source never asked for. Flat signage
 should be fully rough (1.0). Worth a material pass; it did not cause the white lamps.
+
+## 34. Two features in one sublevel evict each other (2026-11-07)
+
+`c1/tools/c1_bake_nav.py` and `c1/tools/author_corridor_lights.py` both load
+`/Game/Mods/C1Full/Maps/C1Full_Roads` and save it. Each cook therefore produced its own copy of
+that ONE asset, and pak mounting keeps exactly one copy per asset (last-alphabetical filename
+wins). Installing the nav test pak at `zzzzzzzz_` over the lights pak at `zzzzzzz_` silently
+replaced the lit roads sublevel with the nav one: **the lights disappeared** with no error at all,
+ten minutes after they had been confirmed working.
+
+Fix: the lights live in their own sublevel, `C1Full_Lights`, attached to the persistent
+`C1Full.umap` as **Always Loaded** (`LevelStreamingAlwaysLoaded`), and the lights pak ships
+`C1Full.umap` + `C1Full_Lights.umap` but **never** `C1Full_Roads`
+(`c1/tools/build_lightspak.sh` fails if it leaks in). Nav keeps `C1Full_Roads`.
+
+Rules that follow:
+- The persistent level is now the only place the sublevel reference can live, so **only one pak
+  may ship `C1Full.umap`**. A nav pak that ships its own copy evicts the reference on filename
+  sort alone and the lights vanish again.
+- Always-Loaded by streaming class, not by a `b_always_loaded` property: that property does not
+  exist on `LevelStreamingAlwaysLoaded` in this build (`Failed to find property 'b_always_loaded'`).
+- Sublevels are for packaging isolation, **not** performance. Streaming corridor lights by distance
+  makes them pop while driving. The perf problem (10,474 lights) is a separate, still-open question
+  and BeamNG's answer to it is a 384 m partition manager that toggles lamps inside one loaded level.
+
+## 35. A fresh cook path silently skips stage 6 and the map loads with "missing game mode" (2026-11-07)
+
+Cooking the map and packing it directly shipped a map that loaded with **missing game mode**, no
+sky and no garage. A cooked mod map carries **no `WorldSettings.DefaultGameMode`, no
+`SunSky.ChildActorClass` and no `Child.ChildActorClass`** until `c1/pipeline/06_postcook_patch.sh`
+(`repair_class_refs.sh`) restores them as property references — that is what the stage exists for,
+and any build path that does not run it produces exactly this failure.
+
+`c1/tools/build_lightspak.sh` now greps the `.umap` for `DriveGameModeBP`, `MTSunSky` and
+`GarageActorBP` and refuses to pack without all three. Verify with bytes, not by assuming the
+pipeline ran: `repair_class_refs.sh` printing `REPAIR_OK` is the last step of the fix, but the pack
+gate is what stops the next silent regression.
+
+Also: `repair_class_refs.sh` must be pointed at the tool that actually has `--set-class-ref`
+(`TOOL=` env). The stale copy under `mt-pak-wt-c1commit/csharp/UAssetTool/bin/...` fails with a
+confusing `File not found: <rootdir>/Cargos.uasset` instead of an unknown-argument error.
