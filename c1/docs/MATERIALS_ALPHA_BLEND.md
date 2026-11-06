@@ -307,6 +307,17 @@ saying so is a one-build experiment rather than an argument.
 - Corollary: the geometry pak's instances come from the author. They are the reference. Compare
   against them before replacing them.
 
+### The reparenting rule (learned the expensive way, P15 → P16)
+
+**Reparent an instance only when its current parent does not exist in the game.** An instance whose
+master already ships renders correctly today; reparenting it is a change with no failure behind it,
+and it is how the concrete and median-guardrail families lost their textures — moved onto
+`M_PolygonMaster` because its NameMap *looked* rich, when no shipped instance has ever bound a
+texture parameter to it.
+
+Masking is the exception, and the only one: `M_AlphaTest` is required to get `BLEND_Masked`, so
+those rows are reparented on purpose.
+
 ### The vegetation saga, closed
 
 The bush backgrounds (P5–P9: white fringes, then a black background behind the balcony bushes) were

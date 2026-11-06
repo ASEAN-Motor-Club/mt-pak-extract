@@ -12,8 +12,12 @@ instances that set it, never from the parameter name.
 - `Roughness` — scalar
 - also: `UV`, `WorldPositionOffsetZ`
 
-**`M_PolygonMaster`** (Env/Materials/Master) — via `MI_PolygonMaster`, 6+ instances
-- `BaseColor` — texture
+**`M_PolygonMaster`** (Env/Materials/Master) — **parameter NAMES only, types unproven**
+- `BaseColor` — *name present; type never observed.* No sampled instance binds a **texture** to
+  `M_PolygonMaster` (4 instances import it, none carry `TextureParameterValues`). Instances that were
+  reparented here to bind a colour map lost their texture in game (P15 → P16). Treat `BaseColor` as
+  unknown until an instance that works is found, and prefer the instance's **existing** parent.
+- `BaseColor_Tint` — vector (observed on `MI_BaseColor`)
 - `BaseColor_Tint` — vector
 - `Normal` — texture
 - `Metallic` — texture
@@ -64,9 +68,9 @@ that is an intensity, not a map.
 
 ## Ranking for the reimport
 
-1. **`M_PolygonMaster`** — the only master with colour, normal, metallic, roughness, emissive
-   (texture + tint + intensity) and opacity gating in one place. Default target for opaque, masked
-   and emissive rows.
+1. **`M_PolygonMaster`** — richest *name list*, but unproven for texture binding (see above). Do
+   **not** reparent a working opaque instance onto it. Default only for rows whose current parent is
+   missing from the game.
 2. **`M_GenericBase`** — richest overall (separate emissive map, AO scalar, overlays, triplanar) but
    heavier and oriented to character/environment assets; use where a dedicated emissive map is needed.
 3. **`M_BaseTexture`** — simple colour map + tint + roughness; good for flat signs.
