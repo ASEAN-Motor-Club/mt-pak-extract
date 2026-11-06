@@ -304,3 +304,38 @@ dotnet UAssetTool.dll --dump mats/MI_C1_mat_tree_01.uasset | grep -E 'BlendMode 
 
 A structure with only `TwoSided` and clip (or `BlendMode (Byte): 0`) means the property was dropped
 silently — check that the material routed as vegetation also set the mask flag.
+
+## §0 — Pak layout: layered in development, single pak on release
+
+Consolidating the dev set into one pak (done 2026-11-06 for the Shuto release) is the **release**
+shape only. It must not be used while iterating: every nav bake, material tweak or map edit then
+means rebuilding and re-uploading ~700 MB, and a single stray override silently discards another
+layer's work.
+
+**Development (client `Content\Paks`) — mount order is filename sort order:**
+
+| pak | size | carries | rebuilt when |
+|---|---|---|---|
+| `zzz_AMC_C1FullCourses_v3_P` | 3 KB | `DataAsset/Courses` | course/route data changes |
+| `zzz_AMC_C1FullOffline_v4_P` | 50 KB | offline/session data | rarely |
+| `zzzz_AMC_C1Test_P` | ~699 MB | geometry + everything base | meshes/geometry changes |
+| `zzzzz_AMC_C1Mats_P20_P` | 3 MB | material instances | material changes |
+| `zzzzz_AMC_C1Mesh_P` | 11 MB | mesh overrides | mesh-only iteration |
+| `zzzzzz_AMC_C1Map_P` | 392 KB | **parent map** (`C1Full.umap/.uexp`) | map actor/POI edits |
+
+Rules that follow from the sort order (`_` = 0x5F sorts before `z` = 0x7A, so `zzz_` < `zzzz_` <
+`zzzzz_` < `zzzzzz_`):
+
+1. **Never ship an override that is not in the layer it belongs to.** A pak that carries
+   `C1Full_Roads.*` replaces the roads sublevel *including its baked nav graph* — that is how a
+   nav bake gets silently discarded by an unrelated map or lights pak.
+2. **Lights and other additive content must be their own sublevel** (`C1Full_Lights`), never a
+   `C1Full_Roads` override, or every light tweak re-ships 60 MB of nav.
+3. **Check the mount order before judging any in-game result.** Two paks shipping the same record
+   is not an error the engine reports; the later filename wins silently.
+4. **Release = one pak** (`zzz_AMC_Shuto_P.pak`), built from the final layer set, published, and
+   hash-verified over HTTP. It is never installed on a dev client.
+
+Diagnostic: `Get-ChildItem Content\Paks -Filter *.pak | Sort-Object Name` and compare each file's
+sha256 against the build that produced it. A "missing" dev pak usually means a release pak was
+installed over it.
