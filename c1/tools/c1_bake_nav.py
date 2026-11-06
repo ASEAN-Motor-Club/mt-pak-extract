@@ -81,6 +81,11 @@ def vec(v):
 
 def main():
     cfg = load_config()
+    CANON = {}
+    _cp = cfg.get('canon_lanes')
+    if _cp and os.path.exists(_cp):
+        CANON = json.load(open(_cp))
+        log('canonical lanes: %d roads from %s' % (len(CANON), _cp))
     step = float(cfg['step_cm'])
     log('config %s' % cfg)
 
@@ -140,7 +145,19 @@ def main():
         # `lanesLeft: 2` is only read when `autoLanes == false`, so for a default decal the
         # game never used it -- a 4 m decal is ONE lane, not two 2 m lanes. Applying the
         # source rule here keeps the authors' intent and removes the 1.5 m and 7.5 m lanes.
-        if lanes_from_width:
+        canon = CANON.get(road.get_actor_label())
+        canon_w = None
+        if canon:
+            n_canon = int(canon.get('lanes') or 1)
+            nb = 0
+            nf = n_canon
+            canon_w = [float(w) for w in canon.get('widths_cm') or []]
+            if canon_w:
+                total_w = sum(canon_w) / len(canon_w)
+            width = total_w / float(n_canon)
+            if n_canon != int(road.get_editor_property('num_forward_lanes')):
+                rebalanced += 1
+        elif lanes_from_width:
             n_canon = int(math.floor(total_w / 361.0 + 0.5))
             n_canon = max(1, min(4, n_canon))
             if n_canon != (nf + nb):
@@ -171,10 +188,27 @@ def main():
                 lateral = -total_w / 2.0 + (lane - 0.5) * width   # +1 = leftmost (LHT slow)
             else:
                 lateral = total_w / 2.0 - (abs(lane) - 0.5) * width   # -1 = rightmost
+
+            def _w_at(s, _cw=canon_w, _len=length, _tw=total_w):
+                # canonical width is PER CONTROL POINT: a decal may taper (6 m -> 3 m) mid-run
+                if not _cw:
+                    return _tw
+                m = len(_cw)
+                if m < 2:
+                    return _cw[0]
+                t = (s / _len) * (m - 1) if _len > 0 else 0.0
+                i = int(min(m - 2, max(0, int(math.floor(t)))))
+                f = t - i
+                return _cw[i] * (1.0 - f) + _cw[i + 1] * f
+
             for k, s in enumerate(s_list):
                 loc = spl.get_location_at_distance_along_spline(s, unreal.SplineCoordinateSpace.WORLD)
                 tan = spl.get_direction_at_distance_along_spline(s, unreal.SplineCoordinateSpace.WORLD)
                 rgt = spl.get_right_vector_at_distance_along_spline(s, unreal.SplineCoordinateSpace.WORLD)
+                ws = _w_at(s)
+                lw = ws / float(nf) if nf else width
+                lateral_s = (-ws / 2.0 + (lane - 0.5) * lw) if lane > 0 \
+                    else (ws / 2.0 - (abs(lane) - 0.5) * lw)
                 lx, ly, lz = vec(loc)
                 rx, ry, rz = vec(rgt)
                 # Oncoming lanes travel AGAINST the spline tangent. Keeping the raw tangent
@@ -183,9 +217,9 @@ def main():
                 # travel direction and the right vector (right of travel) for lane < 0.
                 tx, ty, tz = vec(tan)
                 # position stays on the spline's own lateral axis: only the TRAVEL frame flips
-                px = lx + rx * lateral
-                py = ly + ry * lateral
-                pz = lz + rz * lateral
+                px = lx + rx * lateral_s
+                py = ly + ry * lateral_s
+                pz = lz + rz * lateral_s
                 if lane < 0:
                     tx, ty, tz = -tx, -ty, -tz
                     rx, ry, rz = -rx, -ry, -rz
@@ -193,7 +227,7 @@ def main():
                     'road': road, 'lane': lane, 'side': 1 if lane > 0 else -1,
                     's': s, 'loc': (px, py, pz),
                     'dir': (tx, ty, tz), 'right': (rx, ry, rz),
-                    'lateral': lateral, 'kmh': kmh, 'width': total_w,
+                    'lateral': lateral_s, 'kmh': kmh, 'width': ws,
                     'road_start': first_index, 'k': k, 'count': count,
                 })
 
@@ -297,6 +331,8 @@ def main():
     skipped_deck = 0
     skipped_grade = 0
     skipped_lateral = 0
+    skipped_pos = 0
+    pos_gate = int(cfg.get('pos_gate', 1)) != 0
     for idx, n in enumerate(nodes):
         cx, cy = int(n['loc'][0] // cell2), int(n['loc'][1] // cell2)
         best = None
@@ -338,6 +374,17 @@ def main():
                     if abs(lat) > max_lateral:
                         skipped_lateral += 1
                         continue
+                    # POSITION along each chain. Heading tests are local: two parallel roads pass
+                    # them even when the link joins the FIRST node of one (its head, with the
+                    # whole road ahead of it) to the LAST node of the other (its tail). That is
+                    # a link no car can use in the direction of travel -- it is the 47->46 case.
+                    # A valid link never enters further downstream than it leaves.
+                    if pos_gate:
+                        n_fr = n['k'] / float(max(1, n['count'] - 1))
+                        m_fr = m['k'] / float(max(1, m['count'] - 1))
+                        if m_fr > n_fr + 0.05:
+                            skipped_pos += 1
+                            continue
                     if dot > parallel_dot and d < parallel_skip:
                         skipped_parallel += 1
                         continue
@@ -373,9 +420,113 @@ def main():
             linked += 1
     log('u-turn edges blocked=%d' % u_turn_blocked)
     log('lanes rebalanced from painted width=%d' % rebalanced)
-    log('cross-road links=%d (skipped_parallel=%d normal=%d deck=%d grade=%d lateral=%d backward=%d)'
+    log('cross-road links=%d (skipped_parallel=%d normal=%d deck=%d grade=%d lateral=%d backward=%d pos=%d)'
         % (linked, skipped_parallel, skipped_normal, skipped_deck, skipped_grade, skipped_lateral,
-           skipped_backward))
+           skipped_backward, skipped_pos))
+
+    # ---- 2b2. seam links: attach where the two roads actually continue -------------------
+    # The road objects routinely overrun each other, so a continuation is rarely tail->head:
+    # the seam sits mid-chain on one or both sides. Find the closest collinear, same-deck pair
+    # with the exit near the source TAIL and the entry near the target HEAD, and link there.
+    # Where the source overruns the seam, its tail also gets a stub back onto the target, or a
+    # car that drives past the seam is stranded on a dead-end stub.
+    seam_links = 0
+    seam_stubs = 0
+    if int(cfg.get('seam_links', 0)) != 0:
+        seam_gap = float(cfg.get('seam_gap_cm', 1500.0))
+        seam_cos = float(cfg.get('seam_cos', 0.99))
+        seam_dz = float(cfg.get('seam_dz_cm', 25.0))
+        seam_lat = float(cfg.get('seam_lat_cm', 200.0))
+        seam_best = {}
+        for idx, n in enumerate(nodes):
+            if n['k'] / float(max(1, n['count'] - 1)) < 0.5:
+                continue
+            cx, cy = int(n['loc'][0] // cell2), int(n['loc'][1] // cell2)
+            best = None
+            for gx in (cx - 1, cx, cx + 1):
+                for gy in (cy - 1, cy, cy + 1):
+                    for j in grid_all.get((gx, gy), ()):
+                        if j == idx:
+                            continue
+                        m = nodes[j]
+                        if id(m['road']) == id(n['road']):
+                            continue
+                        if m['k'] / float(max(1, m['count'] - 1)) > 0.5:
+                            continue
+                        d = math.dist(n['loc'], m['loc'])
+                        if d > seam_gap:
+                            continue
+                        if abs(m['loc'][2] - n['loc'][2]) > seam_dz:
+                            continue
+                        if (n['dir'][0] * m['dir'][0] + n['dir'][1] * m['dir'][1]
+                                + n['dir'][2] * m['dir'][2]) < seam_cos:
+                            continue
+                        lat = abs((m['loc'][0] - n['loc'][0]) * n['right'][0]
+                                  + (m['loc'][1] - n['loc'][1]) * n['right'][1]
+                                  + (m['loc'][2] - n['loc'][2]) * n['right'][2])
+                        if lat > seam_lat:
+                            continue
+                        # finishing a seam is still a forward manoeuvre: the target must sit
+                        # ahead of the exit, never behind it
+                        along = ((m['loc'][0] - n['loc'][0]) * n['dir'][0]
+                                 + (m['loc'][1] - n['loc'][1]) * n['dir'][1]
+                                 + (m['loc'][2] - n['loc'][2]) * n['dir'][2])
+                        if along < 0.0:
+                            continue
+                        score = d + lat * 2.0
+                        if best is None or score < best[0]:
+                            best = (score, j, d)
+            if best is not None:
+                seam_best[idx] = best
+        for idx, (score, j, d) in seam_best.items():
+            if j not in edges[idx]:
+                edges[idx][j] = (0.0, d)
+                seam_links += 1
+        # stub: the source's chain tail often sits past the seam. Link it back, or that
+        # stretch is a dead end for anything that drove through it.
+        tail_of = {}
+        for idx, n in enumerate(nodes):
+            k = (id(n['road']), abs(int(n['lane'])))
+            c = tail_of.get(k)
+            if c is None or n['k'] > nodes[c]['k']:
+                tail_of[k] = idx
+        for idx, (score, j, d) in seam_best.items():
+            n = nodes[idx]
+            t = tail_of.get((id(n['road']), abs(int(n['lane']))))
+            if t is None or t == idx:
+                continue
+            tn = nodes[t]
+            ahead = ((tn['loc'][0] - n['loc'][0]) * n['dir'][0]
+                     + (tn['loc'][1] - n['loc'][1]) * n['dir'][1]
+                     + (tn['loc'][2] - n['loc'][2]) * n['dir'][2])
+            if ahead > 100.0:
+                # the tail is past the seam: join the target's chain at its first node ahead
+                # of the tail, never back at the seam node (that would be a backward hop)
+                tgt = None
+                best_proj = None
+                tcx, tcy = int(tn['loc'][0] // cell2), int(tn['loc'][1] // cell2)
+                cand = []
+                for gx in (tcx - 1, tcx, tcx + 1):
+                    for gy in (tcy - 1, tcy, tcy + 1):
+                        cand.extend(grid_all.get((gx, gy), ()))
+                for jj in cand:
+                    mm = nodes[jj]
+                    if id(mm['road']) != id(nodes[j]['road']):
+                        continue
+                    if abs(int(mm['lane'])) != abs(int(nodes[j]['lane'])):
+                        continue
+                    proj = ((mm['loc'][0] - tn['loc'][0]) * tn['dir'][0]
+                            + (mm['loc'][1] - tn['loc'][1]) * tn['dir'][1]
+                            + (mm['loc'][2] - tn['loc'][2]) * tn['dir'][2])
+                    if proj <= 0.0:
+                        continue
+                    if best_proj is None or proj < best_proj:
+                        best_proj = proj
+                        tgt = jj
+                if tgt is not None and tgt not in edges[t]:
+                    edges[t][tgt] = (0.0, math.dist(tn['loc'], nodes[tgt]['loc']))
+                    seam_stubs += 1
+        log('seam links=%d (stub links from overrunning tails=%d)' % (seam_links, seam_stubs))
 
     # ---- 2c. lane-change edges: diagonal, two stations ahead ------------------------------
     # The old edges joined the same station on the adjacent lane: 3.4 m sideways with zero
@@ -442,6 +593,8 @@ def main():
     # pivoted. Give them a real merge: a forward link onto the road ahead, allowed to land up
     # to `merge_lateral_cm` off the lane centre -- one lane width, which is what a merge is.
     merge_lateral = float(cfg.get('merge_lateral_cm', 500.0))
+    merge_dz = float(cfg.get('merge_dz_cm', 50.0))       # one deck: never bridge a flyover
+    merge_cos = float(cfg.get('merge_min_cos', 0.90))    # straighter than the lane-hop gate
     cell = 1000.0
     grid = {}
     for j, m in enumerate(nodes):
@@ -468,7 +621,7 @@ def main():
                     if d > connect_any or d < 1.0:
                         continue
                     if (nd['dir'][0] * m['dir'][0] + nd['dir'][1] * m['dir'][1]
-                            + nd['dir'][2] * m['dir'][2]) < fdot:
+                            + nd['dir'][2] * m['dir'][2]) < max(fdot, merge_cos):
                         continue
                     vx, vy, vz = m['loc'][0] - nd['loc'][0], m['loc'][1] - nd['loc'][1], \
                         m['loc'][2] - nd['loc'][2]
@@ -477,9 +630,13 @@ def main():
                     loff = vx * nd['right'][0] + vy * nd['right'][1] + vz * nd['right'][2]
                     if abs(loff) > merge_lateral:
                         continue
-                    if abs(m['loc'][2] - nd['loc'][2]) > deck_abs:
+                    if abs(m['loc'][2] - nd['loc'][2]) > merge_dz:
+                        continue                              # different deck: overpass/underpass
+                    grade = abs(m['loc'][2] - nd['loc'][2]) / max(1.0, math.hypot(vx, vy))
+                    if grade > grade_max:
                         continue
-                    key = (abs(loff), d)
+                    # same lane index first, then the tightest lateral fit
+                    key = (0 if abs(m['lane']) == abs(nd['lane']) else 1, abs(loff), d)
                     if best is None or key < best[0]:
                         best = (key, j, d)
         if best is not None:
@@ -672,6 +829,7 @@ def main():
               'skipped_parallel': skipped_parallel, 'skipped_normal': skipped_normal,
               'skipped_backward': skipped_backward,
               'skipped_deck': skipped_deck, 'skipped_grade': skipped_grade,
+              'skipped_pos': skipped_pos, 'seam_links': seam_links, 'seam_stubs': seam_stubs,
               'islands': len(remap), 'crossroads': len(final_groups),
               'crossroad_nodes': len(nodes) - sum(1 for x in cross if x == -1),
               'junction_merges': merges,
