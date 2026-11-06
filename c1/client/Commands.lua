@@ -781,32 +781,348 @@ end
 Commands["/time"] = function(PC, args)
   local h = tonumber(args[1] or "22")
   if h == nil or h < 0 or h > 24 then
-    print("usage: /time <hour 0-24>   (e.g. /time 22 = night)")
+    print("usage: /time <hour 0-24>")
     return
   end
   ExecuteInGameThread(function()
-    local out = { "== TIME -> " .. tostring(h) .. "h ==" }
+    local out = {}
     local function add(x) out[#out + 1] = x end
+    add("== TIME -> " .. tostring(h) .. "h ==")
 
-    -- 1) the game's own entry point on the player controller
-    local okc, errc = pcall(function() PC:Cheat_TimeOfDay(h) end)
-    add("Cheat_TimeOfDay: " .. (okc and "ok" or ("ERR " .. tostring(errc))))
+    -- a) client-side implementation of the replicated clock update
+    local oka, erra = pcall(function() PC:ClientSetTimeOfDay(h, 1.0, 0) end)
+    add("ClientSetTimeOfDay: " .. (oka and "ok" or ("ERR " .. tostring(erra))))
 
-    -- 2) report the sky, and drive it directly if the cheat did not take
+    -- b) the cheat entry point
+    local okb, errb = pcall(function() PC:Cheat_TimeOfDay(h) end)
+    add("Cheat_TimeOfDay: " .. (okb and "ok" or ("ERR " .. tostring(errb))))
+
+    -- c) any state object carrying a TimeOfDay/WorldTime property we can write
+    local wrote = {}
+    for _, cls in ipairs({ "MotorTownGameState", "MotorTownGameInstance", "MotorTownWorldSettings" }) do
+      for i, o in ipairs(FindAllOf(cls) or {}) do
+        for _, prop in ipairs({ "TimeOfDay", "WorldTime", "TimeOfDayHours" }) do
+          local okw = pcall(function() o[prop] = h end)
+          if okw then
+            local okr, v = pcall(function() return o[prop] end)
+            if okr and type(v) == "number" then
+              wrote[#wrote + 1] = string.format("%s[%d].%s=%s", cls, i, prop, tostring(v))
+            end
+          end
+        end
+      end
+    end
+    add("state writes: " .. (#wrote > 0 and table.concat(wrote, ", ") or "none"))
+
+    -- d) the sky itself
     local suns = FindAllOf("MTSunSky") or {}
     add("MTSunSky actors: " .. tostring(#suns))
     for i, s in ipairs(suns) do
-      local okb, vb = pcall(function() return s.SolarTime end)
-      add(string.format("  [%d] SolarTime before=%s", i, tostring(okb and vb or "?")))
-      if okb and (not okc) then
-        local oks, errs = pcall(function() s.SolarTime = h end)
-        add("  set SolarTime: " .. (oks and "ok" or ("ERR " .. tostring(errs))))
-        pcall(function() s:UpdateLighting(0.016) end)
-        local oka, va = pcall(function() return s.SolarTime end)
-        add(string.format("  SolarTime after=%s", tostring(oka and va or "?")))
+      local ok1, before = pcall(function() return s.SolarTime end)
+      pcall(function() s.SolarTime = h end)
+      pcall(function() s:UpdateLighting(0.0) end)
+      local ok2, after = pcall(function() return s.SolarTime end)
+      add(string.format("  [%d] SolarTime %s -> %s", i, tostring(ok1 and before or "?"), tostring(ok2 and after or "?")))
+    end
+    print(table.concat(out, "\n"))
+
+    -- verdict: does it survive two seconds of the world clock?
+    ExecuteWithDelay(2500, function()
+      ExecuteInGameThread(function()
+        local v = {}
+        for i, s in ipairs(FindAllOf("MTSunSky") or {}) do
+          local ok, t = pcall(function() return s.SolarTime end)
+          v[#v + 1] = string.format("[%d]=%s", i, tostring(ok and t or "?"))
+        end
+        print("== TIME +2.5s SolarTime " .. table.concat(v, " ") .. " (wanted " .. tostring(h) .. ") ==")
+      end)
+    end)
+  end)
+end
+
+local function lampComponents(a)
+  local comps = {}
+  local cls = StaticFindObject("/Script/Engine.SpotLightComponent")
+  if cls then
+    local ok, arr = pcall(function() return a:K2_GetComponentsByClass(cls) end)
+    if ok and arr then for _, c in ipairs(arr) do comps[#comps + 1] = c end end
+  end
+  if #comps == 0 then
+    for _, name in ipairs({ "Light", "Light_GEN_VARIABLE", "SpotLight" }) do
+      local ok, c = pcall(function() return a[name] end)
+      if ok and c and c:IsValid() then comps[#comps + 1] = c end
+    end
+  end
+  return comps
+end
+
+Commands["/lamps"] = function(PC, args)
+  ExecuteInGameThread(function()
+    local out = {}
+    local function add(x) out[#out + 1] = x end
+    local bp = FindAllOf("BP_C1_Lamp_C") or {}
+    local spots = FindAllOf("SpotLight") or {}
+    local points = FindAllOf("PointLight") or {}
+    add(string.format("== LAMPS bp=%d spot=%d point=%d ==", #bp, #spots, #points))
+    local pawn = nil
+    pcall(function() pawn = PC:GetPlayerPawn() end)
+    if not pawn then pcall(function() pawn = FindFirstOf("Pawn") end) end
+    local here = nil
+    if pawn then
+      local ok, l = pcall(function() return pawn:K2_GetActorLocation() end)
+      if ok and l then here = l end
+    end
+    add("pawn=" .. tostring(here and "yes" or "NONE (nothing to measure from)") )
+    local rows = {}
+    local function scan(list, kind)
+      for _, a in ipairs(list) do
+        local ok, l = pcall(function() return a:K2_GetActorLocation() end)
+        if ok and l then
+          local d = 1e12
+          if here then
+            local dx, dy, dz = l.X - here.X, l.Y - here.Y, l.Z - here.Z
+            d = math.sqrt(dx * dx + dy * dy + dz * dz)
+          end
+          rows[#rows + 1] = { kind = kind, a = a, l = l, d = d }
+        end
+      end
+    end
+    scan(spots, "spot")
+    scan(points, "pt")
+    if here then table.sort(rows, function(x, y) return x.d < y.d end) end
+    local n = math.min(tonumber(args) or 3, #rows)
+    for i = 1, n do
+      local r = rows[i]
+      add(string.format("[%d] %s d=%.1fm z=%.0f", i, r.kind, r.d / 100.0, r.l.Z))
+      local cls = (r.kind == "spot") and StaticFindObject("/Script/Engine.SpotLightComponent")
+                                      or StaticFindObject("/Script/Engine.PointLightComponent")
+      local c = nil
+      if cls then
+        local ok, v = pcall(function() return r.a:GetComponentByClass(cls) end)
+        if ok then c = v end
+      end
+      if c then
+        local function g(k)
+          local ok, v = pcall(function() return c[k] end)
+          if not ok then return "ERR" end
+          return tostring(v)
+        end
+        add("    Intensity=" .. g("Intensity") .. " Units=" .. g("IntensityUnits")
+            .. " Radius=" .. g("AttenuationRadius") .. " Visible=" .. g("bVisible"))
+        add("    Color=" .. g("LightColor") .. " Outer=" .. g("OuterConeAngle")
+            .. " Inner=" .. g("InnerConeAngle") .. " Mobility=" .. g("Mobility"))
+      else
+        add("    component lookup failed")
       end
     end
     print(table.concat(out, "\n"))
+  end)
+end
+
+local function firstLampComponent()
+  local actors = FindAllOf("BP_C1_Lamp_C") or {}
+  local lightCls = StaticFindObject("/Script/Engine.SpotLightComponent")
+  if #actors == 0 or not lightCls then return nil, #actors end
+  local ok, c = pcall(function() return actors[1]:GetComponentByClass(lightCls) end)
+  return ok and c or nil, #actors
+end
+
+Commands["/lampup"] = function(PC, args)
+  local dz = tonumber(args[1] or "2000")
+  ExecuteInGameThread(function()
+    local c, n = firstLampComponent()
+    if not c then print("== LAMPUP no lamp (actors=" .. tostring(n) .. ") =="); return end
+    local out = {}
+    local function add(x) out[#out + 1] = x end
+    local okl, l0 = pcall(function() return c:K2_GetComponentLocation() end)
+    add(string.format("before (%.0f,%.0f,%.0f)", l0.X, l0.Y, l0.Z))
+    -- move the COMPONENT, not the actor: the actor's root is static, which is why
+    -- K2_SetActorLocation returned false earlier
+    local moved = false
+    local rl = nil
+    local okr, v = pcall(function() return c.RelativeLocation end)
+    if okr and v then
+      rl = v
+      rl.Z = rl.Z + dz
+      if pcall(function() c.RelativeLocation = rl end) then moved = true end
+    end
+    if not moved then
+      local okw, r = pcall(function() c:K2_SetWorldLocation(l0.X, l0.Y, l0.Z + dz, false, nil, true) end)
+      moved = okw and r ~= nil
+      add("worldloc fallback ok=" .. tostring(okw) .. " r=" .. tostring(r))
+    end
+    pcall(function() c:MarkRenderStateDirty() end)
+    local ok2, l1 = pcall(function() return c:K2_GetComponentLocation() end)
+    add(string.format("moved=%s after (%.0f,%.0f,%.0f)", tostring(moved), l1.X, l1.Y, l1.Z))
+    add("actorHidden=" .. tostring((pcall(function() return (FindAllOf("BP_C1_Lamp_C") or {})[1].bHidden end))))
+    print("== LAMPUP dz=" .. tostring(dz) .. " \n" .. table.concat(out, "\n") .. " ==")
+  end)
+end
+
+Commands["/lampbright"] = function(PC, args)
+  local inten = tonumber(args[1] or "60000")
+  local rad = tonumber(args[2])
+  ExecuteInGameThread(function()
+    local lightCls = StaticFindObject("/Script/Engine.SpotLightComponent")
+    local n, ok_set, sample = 0, 0, "?"
+    for _, a in ipairs(FindAllOf("BP_C1_Lamp_C") or {}) do
+      local ok, c = pcall(function() return a:GetComponentByClass(lightCls) end)
+      if ok and c then
+        -- SetIntensity is the engine setter; assigning the property directly is a silent no-op
+        local used = pcall(function() c:SetIntensity(inten) end)
+        if used then ok_set = ok_set + 1
+        else pcall(function() c.Intensity = inten end) end
+        if rad then pcall(function() c:SetAttenuationRadius(rad) end) end
+        pcall(function() c:MarkRenderStateDirty() end)
+        if n == 0 then
+          local okr, v = pcall(function() return c.Intensity end)
+          sample = okr and tostring(v) or "unreadable"
+        end
+        n = n + 1
+      end
+    end
+    print(string.format("== LAMPBRIGHT intensity=%d (radius=%s) setter_ok=%d/%d readback=%s ==",
+      inten, tostring(rad or "unchanged"), ok_set, n, sample))
+  end)
+end
+
+Commands["/lampfit"] = function(PC, args)
+  local inten = tonumber(args[1] or "60000")
+  local outer = tonumber(args[2] or "60")
+  local rad = tonumber(args[3] or "3000")
+  local inner = tonumber(args[4] or "20")
+  ExecuteInGameThread(function()
+    local lightCls = StaticFindObject("/Script/Engine.SpotLightComponent")
+    local n = 0
+    for _, a in ipairs(FindAllOf("BP_C1_Lamp_C") or {}) do
+      local ok, c = pcall(function() return a:GetComponentByClass(lightCls) end)
+      if ok and c then
+        if not pcall(function() c:SetIntensity(inten) end) then pcall(function() c.Intensity = inten end) end
+        if not pcall(function() c:SetOuterConeAngle(outer) end) then pcall(function() c.OuterConeAngle = outer end) end
+        if not pcall(function() c:SetInnerConeAngle(inner) end) then pcall(function() c.InnerConeAngle = inner end) end
+        if not pcall(function() c:SetAttenuationRadius(rad) end) then pcall(function() c.AttenuationRadius = rad end) end
+        pcall(function() c:MarkRenderStateDirty() end)
+        n = n + 1
+      end
+    end
+    print(string.format("== LAMPFIT intensity=%d outer=%d inner=%d radius=%d on %d lamps ==", inten, outer, inner, rad, n))
+  end)
+end
+
+Commands["/lampcolor"] = function(PC, args)
+  local r = tonumber(args[1] or "255")
+  local g = tonumber(args[2] or "214")
+  local b = tonumber(args[3] or "170")
+  ExecuteInGameThread(function()
+    local lightCls = StaticFindObject("/Script/Engine.SpotLightComponent")
+    local n, method = 0, "none"
+    for _, a in ipairs(FindAllOf("BP_C1_Lamp_C") or {}) do
+      local ok, c = pcall(function() return a:GetComponentByClass(lightCls) end)
+      if ok and c then
+        local lc = { R = r / 255.0, G = g / 255.0, B = b / 255.0, A = 1.0 }
+        if pcall(function() c:SetLightColor(lc, true) end) then method = "SetLightColor(sRGB)"
+        elseif pcall(function() c:SetLightColor(lc) end) then method = "SetLightColor"
+        else method = "FAILED" end
+        pcall(function() c:MarkRenderStateDirty() end)
+        n = n + 1
+      end
+    end
+    print(string.format("== LAMPCOLOR %d,%d,%d on %d lamps via %s ==", r, g, b, n, method))
+  end)
+end
+
+Commands["/lampraise"] = function(PC, args)
+  local dz = tonumber(args[1] or "400")
+  ExecuteInGameThread(function()
+    local lightCls = StaticFindObject("/Script/Engine.SpotLightComponent")
+    local n, moved = 0, 0
+    for _, a in ipairs(FindAllOf("BP_C1_Lamp_C") or {}) do
+      local ok, c = pcall(function() return a:GetComponentByClass(lightCls) end)
+      if ok and c then
+        local hit = {}
+        local loc = c:K2_GetComponentLocation()
+        loc.Z = loc.Z + dz
+        if pcall(function() c:K2_SetWorldLocation(loc, false, hit, true) end) then moved = moved + 1 end
+        pcall(function() c:MarkRenderStateDirty() end)
+        n = n + 1
+      end
+    end
+    print(string.format("== LAMPRAISE dz=%d moved=%d/%d ==", dz, moved, n))
+  end)
+end
+
+Commands["/lampme"] = function(PC, args)
+  ExecuteInGameThread(function()
+    local c, n = firstLampComponent()
+    if not c then print("== LAMPME no lamp (actors=" .. tostring(n) .. ") =="); return end
+    local pawn = PC.Pawn or PC:K2_GetPawn()
+    if not pawn then print("== LAMPME no pawn =="); return end
+    local p = pawn:K2_GetActorLocation()
+    local okf, f = pcall(function() return pawn:GetActorForwardVector() end)
+    local fx, fy = 1.0, 0.0
+    if okf and f then fx, fy = f.X, f.Y end
+    local b = c:K2_GetComponentLocation()
+    local target = b
+    target.X = p.X + fx * 300
+    target.Y = p.Y + fy * 300
+    target.Z = p.Z + 150
+    local hit = {}
+    local ok = pcall(function() return c:K2_SetWorldLocation(target, false, hit, true) end)
+    pcall(function() c:SetIntensity(50000) end)
+    pcall(function() c:SetAttenuationRadius(3000) end)
+    pcall(function() c:MarkRenderStateDirty() end)
+    local a2 = c:K2_GetComponentLocation()
+    print(string.format("== LAMPME moved=%s from %.0f,%.0f,%.0f to %.0f,%.0f,%.0f ==", tostring(ok), b.X, b.Y, b.Z, a2.X, a2.Y, a2.Z))
+  end)
+end
+
+Commands["/lamphere"] = function(PC, args)
+  local idx = tonumber(args[1] or "1")
+  local actors = FindAllOf("BP_C1_Lamp_C") or {}
+  if #actors < idx then print("no lamp " .. tostring(idx) .. " (have " .. tostring(#actors) .. ")"); return end
+  ExecuteInGameThread(function()
+    local a = actors[idx]
+    local pawn = PC.Pawn or PC:K2_GetPawn()
+    local base = pawn and pawn:K2_GetActorLocation() or PC:K2_GetActorLocation()
+    -- 6 m up, 8 m ahead of the player: mutate the struct we already have (no vector ctor)
+    local target = a:K2_GetActorLocation()
+    local fx, fy = 1.0, 0.0
+    if pawn then
+      local okf, fwd = pcall(function() return pawn:GetActorForwardVector() end)
+      if okf and fwd then fx, fy = fwd.X, fwd.Y end
+    end
+    target.X = base.X + fx * 800
+    target.Y = base.Y + fy * 800
+    target.Z = base.Z + 600
+    local moved = pcall(function() a:K2_SetActorLocation(target, false, nil, false) end)
+    local comps = lampComponents(a)
+    for _, c in ipairs(comps) do
+      pcall(function() c:SetIntensity(20000) end)
+      pcall(function() c:SetVisibility(true, true) end)
+      pcall(function() c:MarkRenderStateDirty() end)
+    end
+    local l = a:K2_GetActorLocation()
+    print(string.format("== LAMPHERE %d moved=%s at (%.0f, %.0f, %.0f) comps=%d ==",
+      idx, tostring(moved), l.X, l.Y, l.Z, #comps))
+  end)
+end
+
+Commands["/setint"] = function(PC, args)
+  local v = tonumber(args[1] or "5000")
+  ExecuteInGameThread(function()
+    local n = 0
+    for _, a in ipairs(FindAllOf("BP_C1_Lamp_C") or {}) do
+      for _, c in ipairs(lampComponents(a)) do
+        -- SetVisibility/SetIntensity notify the renderer; raw property writes often do not
+        local used = false
+        if pcall(function() c:SetIntensity(v) end) then used = true end
+        if not used then pcall(function() c.Intensity = v end) end
+        pcall(function() c:SetVisibility(true, true) end)
+        pcall(function() c:MarkRenderStateDirty() end)
+        n = n + 1
+      end
+    end
+    print("== SETINT " .. tostring(v) .. " applied to " .. tostring(n) .. " components ==")
   end)
 end
 

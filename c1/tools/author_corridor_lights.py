@@ -5,16 +5,20 @@ Why native actors and not BP_C1_Lamp instances: a blueprint's light component is
 BP per value. Native SpotLight/PointLight actors carry their own component values, which is also
 the only path that has behaved reliably in this project (the P0 ladder).
 
-Per-lamp mapping from the source record -> UE component (calibration anchored on in-game tuning):
-  intensity          = 200000 * brightness / 2.0      (source brightness 2 == the value tuned in
-                                                      game; records without brightness get 1.0)
-  attenuation_radius = clamp(range_m * 100 * 2.0)     (range 20 m == 4000 cm, the tuned radius;
-                                                      the x2 is the in-game calibration factor)
-  inner/outer cone   = source inner/outer deg, outer clamped to <= 80 deg because the source's
-                      170 deg is a floodlight stand-in and renders as a featureless blob
-  color              = warm white 255,214,170; the source colour (1,0.392,0) converts faithfully
-                      but reads red under MT's tonemap, so the tint is not taken from source
+Per-lamp mapping from the source record (canonical units, see
+c1/docs/MAP_PORTING_GUIDE.md section 7 and c1/GOTCHAS.md section 32):
+  intensity          = brightness * 5000 cd  (spot -> CANDELAS units)
+                       brightness * 62832 lm (sign lights -> LUMENS units)
+                       records without brightness get 1.0
+  attenuation_radius = range_m * 100 cm      (range only clamps the inverse-square falloff)
+  inner/outer cone   = source inner/outer degrees (both engines agree; no clamping)
+  colour             = source linear RGBA converted to sRGB, NOT linear*255
   pitch              = -90 (straight down)
+
+NOTE: the /lamps runtime probe counts BP_C1_Lamp actors and reports 0 once these native
+actors replace them. Actor labels are editor-only and are stripped by the cook, so the
+pak cannot be audited by grepping for "C1Port_" either — audit via the umap export-table
+size (v5 4 lights = 56,021 B, v6 2,169 lights = 630,770 B).
 
 Idempotent: destroys C1Lamp_/C1Ladder_/C1NativeLight_/C1Port_ actors before spawning.
 """
