@@ -855,3 +855,44 @@ per-row lamps must be native actors.
 
 **Docs:** BeamNG `documentation.beamng.com/modding/lighting/pbl` + `/lights/`; Epic *Using Physical
 Lighting Units*. Skill: `motortown-map-lighting`, `references/light-units-beamng-to-ue.md`.
+
+## 33. "Just delete them" vs find the real config — sign lights (2026-11-06)
+
+**Symptom:** after the corridor port, lamps beside signs were white and blown out.
+
+**First hypothesis (wrong):** the 356 corridor `sign_lights` carry no brightness, range, colour or
+cone angles in the source, and every one is `isEnabled: false` — so they look like inert
+placeholders, and the tempting fix is to drop them.
+
+**What the level actually does:** `levels/c1/mainlevel.lua` builds a partition grid (384 m cells)
+over `lightGroupNames = {"Tunnel_lights","Tunnel_sounds","sign_lights","LightGroup1", …,
+"garage_japan_unpacked"}` and calls `light:setLightEnabled(value)` per cell as the camera moves, with
+`texSize` raised to 256 when enabled. So the group *is* live; `isEnabled:false` in the file just
+means "off until the manager says otherwise" — true for the street lamp groups too.
+
+**What the objects specify:** position, `texSize: 32`, `flareScale: 0`, `animate: false`,
+`locked: true`. Nothing photometric. They run on **PointLight class defaults**.
+
+**Why the port blew out:** the class default is legacy `brightness 1`, converted at the documented
+rate to **62,832 lm** (the isotropic equivalent of a 5,000 cd spot). BeamNG's own guidance for a
+point light of this kind is **400–1,000 lm at radius 5–12 m**. We ported the class default literally,
+~60× too strong, and it clipped to white against Motor Town's exposure. BeamNG absorbs it; UE at MT's
+exposure does not.
+
+**Fix:** keep the lamps, give value-less ones a documented small-point-light default (800 lm, 8 m)
+instead of the legacy-brightness default.
+
+**Rules**
+- **"No values in the file" is not "no light".** Before deleting a group, grep the level's Lua for its
+  group name and for `setLightEnabled`; a runtime light manager is common in converted levels.
+- **Class defaults are config too.** Port them deliberately, and sanity-check the magnitude against
+  the engine's own guidance table rather than only against the unit-conversion formula.
+- **A unit conversion can be arithmetically right and operationally absurd.** 62,832 lm is the correct
+  conversion and the wrong light. Cross-check any converted value against the docs' recommended range
+  for that fixture type.
+
+**Separate defect found in passing (not the cause):** sign materials declare only `colorMap` and
+`alphaRef` — no roughness map — yet **1,638 of 1,653 material instances carry `Roughness = 0.65`**,
+and only 217 of 1,605 source materials declare roughness at all. That constant is invented during the
+material build, so every ported surface has a specular lobe the source never asked for. Flat signage
+should be fully rough (1.0). Worth a material pass; it did not cause the white lamps.

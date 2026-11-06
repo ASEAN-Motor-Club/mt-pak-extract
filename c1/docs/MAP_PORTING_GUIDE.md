@@ -701,6 +701,15 @@ color = srgb(source_linear_rgb) * 255                  # NOT linear * 255
   choice; port it and raise any change with them.
 - **Do not calibrate by eye against unitless.** If the result looks wrong, check the *unit* and the
   exposure range first (Epic: raise Max EV100 before touching intensity), then tune.
+- **"No photometric values" is a property of the class, not of the level.** A light object with only
+  a position runs on engine class defaults, and a runtime light manager (a level Lua partition grid
+  calling `setLightEnabled`) will still switch it on. Port the class default deliberately and check
+  its magnitude against the engine's guidance table: BeamNG's legacy `brightness 1` is 62,832 lm for a
+  point light, while the same docs recommend 400–1,000 lm for a small point light. The conversion can
+  be correct and the lamp still absurd.
+- **Grep the level Lua before deleting a light group.** `lightGroupNames` + `setLightEnabled` tells
+  you which groups the map actually drives at runtime; `isEnabled:false` in the missiongroup just
+  means "off until the manager enables it".
 - **Aim is separate from brightness.** A spot with no rotation points along +X; bake pitch −90 into the
   template and verify the component's rotation, not the actor's.
 

@@ -40,7 +40,12 @@ PREFIXES = ("C1Lamp_", "C1Ladder_", "C1NativeLight_", "C1Port_")
 CD_PER_BRIGHTNESS = 5000.0
 LM_PER_BRIGHTNESS = 62832.0
 DEFAULT_BRIGHTNESS = 1.0
-CD_SCALE = float(os.environ.get("C1_CD_SCALE", "1.0"))   # single knob for eyeball calibration
+CD_SCALE = float(os.environ.get("C1_CD_SCALE", "1.0"))    # street/tunnel eyeball knob
+# Sign lights are POINT lights at the canonical default (62832 lm) — correct as a source value, but
+# inside a small sign box it blows out the sign face and reads as a hotspot in reflections. Scaled
+# down; the sign emissive material already provides the visible glow.
+SIGN_LM_SCALE = float(os.environ.get("C1_SIGN_LM_SCALE", "0.15"))
+SIGN_DEFAULT_LM = float(os.environ.get("C1_SIGN_DEFAULT_LM", "800"))   # lumen value for value-less signs
 
 rows = json.load(open(ROWS))
 les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
@@ -60,7 +65,14 @@ for a in eas.get_all_level_actors():
     except Exception:
         pass
 
+skipped = []
 for r in rows:
+    # A row with no photometric value is a placeholder, not a lamp. The 356 sign_lights in this
+    # source level carry only position + texSize: no brightness, range, colour or angles, and every
+    # one is isEnabled=false. Lighting them with the class default produced white blobs at 62,832 lm.
+    if all(r.get(k) is None for k in ("brightness", "src_range_m", "src_color", "inner_deg", "outer_deg")):
+        skipped.append(r.get("name"))
+        continue
     try:
         x, y, z = r["ue_cm"]
         cls = unreal.PointLight if r.get("group") == "sign_lights" else unreal.SpotLight
@@ -72,7 +84,9 @@ for r in rows:
         b = float(brightness) if isinstance(brightness, (int, float)) and brightness > 0 else DEFAULT_BRIGHTNESS
         is_point = (r.get("group") == "sign_lights")
         if is_point:
-            inten = b * LM_PER_BRIGHTNESS
+            # Value-less sign lamps get the documented small-point-light default, not the legacy
+            # brightness default (which is ~60x brighter and clips to white against MT exposure).
+            inten = SIGN_DEFAULT_LM if r.get("sign_default") else b * LM_PER_BRIGHTNESS * SIGN_LM_SCALE
             units = unreal.LightUnits.LUMENS
         else:
             inten = b * CD_PER_BRIGHTNESS * CD_SCALE
@@ -120,7 +134,9 @@ for r in rows:
             out["errors"].append(traceback.format_exc().splitlines()[-1])
 
 les.save_current_level()
-out["summary"] = "CORRIDOR placed=%d failed=%d deleted=%d" % (out["placed"], out["failed"], out["deleted"])
+out["skipped_placeholders"] = len(skipped)
+out["summary"] = "CORRIDOR placed=%d failed=%d deleted=%d skipped_placeholder=%d" % (
+    out["placed"], out["failed"], out["deleted"], len(skipped))
 json.dump(out, open(REPORT, "w"), indent=1)
 print(out["summary"], json.dumps(out["by_group"]))
 print("intensity", json.dumps(out["intensity_hist"]), "radius", json.dumps(out["radius_hist"]))
