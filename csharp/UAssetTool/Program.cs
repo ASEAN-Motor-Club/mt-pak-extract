@@ -53,6 +53,12 @@ class Program
         bool dumpMode = args.Contains("--dump");
         bool ptProbe = args.Contains("--ptprobe");
         bool retargetMode = args.Contains("--retarget-mis");
+        bool renameTexMode = args.Contains("--rename-texture-param");
+        bool setMiParentMode = args.Contains("--set-mi-parent");
+        bool setBlendMode = args.Contains("--set-blend");
+        bool setTexParamMode = args.Contains("--set-texparam");
+        bool clearOverridesMode = args.Contains("--clear-overrides");
+        bool transMiMode = args.Contains("--trans-mis");
         int ptIdx = Array.IndexOf(args, "--ptprobe");
         
         Console.WriteLine($"Usage: dotnet run -- [--batch] [--batch-maps] [--add-rows ...] [--clone-asset ...] [--patch-cdo-arrays ...] [--patch-rows ...] [--patch-export-props ...] [--patch-named-exports ...] [--dump ...] [path/to/asset.uasset]");
@@ -70,10 +76,74 @@ class Program
         
         PatchMappingsForVersion();
         
+        if (renameTexMode)
+        {
+            int ri = Array.IndexOf(args, "--rename-texture-param");
+            if (ri + 4 >= args.Length) { Console.WriteLine("usage: --rename-texture-param <inDir> <outDir> <from> <to>"); return; }
+            RenameTextureParam(args[ri + 1], args[ri + 2], args[ri + 3], args[ri + 4]);
+            return;
+        }
+
+        if (transMiMode)
+        {
+            int ti = Array.IndexOf(args, "--trans-mis");
+            if (ti + 4 >= args.Length) { Console.WriteLine("usage: --trans-mis <inDir> <outDir> <listFile> <masterPkg> <masterName>"); return; }
+            TransMIs(args[ti + 1], args[ti + 2], args[ti + 3], args[ti + 4], args[ti + 5]);
+            return;
+        }
+
+        if (setTexParamMode)
+        {
+            int ti = Array.IndexOf(args, "--set-texparam");
+            if (ti + 6 >= args.Length) { Console.WriteLine("usage: --set-texparam <inDir> <outDir> <listFile|-> <param> <texPkg> <texName>"); return; }
+            SetTexParam(args[ti + 1], args[ti + 2], args[ti + 3], args[ti + 4], args[ti + 5], args[ti + 6]);
+            return;
+        }
+
+        if (setBlendMode)
+        {
+            int bi = Array.IndexOf(args, "--set-blend");
+            if (bi + 4 >= args.Length) { Console.WriteLine("usage: --set-blend <inDir> <outDir> <listFile|-> <masked|translucent>"); return; }
+            var extra = args.Skip(bi + 5).ToArray();
+            SetBlend(args[bi + 1], args[bi + 2], args[bi + 3], args[bi + 4], extra);
+            return;
+        }
+
+        if (args.Contains("--set-clip"))
+        {
+            int ci2 = Array.IndexOf(args, "--set-clip");
+            if (ci2 + 3 >= args.Length) { Console.WriteLine("usage: --set-clip <inDir> <outDir> <listFile>"); return; }
+            SetClip(args[ci2 + 1], args[ci2 + 2], args[ci2 + 3]);
+            return;
+        }
+
+        if (args.Contains("--apply-plan"))
+        {
+            int ai = Array.IndexOf(args, "--apply-plan");
+            if (ai + 3 >= args.Length) { Console.WriteLine("usage: --apply-plan <inDir> <outDir> <plan.json>"); return; }
+            ApplyPlan(args[ai + 1], args[ai + 2], args[ai + 3]);
+            return;
+        }
+
+        if (clearOverridesMode)
+        {
+            int ci = Array.IndexOf(args, "--clear-overrides");
+            if (ci + 3 >= args.Length) { Console.WriteLine("usage: --clear-overrides <inDir> <outDir> <listFile|->"); return; }
+            ClearOverrides(args[ci + 1], args[ci + 2], args[ci + 3]);
+            return;
+        }
+
+        if (setMiParentMode)
+        {
+            int pi = Array.IndexOf(args, "--set-mi-parent");
+            if (pi + 4 >= args.Length) { Console.WriteLine("usage: --set-mi-parent <inDir> <outDir> <listFile|-> <masterPkg> <masterName>"); return; }
+            SetMiParent(args[pi + 1], args[pi + 2], args[pi + 3], args[pi + 4], args[pi + 5]);
+            return;
+        }
+
         if (retargetMode)
         {
             int ri = Array.IndexOf(args, "--retarget-mis");
-            if (ri + 2 >= args.Length) { Console.WriteLine("usage: --retarget-mis <inDir> <outDir> [forceMaskedFile]"); return; }
             int fi = ri + 3 < args.Length && !args[ri + 3].StartsWith("--") ? ri + 3 : -1;
             RetargetMIs(args[ri + 1], args[ri + 2], fi > 0 ? args[fi] : null);
             return;
@@ -114,6 +184,88 @@ class Program
             return;
         }
 
+        if (args.Contains("--set-array-class-ref"))
+        {
+            int li = Array.IndexOf(args, "--set-array-class-ref");
+            if (li + 8 > args.Length) { Console.WriteLine("usage: --set-array-class-ref <in.uasset> <out.uasset> <exportName> <arrayProp> <keyField> <field> <mapJson>"); return; }
+            SetArrayClassRef(args[li + 1], args[li + 2], args[li + 3], args[li + 4], args[li + 5], args[li + 6], args[li + 7]);
+            return;
+        }
+
+        if (args.Contains("--set-array-bool"))
+        {
+            int li = Array.IndexOf(args, "--set-array-bool");
+            if (li + 8 > args.Length) { Console.WriteLine("usage: --set-array-bool <in.uasset> <out.uasset> <exportName> <arrayProp> <keyField> <field> <true|false> [key=value,key=value]"); return; }
+            var only = li + 8 < args.Length ? args[li + 8] : "";
+            SetArrayBool(args[li + 1], args[li + 2], args[li + 3], args[li + 4], args[li + 5], args[li + 6],
+                string.Equals(args[li + 7], "true", StringComparison.OrdinalIgnoreCase), only);
+            return;
+        }
+
+        if (args.Contains("--replace-spline"))
+        {
+            int li = Array.IndexOf(args, "--replace-spline");
+            if (li + 4 >= args.Length) { Console.WriteLine("usage: --replace-spline <in.uasset> <out.uasset> <roadExportName> <points.json>"); return; }
+            ReplaceSpline(args[li + 1], args[li + 2], args[li + 3], args[li + 4]);
+            return;
+        }
+
+        if (args.Contains("--set-gate-transforms"))
+        {
+            int li = Array.IndexOf(args, "--set-gate-transforms");
+            if (li + 3 >= args.Length) { Console.WriteLine("usage: --set-gate-transforms <in.uasset> <out.uasset> <gates.json>"); return; }
+            SetGateTransforms(args[li + 1], args[li + 2], args[li + 3]);
+            return;
+        }
+
+        if (args.Contains("--drop-actors"))
+        {
+            int li = Array.IndexOf(args, "--drop-actors");
+            if (li + 3 >= args.Length) { Console.WriteLine("usage: --drop-actors <in.uasset> <out.uasset> <ClassA,ClassB>"); return; }
+            DropActors(args[li + 1], args[li + 2], args[li + 3]);
+            return;
+        }
+
+        if (args.Contains("--find-actor-block"))
+        {
+            int li = Array.IndexOf(args, "--find-actor-block");
+            FindActorBlock(args[li + 1]);
+            return;
+        }
+
+        if (args.Contains("--list-actors"))
+        {
+            int li = Array.IndexOf(args, "--list-actors");
+            ListActors(args[li + 1]);
+            return;
+        }
+
+        if (args.Contains("--roundtrip"))
+        {
+            int li = Array.IndexOf(args, "--roundtrip");
+            UAsset.CaptureOriginalExportData = true;
+            var rt = new UAsset(args[li + 1], EngineVersion.VER_UE5_5, Mappings);
+            int nul = 0, sz = 0;
+            foreach (var e in rt.Exports) if (e is NormalExport ne) { sz++; if (ne.OriginalData == null) nul++; }
+            Console.WriteLine($"ROUNDTRIP exports={sz} originalDataNull={nul}");
+            rt.Write(args[li + 2]);
+            return;
+        }
+
+        if (args.Contains("--print-spline"))
+        {
+            int li = Array.IndexOf(args, "--print-spline");
+            PrintSpline(args[li + 1], args[li + 2]);
+            return;
+        }
+
+        if (args.Contains("--print-gates"))
+        {
+            int li = Array.IndexOf(args, "--print-gates");
+            PrintGates(args[li + 1]);
+            return;
+        }
+
         if (args.Contains("--set-child-class-refs"))
         {
             int li = Array.IndexOf(args, "--set-child-class-refs");
@@ -129,6 +281,93 @@ class Program
             string props = "";
             int pr = Array.IndexOf(args, "--props"); if (pr > 0) props = args[pr + 1];
             SetRoadSpline(args[li + 1], args[li + 2], args[li + 3], args[li + 4], props);
+            return;
+        }
+
+        if (args.Contains("--normalize-actors"))
+        {
+            int li = Array.IndexOf(args, "--normalize-actors");
+            NormalizeActors(args[li + 1], args[li + 2]);
+            return;
+        }
+
+        if (args.Contains("--verify-sizes"))
+        {
+            int li = Array.IndexOf(args, "--verify-sizes");
+            VerifySizes(args[li + 1], li + 2 < args.Length && !args[li + 2].StartsWith("--") ? args[li + 2] : "");
+            return;
+        }
+
+        if (args.Contains("--deps-dump"))
+        {
+            int li = Array.IndexOf(args, "--deps-dump");
+            DumpDeps(args[li + 1], li + 2 < args.Length ? args[li + 2] : "");
+            return;
+        }
+
+        if (args.Contains("--fix-road-bounds"))
+        {
+            int li = Array.IndexOf(args, "--fix-road-bounds");
+            FixRoadBounds(args[li + 1], args[li + 2]);
+            return;
+        }
+
+        if (args.Contains("--merge-actors"))
+        {
+            int li = Array.IndexOf(args, "--merge-actors");
+            if (li + 4 >= args.Length) { Console.WriteLine("usage: --merge-actors <base.umap> <donor.umap> <out.umap> <classesCsv> [--skip-classes a,b]"); return; }
+            string sk = "";
+            int ni = Array.IndexOf(args, "--only-names");
+            string onlyNames = ni > 0 && ni + 1 < args.Length ? args[ni + 1] : "";
+            int si = Array.IndexOf(args, "--skip-classes");
+            if (si > 0 && si + 1 < args.Length) sk = args[si + 1];
+            MergeActors(args[li + 1], args[li + 2], args[li + 3], args[li + 4], sk, onlyNames);
+            return;
+        }
+
+        if (args.Contains("--add-streaming-level"))
+        {
+            int li = Array.IndexOf(args, "--add-streaming-level");
+            if (li + 4 >= args.Length) { Console.WriteLine("usage: --add-streaming-level <in.umap> <out.umap> <packagePath> <assetName>"); return; }
+            AddStreamingLevel(args[li + 1], args[li + 2], args[li + 3], args[li + 4]);
+            return;
+        }
+
+        if (args.Contains("--set-export-bytes"))
+        {
+            int bi = Array.IndexOf(args, "--set-export-bytes");
+            if (bi + 4 >= args.Length) { Console.WriteLine("usage: --set-export-bytes <in> <out> <exportName> <hexFile>"); return; }
+            SetExportBytes(args[bi + 1], args[bi + 2], args[bi + 3], args[bi + 4]);
+            return;
+        }
+
+        if (args.Contains("--retarget-package"))
+        {
+            int li = Array.IndexOf(args, "--retarget-package");
+            if (li + 4 >= args.Length) { Console.WriteLine("usage: --retarget-package <in> <out> <oldPath> <newPath> [--rename old=new,...]"); return; }
+            string rn = "";
+            int rr = Array.IndexOf(args, "--rename");
+            if (rr > 0 && rr + 1 < args.Length) rn = args[rr + 1];
+            RetargetPackage(args[li + 1], args[li + 2], args[li + 3], args[li + 4], rn);
+            return;
+        }
+
+        if (args.Contains("--dump-export"))
+        {
+            int li = Array.IndexOf(args, "--dump-export");
+            if (li + 2 >= args.Length) { Console.WriteLine("usage: --dump-export <asset> <exportName> [--limit N]"); return; }
+            int lim = 3;
+            int lx = Array.IndexOf(args, "--limit");
+            if (lx > 0 && lx + 1 < args.Length) int.TryParse(args[lx + 1], out lim);
+            DumpExport(args[li + 1], args[li + 2], Math.Max(1, lim));
+            return;
+        }
+
+        if (args.Contains("--lane-roads"))
+        {
+            int li = Array.IndexOf(args, "--lane-roads");
+            if (li + 3 >= args.Length) { Console.WriteLine("usage: --lane-roads <in.umap> <out.umap> <lane_roads.json>"); return; }
+            RunLaneRoads(args[li + 1], args[li + 2], args[li + 3]);
             return;
         }
 
@@ -825,6 +1064,1169 @@ class Program
     // ========================================================================
     // --clone-asset: Generic asset cloning, renaming, and patching
     // ========================================================================
+    // ---- print one export's properties, arrays summarised ----------------------
+    // A world-partition map is ~370 MB of uexp; dumping it whole is unusable. This prints a
+    // single named export with array counts and the first few elements, which is what you
+    // need to learn a struct's layout (e.g. FMTRoadGraphData.NodeList).
+    static void DumpExport(string path, string name, int limit)
+    {
+        var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+        int hits = 0;
+        for (int i = 0; i < asset.Exports.Count; i++)
+        {
+            var ex = asset.Exports[i];
+            string nm = ex.ObjectName?.Value?.Value ?? "";
+            if (!nm.Equals(name, StringComparison.OrdinalIgnoreCase) &&
+                !nm.Contains(name, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!(ex is NormalExport ne)) continue;
+            hits++;
+            Console.WriteLine($"### Export[{i}] {nm} ({ClassNameOf(asset, ex)}) props={ne.Data.Count}");
+            PrintProps(ne.Data, 0, limit);
+            if (hits >= 4) break;
+        }
+        if (hits == 0) Console.WriteLine($"DUMPEXPORT_NONE '{name}'");
+        Console.WriteLine($"DUMPEXPORT_END hits={hits}");
+    }
+
+    static void PrintProps(List<PropertyData> data, int depth, int limit)
+    {
+        string pad = new string(' ', 2 + depth * 2);
+        foreach (var p in data)
+        {
+            string n = p.Name?.Value?.Value ?? "";
+            string t = p.GetType().Name.Replace("PropertyData", "");
+            switch (p)
+            {
+                case IntPropertyData ip: Console.WriteLine($"{pad}{n} (Int) = {ip.Value}"); break;
+                case FloatPropertyData fp: Console.WriteLine($"{pad}{n} (Float) = {fp.Value}"); break;
+                case DoublePropertyData dp: Console.WriteLine($"{pad}{n} (Double) = {dp.Value}"); break;
+                case BoolPropertyData bp: Console.WriteLine($"{pad}{n} (Bool) = {bp.Value}"); break;
+                case NamePropertyData np: Console.WriteLine($"{pad}{n} (Name) = {np.Value?.Value?.Value}"); break;
+                case StrPropertyData sp: Console.WriteLine($"{pad}{n} (Str) = {sp.Value?.Value}"); break;
+                case EnumPropertyData ep: Console.WriteLine($"{pad}{n} (Enum) = {ep.Value?.Value?.Value}"); break;
+                case ObjectPropertyData op: Console.WriteLine($"{pad}{n} (Object) = {op.Value?.Index}"); break;
+                case VectorPropertyData vp:
+                    Console.WriteLine($"{pad}{n} (Vector) = ({vp.Value.X:F1}, {vp.Value.Y:F1}, {vp.Value.Z:F1})");
+                    break;
+                case RotatorPropertyData rp:
+                    Console.WriteLine($"{pad}{n} (Rotator) = ({rp.Value.Pitch:F1}, {rp.Value.Yaw:F1}, {rp.Value.Roll:F1})");
+                    break;
+                case ArrayPropertyData ap:
+                    Console.WriteLine($"{pad}{n} (Array[{ap.Value.Length}])");
+                    for (int i = 0; i < Math.Min(ap.Value.Length, limit); i++)
+                    {
+                        Console.WriteLine($"{pad}  [{i}]");
+                        if (ap.Value[i] is StructPropertyData sd0) PrintProps(sd0.Value, depth + 2, limit);
+                        else PrintProps(new List<PropertyData> { ap.Value[i] }, depth + 2, limit);
+                    }
+                    break;
+                case StructPropertyData sd:
+                    Console.WriteLine($"{pad}{n} (Struct)");
+                    PrintProps(sd.Value, depth + 1, limit);
+                    break;
+                case MapPropertyData mp:
+                    Console.WriteLine($"{pad}{n} (Map[{mp.Value?.Count ?? 0}])");
+                    break;
+                default:
+                    Console.WriteLine($"{pad}{n} ({t})");
+                    break;
+            }
+        }
+    }
+
+    // ---- retarget a cooked package's identity ---------------------------------
+    // The package name lives in three places: the summary (UE5 stores it in FolderName), the
+    // name map (every import referring to this package), and the World export, which is named
+    // after the package's short name. Miss any one and the map loads under its old identity or
+    // fails to link. Name-map indices are rewritten in place so no FName index shifts.
+    // Replace one export's serialized bytes verbatim (used for UWorld's native streaming block, which
+    // UAssetAPI does not model: its Write path drops unparsed trailing data).
+    static void SetExportBytes(string inPath, string outPath, string exportName, string hexFile)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        string hex = File.ReadAllText(hexFile).Replace(" ", "").Replace("\n", "").Replace("\r", "").Trim();
+        byte[] data = new byte[hex.Length / 2];
+        for (int i = 0; i < data.Length; i++) data[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+        for (int i = 0; i < asset.Exports.Count; i++)
+        {
+            var ex = asset.Exports[i];
+            if ((ex.ObjectName?.Value?.Value ?? "") != exportName) continue;
+            if (ex is NormalExport ne) ne.Data = new List<PropertyData>();
+            ex.OriginalData = data;
+            ex.DataDirty = false;
+            ex.Extras = Array.Empty<byte>();
+            Console.WriteLine($"SETBYTES export[{i}] {exportName} -> {data.Length} bytes");
+            asset.Write(outPath);
+            Console.WriteLine($"SETBYTES_OK -> {outPath}");
+            return;
+        }
+        Console.WriteLine($"SETBYTES_FAIL no export named {exportName}");
+    }
+
+    static void RetargetPackage(string inPath, string outPath, string oldPath, string newPath, string renames)
+    {
+        UAsset.CaptureOriginalExportData = true;
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        string oldShort = oldPath.Substring(oldPath.LastIndexOf('/') + 1);
+        string newShort = newPath.Substring(newPath.LastIndexOf('/') + 1);
+
+        var exact = new Dictionary<string, string>(StringComparer.Ordinal) { [oldPath] = newPath, [oldShort] = newShort };
+        if (!string.IsNullOrEmpty(renames))
+        {
+            foreach (var pair in renames.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var bits = pair.Split('=');
+                if (bits.Length == 2) exact[bits[0].Trim()] = bits[1].Trim();
+            }
+        }
+
+        var names = asset.GetNameMapIndexList();
+        int renamed = 0, repathed = 0;
+        for (int i = 0; i < names.Count; i++)
+        {
+            string cur = names[i]?.Value ?? "";
+            string next = cur;
+            if (exact.TryGetValue(cur, out var hit)) next = hit;
+            else if (cur.StartsWith(oldPath + "/", StringComparison.Ordinal) || cur.StartsWith(oldPath + ".", StringComparison.Ordinal))
+                next = newPath + cur.Substring(oldPath.Length);
+            if (next == cur) continue;
+            asset.SetNameReference(i, new FString(next));
+            if (next.StartsWith(newPath)) repathed++; else renamed++;
+            Console.WriteLine($"NAME[{i}] '{cur}' -> '{next}'");
+        }
+
+        string folder = asset.FolderName?.Value ?? "";
+        if (folder.StartsWith(oldPath, StringComparison.Ordinal))
+        {
+            asset.FolderName = new FString(newPath + folder.Substring(oldPath.Length));
+            Console.WriteLine($"PACKAGE '{folder}' -> '{asset.FolderName.Value}'");
+        }
+        else if (folder.Length == 0 || folder == "None")
+        {
+            asset.FolderName = new FString(newPath);
+            Console.WriteLine($"PACKAGE (empty) -> '{newPath}'");
+        }
+
+        int worlds = 0;
+        for (int i = 0; i < asset.Exports.Count; i++)
+        {
+            var ex = asset.Exports[i];
+            if (ClassNameOf(asset, ex) != "World") continue;
+            string nm = ex.ObjectName?.Value?.Value ?? "";
+            if (nm == oldShort || exact.ContainsKey(nm))
+            {
+                string nn = exact.TryGetValue(nm, out var mapped) ? mapped : newShort;
+                ex.ObjectName = FName.FromString(asset, nn);
+                worlds++;
+                Console.WriteLine($"WORLD export[{i}] '{nm}' -> '{nn}'");
+            }
+        }
+
+        asset.Write(outPath);
+        Console.WriteLine($"RETARGET_OK names_pathed={repathed} names_renamed={renamed} worlds={worlds} -> {outPath}");
+    }
+
+    // ---- link a sublevel the way MT's own maps do ------------------------------
+    // NS's main map carries no actor referencing its roads map: the link is a
+    // LevelStreamingAlwaysLoaded export whose Outer is the World and whose WorldAsset points at
+    // the sublevel package. Replicate that structure exactly rather than inventing one.
+    static void AddStreamingLevel(string inPath, string outPath, string pkgPath, string assetName)
+    {
+        // Capture every export's original bytes: without this, adding one export re-serialises the
+        // whole map through UAssetAPI's writer, which cannot reproduce cooked bytes (world block,
+        // soft paths) and silently corrupts the package.
+        UAsset.CaptureOriginalExportData = true;
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+
+        int worldIdx1 = -1;
+        for (int i = 0; i < asset.Exports.Count; i++)
+            if (ClassNameOf(asset, asset.Exports[i]) == "World") { worldIdx1 = i + 1; break; }
+        if (worldIdx1 < 0) { Console.WriteLine("STREAM_FAIL no World export"); return; }
+
+        int enginePkg0 = -1;
+        for (int i = 0; i < asset.Imports.Count; i++)
+        {
+            var im = asset.Imports[i];
+            if (im.ObjectName?.Value?.Value == "/Script/Engine" && im.ClassName?.Value?.Value == "Package" && (im.OuterIndex?.Index ?? 0) == 0)
+            { enginePkg0 = i; break; }
+        }
+        if (enginePkg0 < 0) { Console.WriteLine("STREAM_FAIL no /Script/Engine package import"); return; }
+
+        int clsImport0 = -1;
+        for (int i = 0; i < asset.Imports.Count; i++)
+        {
+            var im = asset.Imports[i];
+            if (im.ObjectName?.Value?.Value == "LevelStreamingAlwaysLoaded" &&
+                (im.OuterIndex?.Index ?? 0) == -(enginePkg0 + 1) &&
+                im.ClassName?.Value?.Value == "Class") { clsImport0 = i; break; }
+        }
+        if (clsImport0 < 0)
+        {
+            asset.Imports.Add(new Import("/Script/CoreUObject", "Class", FPackageIndex.FromImport(enginePkg0), "LevelStreamingAlwaysLoaded", false, asset));
+            clsImport0 = asset.Imports.Count - 1;
+            Console.WriteLine($"  added import Class LevelStreamingAlwaysLoaded [{clsImport0 + 1}]");
+        }
+
+        var softPath = new FSoftObjectPath(FName.FromString(asset, pkgPath), FName.FromString(asset, assetName), new FString("None"));
+        var soft = new SoftObjectPropertyData(FName.FromString(asset, "WorldAsset")) { Value = softPath };
+        soft.PropertyTypeName = MakeTypeName(asset, new FString("SoftObjectProperty"));
+        // This package serialises soft object paths by INDEX into an asset-level table; a path
+        // that is not registered there throws on write.
+        // The base map may have no soft-path table at all; a soft object path cannot be expressed
+        // without one, so create it (the package format supports it via its own version flag).
+        if (asset.SoftObjectPathList == null) asset.SoftObjectPathList = new List<FSoftObjectPath>();
+        asset.SoftObjectPathList.Add(softPath);
+        Console.WriteLine($"  registered SoftObjectPathList[{asset.SoftObjectPathList.Count - 1}] = {pkgPath}.{assetName}");
+
+        var ex = new NormalExport(new List<PropertyData> { soft }, asset, Array.Empty<byte>())
+        {
+            ObjectName = FName.FromString(asset, "LevelStreamingAlwaysLoaded_0"),
+            OuterIndex = new FPackageIndex(worldIdx1),
+            ClassIndex = new FPackageIndex(-(clsImport0 + 1))
+        };
+        // A cook writes this object as a compact UNVERSIONED blob (44 bytes for a soft-path-only
+        // LevelStreamingAlwaysLoaded). UAssetAPI's tagged writer emits ~63 bytes of name/type indices
+        // instead, which the engine fails to parse and silently drops - the streaming level then never
+        // registers even though the export is present. Emit the cooked shape: same-class template with
+        // only the soft-path table index substituted.
+        // The 44-byte cook-shaped blob below is UNVERSIONED and only valid for a package that
+        // itself uses unversioned properties (dump header: HasUnversioned=True, e.g. the
+        // Nordschleife maps). This project's own maps are HasUnversioned=False (tagged), where
+        // unversioned bytes are unreadable and corrupt the export - so branch on the package.
+        bool pkgUnversioned = asset.HasUnversionedProperties;
+        byte[] cooked = pkgUnversioned ? Convert.FromHexString(
+            "00020e030000000000000000" + "05000000" + "00000000000000000000803f000000000000043f0000803f00000000")
+            : null;
+        int softIdxForBytes = asset.SoftObjectPathList != null && asset.SoftObjectPathList.Count > 0
+            ? asset.SoftObjectPathList.Count - 1
+            : -1;
+        if (pkgUnversioned && softIdxForBytes >= 0)
+        {
+            Array.Copy(BitConverter.GetBytes(softIdxForBytes), 0, cooked, 12, 4);
+            ex.OriginalData = cooked;
+            ex.DataDirty = false;
+            Console.WriteLine($"  streaming export written in cooked form ({cooked.Length} B, softpath idx {softIdxForBytes})");
+        }
+        else
+        {
+            ex.DataDirty = true;   // package is versioned -> this export must be a TAGGED stream
+            Console.WriteLine($"  package HasUnversioned={pkgUnversioned}; writing export as tagged properties");
+        }
+        asset.Exports.Add(ex);
+
+        asset.Write(outPath);
+        Console.WriteLine($"STREAM_OK export[{asset.Exports.Count - 1}] WorldAsset={pkgPath}.{assetName} -> {outPath}");
+    }
+
+    // ---- transplant actors from one cooked map into another -------------------
+    // Merging is what makes roads usable: MT's road system and AI spawner query actors in the
+    // loaded persistent level, so a streamed sublevel is invisible to them. This rebuilds the
+    // donor's exports inside the base package: names are re-created in the base's name table,
+    // every import is found-or-added (package/class/outer identity), every FPackageIndex is
+    // remapped, and the actors are appended to the base ULevel::Actors list.
+    class MergeCtx
+    {
+        public UAsset Base;
+        public UAsset Donor;
+        public Dictionary<int, int> ImportMap = new Dictionary<int, int>();
+        public Dictionary<int, int> ExportMap = new Dictionary<int, int>();
+        public int DonorLevel = -1, BaseLevel = -1, DonorWorld = -1, BaseWorld = -1;
+        public int Dropped = 0;
+
+        public int MapImport(int i)
+        {
+            if (ImportMap.TryGetValue(i, out var hit)) return hit;
+            var di = Donor.Imports[i];
+            string obj = di.ObjectName?.Value?.Value ?? "";
+            string cp = di.ClassPackage?.Value?.Value ?? "";
+            string cn = di.ClassName?.Value?.Value ?? "";
+            int outerDon = di.OuterIndex?.Index ?? 0;
+            int outerBase = outerDon == 0 ? 0 : MapImport(-outerDon - 1);
+            for (int j = 0; j < Base.Imports.Count; j++)
+            {
+                var bi = Base.Imports[j];
+                if ((bi.ObjectName?.Value?.Value ?? "") != obj) continue;
+                if ((bi.ClassPackage?.Value?.Value ?? "") != cp) continue;
+                if ((bi.ClassName?.Value?.Value ?? "") != cn) continue;
+                int bo = bi.OuterIndex?.Index ?? 0;
+                if (outerDon == 0 ? bo != 0 : bo != -(outerBase + 1)) continue;
+                ImportMap[i] = j;
+                return j;
+            }
+            // An import with no outer (the /Script/X package itself) must serialize a NULL outer.
+            // FromImport(0) would emit -1, which means "outer is import 0" - a self-reference that
+            // makes the package unresolvable and deadlocks every class created beneath it.
+            var outerPi = outerDon == 0 ? new FPackageIndex(0) : FPackageIndex.FromImport(outerBase);
+            Base.Imports.Add(new Import(cp, cn, outerPi, obj, di.bImportOptional, Base));
+            ImportMap[i] = Base.Imports.Count - 1;
+            return Base.Imports.Count - 1;
+        }
+
+        // Find (or synthesize) the class-default-object import Default__<Class> inside classPkg.
+        // A cooked actor export always has TemplateIndex pointing at its archetype; an actor with
+        // tpl=0 is accepted as a reference but can never be instantiated.
+        public int FindOrAddCdoImport(string className, string classPkg)
+        {
+            for (int j = 0; j < Base.Imports.Count; j++)
+            {
+                var bi = Base.Imports[j];
+                if ((bi.ObjectName?.Value?.Value ?? "") != "Default__" + className) continue;
+                if ((bi.ClassPackage?.Value?.Value ?? "") != classPkg) continue;
+                return j;
+            }
+            int pkgIdx = -1;
+            for (int j = 0; j < Base.Imports.Count; j++)
+            {
+                var bi = Base.Imports[j];
+                if ((bi.ObjectName?.Value?.Value ?? "") == classPkg && (bi.ClassName?.Value?.Value ?? "") == "Package")
+                { pkgIdx = j; break; }
+            }
+            if (pkgIdx < 0)
+            {
+                Base.Imports.Add(new Import("/Script/CoreUObject", "Package", new FPackageIndex(0), classPkg, false, Base));
+                pkgIdx = Base.Imports.Count - 1;
+            }
+            Base.Imports.Add(new Import(classPkg, className, FPackageIndex.FromImport(pkgIdx), "Default__" + className, false, Base));
+            return Base.Imports.Count - 1;
+        }
+
+        public List<FPackageIndex> MapList(List<FPackageIndex> srcs)
+        {
+            var dst = new List<FPackageIndex>();
+            if (srcs == null) return dst;
+            foreach (var x in srcs)
+            {
+                var m = MapIndex(x);
+                if (m != null && m.Index != 0 && !dst.Any(y => y.Index == m.Index)) dst.Add(m);
+            }
+            return dst;
+        }
+
+        public FPackageIndex MapIndex(FPackageIndex pi)
+        {
+            if (pi == null) return new FPackageIndex(0);
+            int idx = pi.Index;
+            if (idx == 0) return new FPackageIndex(0);
+            if (idx < 0) return FPackageIndex.FromImport(MapImport(-idx - 1));
+            int e = idx - 1;
+            if (e == DonorLevel && BaseLevel >= 0) return new FPackageIndex(BaseLevel + 1);
+            if (e == DonorWorld && BaseWorld >= 0) return new FPackageIndex(BaseWorld + 1);
+            if (ExportMap.TryGetValue(e, out var m)) return new FPackageIndex(m + 1);
+            Dropped++;
+            return new FPackageIndex(0);
+        }
+
+        // FNames serialize by index into the name table, so every string the donor used has to
+        // exist in the base package before the writer runs.
+        public FName Name(FName f, bool keepDummy)
+        {
+            if (f == null) return null;
+            // Cooked assets resolve struct types (Vector, Box, ...) into DUMMY FNames that were
+            // never added to the name table. Those must stay dummy or the writer emits the struct
+            // as a generic tagged blob (measured 3.5x bloat). Property NAMES, by contrast, cannot
+            // stay dummy - the writer throws DummyFNameSerializationException.
+            if (f.IsDummy && keepDummy)
+            {
+                var ds = FString.FromString(f.Value?.Value ?? string.Empty);
+                if (!Base.ContainsNameReference(ds)) Base.AddNameReference(ds);
+                return FName.DefineDummy(Base, f.Value?.Value ?? string.Empty, f.Number);
+            }
+            var fs = f.IsDummy ? FString.FromString(f.Value?.Value ?? string.Empty) : (f.Value ?? FString.FromString(string.Empty));
+            if (!Base.ContainsNameReference(fs)) Base.AddNameReference(FString.FromString(fs.Value ?? string.Empty));
+            return new FName(Base, fs, f.Number);
+        }
+
+        public object Deep(object o, string fieldName = null)
+        {
+            if (o == null) return null;
+            var t = o.GetType();
+            if (o is FName fn) return Name(fn, fieldName == "StructType");
+            if (o is FPackageIndex pi) return MapIndex(pi);
+            if (o is PropertyData pd)
+            {
+                var copy = Activator.CreateInstance(pd.GetType());
+                CopyFields(pd, copy);
+                return copy;
+            }
+            if (o is string) return o;
+            if (o is Array arr)
+            {
+                if (o is byte[]) return o;
+                var el = t.GetElementType();
+                var dstArr = Array.CreateInstance(el, arr.Length);
+                for (int i = 0; i < arr.Length; i++) dstArr.SetValue(Deep(arr.GetValue(i)), i);
+                return dstArr;
+            }
+            if (o is System.Collections.IList src)
+            {
+                var dst = (System.Collections.IList)Activator.CreateInstance(t);
+                foreach (var item in src) dst.Add(Deep(item));
+                return dst;
+            }
+            return o;
+        }
+
+        void CopyFields(object from, object to)
+        {
+            for (var t = from.GetType(); t != null && t != typeof(object); t = t.BaseType)
+                foreach (var f in t.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly))
+                {
+                    if (f.IsInitOnly) continue;
+                    f.SetValue(to, Deep(f.GetValue(from), f.Name));
+                }
+        }
+    }
+
+
+    // ---------------------------------------------------------------- fix road bounds
+    static PropertyData ChildNamed(PropertyData container, string name)
+    {
+        if (container is StructPropertyData sp)
+            foreach (var c in sp.Value) if ((c.Name?.Value?.Value ?? "") == name) return c;
+        if (container is ArrayPropertyData ap)
+            foreach (var c in ap.Value) if ((c.Name?.Value?.Value ?? "") == name) return c;
+        return null;
+    }
+
+    static void SetNum(PropertyData p, double v)
+    {
+        switch (p)
+        {
+            case FloatPropertyData f: f.Value = (float)v; break;
+            case DoublePropertyData d: d.Value = v; break;
+            case IntPropertyData i: i.Value = (int)Math.Round(v); break;
+        }
+    }
+
+    static double GetNum(PropertyData p) => p switch
+    {
+        FloatPropertyData f => f.Value,
+        DoublePropertyData d => d.Value,
+        _ => 0.0
+    };
+
+    // FBox lives as Min/Max/IsValid; the engine trusts it for spatial queries, so a box inherited
+    // from a template road (different map, different coordinates) is a crash risk as soon as the
+    // road sits inside the play area.
+    static void SetBox(PropertyData boxProp, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
+    {
+        if (!(boxProp is StructPropertyData box)) return;
+        var inner = (box.Value.Count == 1 && box.Value[0] is StructPropertyData ib && ib.Value.Count > 0) ? ib : box;
+        void SetVec(string n, double x, double y, double z)
+        {
+            if (!(ChildNamed(inner, n) is StructPropertyData vec)) return;
+            var xs = ChildNamed(vec, "X"); var ys = ChildNamed(vec, "Y"); var zs = ChildNamed(vec, "Z");
+            if (xs != null) SetNum(xs, x);
+            if (ys != null) SetNum(ys, y);
+            if (zs != null) SetNum(zs, z);
+        }
+        SetVec("Min", minX, minY, minZ);
+        SetVec("Max", maxX, maxY, maxZ);
+        if (ChildNamed(inner, "IsValid") is BoolPropertyData val) val.Value = true;
+    }
+
+    static void FixRoadBounds(string inPath, string outPath)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        int fixedActors = 0, loopsChanged = 0, reparamFixed = 0;
+        foreach (var ex in asset.Exports.OfType<NormalExport>())
+        {
+            string cls = ex.ClassIndex.IsImport() ? asset.Imports[-ex.ClassIndex.Index - 1].ObjectName?.Value?.Value ?? "" : "";
+            if (cls != "MotorTownRoad") continue;
+            string aname = ex.ObjectName?.Value?.Value ?? "";
+
+            var splineProp = ex.Data.FirstOrDefault(d => (d.Name?.Value?.Value ?? "") == "Spline") as ObjectPropertyData;
+            int compIdx = splineProp?.Value.Index ?? 0;
+            if (compIdx <= 0) { Console.WriteLine($"BOUNDS_SKIP {aname}: no spline"); continue; }
+            if (!(asset.Exports[compIdx - 1] is NormalExport comp)) continue;
+
+            var curves = comp.Data.FirstOrDefault(d => (d.Name?.Value?.Value ?? "") == "SplineCurves") as StructPropertyData;
+            var pos = curves == null ? null : ChildNamed(curves, "Position") as StructPropertyData;
+            var pts = pos == null ? null : ChildNamed(pos, "Points") as ArrayPropertyData;
+            if (pts == null || pts.Value.Length == 0) { Console.WriteLine($"BOUNDS_SKIP {aname}: no points"); continue; }
+
+            double minX = double.MaxValue, minY = double.MaxValue, minZ = double.MaxValue;
+            double maxX = double.MinValue, maxY = double.MinValue, maxZ = double.MinValue;
+            double fX = 0, fY = 0, fZ = 0, lX = 0, lY = 0, lZ = 0;
+            int used = 0;
+            for (int i = 0; i < pts.Value.Length; i++)
+            {
+                if (!(pts.Value[i] is StructPropertyData pt)) continue;
+                if (!(ChildNamed(pt, "OutVal") is StructPropertyData ov)) continue;
+                double x = GetNum(ChildNamed(ov, "X")), y = GetNum(ChildNamed(ov, "Y")), z = GetNum(ChildNamed(ov, "Z"));
+                if (used == 0) { fX = x; fY = y; fZ = z; }
+                lX = x; lY = y; lZ = z; used++;
+                minX = Math.Min(minX, x); minY = Math.Min(minY, y); minZ = Math.Min(minZ, z);
+                maxX = Math.Max(maxX, x); maxY = Math.Max(maxY, y); maxZ = Math.Max(maxZ, z);
+            }
+            if (used == 0) { Console.WriteLine($"BOUNDS_SKIP {aname}: no usable points"); continue; }
+
+            const double MARGIN = 200.0;
+            var bprop = ex.Data.FirstOrDefault(d => (d.Name?.Value?.Value ?? "") == "SplineBounds");
+            if (bprop != null) SetBox(bprop, minX - MARGIN, minY - MARGIN, minZ - MARGIN, maxX + MARGIN, maxY + MARGIN, maxZ + MARGIN);
+
+            // ReparamTable maps arc-length -> curve index. The engine's curve evaluation does a
+            // binary search over it assuming InVal = point index and OutVal in [0,1]; filling it
+            // with raw indices drives that search out of the array.
+            var rep = ChildNamed(curves, "ReparamTable") as StructPropertyData;
+            var repPts = rep == null ? null : ChildNamed(rep, "Points") as ArrayPropertyData;
+            if (repPts != null && repPts.Value.Length == used)
+            {
+                var cum = new double[used];
+                double total = 0.0;
+                double px = 0, py = 0, pz = 0; bool havePrev = false;
+                int k = 0;
+                for (int i = 0; i < pts.Value.Length && k < used; i++)
+                {
+                    if (!(pts.Value[i] is StructPropertyData pt2)) continue;
+                    if (!(ChildNamed(pt2, "OutVal") is StructPropertyData ov2)) continue;
+                    double x = GetNum(ChildNamed(ov2, "X")), y = GetNum(ChildNamed(ov2, "Y")), z = GetNum(ChildNamed(ov2, "Z"));
+                    if (havePrev) total += Math.Sqrt((x - px) * (x - px) + (y - py) * (y - py) + (z - pz) * (z - pz));
+                    cum[k] = total; px = x; py = y; pz = z; havePrev = true; k++;
+                }
+                for (int i = 0; i < used; i++)
+                {
+                    if (!(repPts.Value[i] is StructPropertyData rp)) continue;
+                    double norm = total > 0.0 ? cum[i] / total : 0.0;
+                    if (ChildNamed(rp, "InVal") is PropertyData iv) SetNum(iv, i);
+                    if (ChildNamed(rp, "OutVal") is PropertyData ovv) SetNum(ovv, norm);
+                }
+                reparamFixed++;
+                if (fixedActors < 2) Console.WriteLine($"REPARAM {aname}: n={used} last={cum[used - 1]:F1}");
+            }
+
+            double dx = fX - lX, dy = fY - lY, dz = fZ - lZ;
+            bool closed = dx * dx + dy * dy + dz * dz < 100.0 * 100.0;
+            if (comp.Data.FirstOrDefault(d => (d.Name?.Value?.Value ?? "") == "bClosedLoop") is BoolPropertyData bl && bl.Value != closed)
+            { bl.Value = closed; loopsChanged++; }
+
+            fixedActors++;
+        }
+        asset.Write(outPath);
+        Console.WriteLine($"FIXBOUNDS actors={fixedActors} closedloop_changed={loopsChanged} reparam={reparamFixed} -> {outPath}");
+    }
+
+
+    static void DumpDeps(string path, string filter)
+    {
+        var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+        string NameOf(FPackageIndex pi)
+        {
+            if (pi == null) return "null";
+            if (pi.Index == 0) return "0";
+            if (pi.Index < 0)
+            {
+                int j = -pi.Index - 1;
+                return j < asset.Imports.Count ? "imp:" + (asset.Imports[j].ObjectName?.Value?.Value ?? "?") : "imp?" + pi.Index;
+            }
+            int e = pi.Index - 1;
+            return e < asset.Exports.Count ? "exp:" + (asset.Exports[e].ObjectName?.Value?.Value ?? "?") + "#" + pi.Index : "exp?" + pi.Index;
+        }
+        Console.WriteLine($"DEPS file={System.IO.Path.GetFileName(path)} exports={asset.Exports.Count} imports={asset.Imports.Count}");
+        for (int ei = 0; ei < asset.Exports.Count; ei++)
+        {
+            var e = asset.Exports[ei];
+            string nm = e.ObjectName?.Value?.Value ?? "";
+            if (!string.IsNullOrEmpty(filter) || true) { }
+            if (!string.IsNullOrEmpty(filter) && !nm.Contains(filter)) continue;
+            var dm = asset.DependsMap != null && ei < asset.DependsMap.Count ? asset.DependsMap[ei] : null;
+            Console.WriteLine($"  DEPENDS[{ei + 1}] {nm} n={dm?.Length ?? -1} [{string.Join(",", (dm ?? new int[0]).Take(12))}]");
+            var e2 = e;
+            Console.WriteLine($"  [{ei + 1}] {e2.GetType().Name} {nm} class={(e2.ClassIndex.IsImport() ? asset.Imports[-e2.ClassIndex.Index - 1].ObjectName?.Value?.Value : "?")} outer={NameOf(e2.OuterIndex)} tpl={NameOf(e2.TemplateIndex)} flags={e2.ObjectFlags}");
+            Console.WriteLine($"    SSS=[{string.Join(",", e2.SerializationBeforeSerializationDependencies.Select(NameOf))}]");
+            Console.WriteLine($"    CBS=[{string.Join(",", e2.CreateBeforeSerializationDependencies.Select(NameOf))}]");
+            Console.WriteLine($"    SBC=[{string.Join(",", e2.SerializationBeforeCreateDependencies.Select(NameOf))}]");
+            Console.WriteLine($"    CBC=[{string.Join(",", e2.CreateBeforeCreateDependencies.Select(NameOf))}]");
+        }
+    }
+
+
+    static string ClassNameOfExport(UAsset a, Export e)
+        => e.ClassIndex != null && e.ClassIndex.IsImport() ? a.Imports[-e.ClassIndex.Index - 1].ObjectName?.Value?.Value ?? "" : "";
+    static string ClassPkgOfExport(UAsset a, Export e)
+        => e.ClassIndex != null && e.ClassIndex.IsImport() ? a.Imports[-e.ClassIndex.Index - 1].ClassPackage?.Value?.Value ?? "" : "";
+
+    static int EnsurePackageImport(UAsset a, string pkg)
+    {
+        for (int j = 0; j < a.Imports.Count; j++)
+            if ((a.Imports[j].ObjectName?.Value?.Value ?? "") == pkg && (a.Imports[j].ClassName?.Value?.Value ?? "") == "Package")
+                return j;
+        a.Imports.Add(new Import("/Script/CoreUObject", "Package", new FPackageIndex(0), pkg, false, a));
+        return a.Imports.Count - 1;
+    }
+
+    static int EnsureCdo(UAsset a, string cls, string clsPkg)
+    {
+        for (int j = 0; j < a.Imports.Count; j++)
+            if ((a.Imports[j].ObjectName?.Value?.Value ?? "") == "Default__" + cls)
+                return j;
+        int pkg = EnsurePackageImport(a, clsPkg);
+        a.Imports.Add(new Import(clsPkg, cls, FPackageIndex.FromImport(pkg), "Default__" + cls, false, a));
+        return a.Imports.Count - 1;
+    }
+
+    static int EnsureSubobject(UAsset a, string sub, string cls, string clsPkg, int cdo)
+    {
+        for (int j = 0; j < a.Imports.Count; j++)
+        {
+            var bi = a.Imports[j];
+            if ((bi.ObjectName?.Value?.Value ?? "") != sub) continue;
+            if ((bi.ClassName?.Value?.Value ?? "") != cls) continue;
+            if ((bi.OuterIndex?.Index ?? 0) != -(cdo + 1)) continue;
+            return j;
+        }
+        a.Imports.Add(new Import(clsPkg, cls, FPackageIndex.FromImport(cdo), sub, false, a));
+        return a.Imports.Count - 1;
+    }
+
+    // Give actors the shape a cook gives them: archetype import, component edges, owner edges and
+    // object flags. Without these the async loader can hold a reference to the actor but never
+    // instantiate it -> "Missing Dependency ... still waiting for creation".
+    static int FindActorCountOffset(byte[] raw, int expected, int maxIdx, int minIdx)
+        {
+            for (int off = 0; off + 4 <= raw.Length; off += 4)
+            {
+                int c = BitConverter.ToInt32(raw, off);
+                if (c != expected) continue;
+                int p = off + 4;
+                if ((long)p + (long)c * 4 + 4 > raw.Length) continue;
+
+                bool ok = true;
+                for (int k = 0; k < c; k++)
+                {
+                    int v = BitConverter.ToInt32(raw, p + k * 4);
+                    if (v < minIdx || v > maxIdx) { ok = false; break; }
+                }
+                if (!ok) continue;
+
+                // tail shape: FURL (int32 len + chars) then Model index then ModelComponents count
+                p += c * 4;
+                int urlLen = BitConverter.ToInt32(raw, p);
+                if (urlLen < 0 || urlLen > 1024 || (long)p + 4 + urlLen + 8 > raw.Length) continue;
+                p += 4 + urlLen;
+                int model = BitConverter.ToInt32(raw, p); p += 4;
+                int ncomp = BitConverter.ToInt32(raw, p); p += 4;
+                if (model < minIdx || model > maxIdx) continue;
+                if (ncomp < 0 || (long)p + (long)ncomp * 4 + 12 > raw.Length) continue;
+                return off;
+            }
+            return -1;
+        }
+
+    // Splice new actor indices into the level's original native data block. Keeps every byte the cook
+    // wrote (including the tail LevelExport.Write drops) and only bumps the count + appends indices.
+    // Preserved blobs carry the donor's FName indices. Rebuild them against the merged name map by
+    // matching name TEXT (donor index -> same name's index in this package) and rewriting each
+    // (index, number) pair whose number is 0. Anything left unremapped makes the engine resolve a
+    // wrong name and desync ("Serial size mismatch").
+    static int RemapAllNameRefs(byte[] blob, UAsset don, UAsset bas, string tag)
+    {
+        if (blob == null || don == null || bas == null) return 0;
+        var pairs = new Dictionary<int, int>();
+        var donNames = don.GetNameMapIndexList();
+        for (int i = 0; i < donNames.Count; i++)
+        {
+            var nm = donNames[i];
+            if (nm == null || nm.Value == null) continue;
+            int j = bas.AddNameReference(new FString(nm.Value));
+            if (j != i) pairs[i] = j;
+        }
+        if (pairs.Count == 0) return 0;
+        int patched = 0;
+        // FName pairs are NOT 4-byte aligned to the blob start (a 6-byte unversioned header puts the
+        // first one at offset 6), so step one byte and require an exact (index, 0) pair.
+        for (int p = 0; p + 8 <= blob.Length; p += 1)
+        {
+            int idx = BitConverter.ToInt32(blob, p);
+            if (idx < 0 || BitConverter.ToInt32(blob, p + 4) != 0) continue;
+            if (!pairs.TryGetValue(idx, out int nidx)) continue;
+            Array.Copy(BitConverter.GetBytes(nidx), 0, blob, p, 4);
+            patched++;
+        }
+        if (patched > 0) Console.WriteLine($"NAME_REMAP {tag} patched={patched}");
+        return patched;
+    }
+
+    // Collect the FName values a parsed property tree holds, in document order.
+    static void CollectFNames(IEnumerable<PropertyData> props, List<FName> outl)
+    {
+        if (props == null) return;
+        foreach (var p in props)
+        {
+            if (p == null) continue;
+            if (p is NamePropertyData np) { if (np.Value != null) outl.Add(np.Value); }
+            else if (p is StructPropertyData sp) CollectFNames(sp.Value, outl);
+            else if (p is ArrayPropertyData ap) CollectFNames(ap.Value, outl);
+            else if (p is MapPropertyData mp && mp.Value != null)
+                foreach (var kv in mp.Value) { CollectFNames(new[] { kv.Key }, outl); CollectFNames(new[] { kv.Value }, outl); }
+        }
+    }
+
+    // A preserved blob still carries the DONOR's name indices. In the merged package the name map is
+    // different, so index 57 means "C1Shuto" in the donor and "BlueprintGeneratedClass" after merging
+    // -> the engine reads a nonsense name and desyncs ("Serial size mismatch: Got 309, Expected 91").
+    // Rewrite each donor FName in document order with its remapped index.
+    static void RemapNameIndicesInBlob(byte[] blob, List<FName> donor, List<FName> mapped, string tag)
+    {
+        if (blob == null || donor == null || mapped == null) return;
+        int pos = 0, patched = 0, wanted = 0;
+        for (int k = 0; k < donor.Count && k < mapped.Count; k++)
+        {
+            int oldIdx = donor[k].Index, num = donor[k].Number;
+            int newIdx = mapped[k].Index;
+            if (oldIdx < 0 || newIdx < 0) continue;
+            if (oldIdx == newIdx && num == mapped[k].Number) continue;
+            wanted++;
+            for (int i = pos; i + 8 <= blob.Length; i += 4)
+            {
+                if (BitConverter.ToInt32(blob, i) == oldIdx && BitConverter.ToInt32(blob, i + 4) == num)
+                {
+                    Array.Copy(BitConverter.GetBytes(newIdx), 0, blob, i, 4);
+                    pos = i + 8;
+                    patched++;
+                    break;
+                }
+            }
+        }
+        if (wanted > 0)
+            Console.WriteLine($"NAME_REMAP {tag} wanted={wanted} patched={patched}");
+    }
+
+    // Locate the level's native actor block: int32 count followed by `count` package indices, then an
+    // FURL (length-prefixed string). ScriptSerializationEndOffset is NOT reliable across cook versions,
+    // so find the block by shape and validate every value before touching it.
+        // Splice new actor indices into the level's original native data block. Keeps every byte the cook
+    // wrote (including the tail LevelExport.Write drops) and only bumps the count + appends indices.
+    static void PatchLevelActorBlock(UAssetAPI.ExportTypes.LevelExport lvl, List<int> newIdx)
+    {
+        if (newIdx.Count == 0) return;
+        var raw = lvl.OriginalData;
+        if (raw == null) { Console.WriteLine("LEVEL_PATCH_FAIL no original bytes"); lvl.DataDirty = true; return; }
+        int expected = (lvl.Actors?.Count ?? 0) - newIdx.Count;   // count as the cook wrote it
+        int off = FindActorCountOffset(raw, expected, maxIdx: lvl.Actors != null ? Math.Max(expected, lvl.Actors.Count) + 4096 : 0, minIdx: -65536);
+        if (off < 0)
+        {
+            Console.WriteLine($"LEVEL_PATCH_FAIL no actor block with count={expected} in {raw.Length} bytes (tagged_end={lvl.ScriptSerializationEndOffset})");
+            lvl.DataDirty = true;
+            return;
+        }
+        int arrayStart = off + 4;
+        int arrayBytes = expected * 4;
+        var outB = new List<byte>(raw.Length + newIdx.Count * 4);
+        outB.AddRange(raw.Take(arrayStart + arrayBytes));
+        foreach (var v in newIdx) outB.AddRange(BitConverter.GetBytes(v));
+        outB.AddRange(raw.Skip(arrayStart + arrayBytes));
+        var arr = outB.ToArray();
+        Array.Copy(BitConverter.GetBytes(expected + newIdx.Count), 0, arr, off, 4);
+        lvl.OriginalData = arr;
+        lvl.DataDirty = false;   // write the patched original bytes, never a re-serialisation
+        Console.WriteLine($"LEVEL_PATCH_OK actors {expected} -> {expected + newIdx.Count} at_off={off} bytes {raw.Length} -> {arr.Length}");
+    }
+
+    static void VerifySizes(string inPath, string filter)
+    {
+        var a = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        int bad = 0, ok = 0, threw = 0;
+        foreach (var ex in a.Exports)
+        {
+            string nm = ex.ObjectName?.Value?.Value ?? "";
+            string cls = ex is NormalExport ne ? ClassNameOfExport(a, ne) : (ex is RawExport ? "RawExport" : ex.GetType().Name);
+            // Preserved exports are written back byte-for-byte, so their declared size is correct by
+            // construction; re-serialising them here would measure our writer, not the shipped data.
+            if (ex.OriginalData != null && !ex.DataDirty) { ok++; continue; }
+            long actual;
+            try
+            {
+                if (ex is RawExport rex)
+                {
+                    actual = rex.Data == null ? 0 : rex.Data.Length;
+                }
+                else
+                {
+                    using var ms = new MemoryStream();
+                    var w = new AssetBinaryWriter(ms, a);
+                    ex.Write(w);
+                    w.Flush();
+                    actual = ms.Length;
+                }
+            }
+            catch (Exception e)
+            {
+                threw++;
+                Console.WriteLine($"SIZECHECK_THROW {cls} {nm} {e.GetType().Name}: {e.Message}");
+                continue;
+            }
+            if (actual == ex.SerialSize) { ok++; continue; }
+            bad++;
+            if (filter.Length == 0 || cls.Contains(filter) || nm.Contains(filter))
+                Console.WriteLine($"SIZEMISMATCH {cls} {nm} declared={ex.SerialSize} actual={actual} delta={actual - ex.SerialSize}");
+        }
+        int dep = a.DependsMap?.Count ?? -1;
+        string depFlag = (dep == a.Exports.Count) ? "aligns" : "MISALIGNED";
+        Console.WriteLine($"SIZES_OK checked={a.Exports.Count} match={ok} mismatched={bad} threw={threw} " +
+                          $"imports={a.Imports.Count} dependsMap={dep} ({depFlag}) names={a.GetNameMapIndexList().Count} -> {inPath}");
+    }
+
+    static void NormalizeActors(string inPath, string outPath)
+    {
+        UAsset.CaptureOriginalExportData = true;
+        var a = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        var lvl = a.Exports.OfType<LevelExport>().FirstOrDefault();
+        if (lvl == null) { Console.WriteLine("NORMALIZE_FAIL no level"); return; }
+        int lvlIdx1 = a.Exports.IndexOf(lvl) + 1;
+        int acts = 0, comps = 0;
+        foreach (var ar in lvl.Actors)
+        {
+            if (ar == null || ar.Index <= 0 || ar.Index > a.Exports.Count) continue;
+            if (!(a.Exports[ar.Index - 1] is NormalExport na)) continue;
+            string cls = ClassNameOfExport(a, na); string clsPkg = ClassPkgOfExport(a, na);
+            if (cls.Length == 0) continue;
+            string nm = na.ObjectName?.Value?.Value ?? "";
+            int cdo = EnsureCdo(a, cls, clsPkg);
+            if (na.TemplateIndex == null || na.TemplateIndex.Index == 0) na.TemplateIndex = FPackageIndex.FromImport(cdo);
+
+            var childIdx = new List<int>();
+            for (int ci = 0; ci < a.Exports.Count; ci++)
+                if (a.Exports[ci] is NormalExport ce && ce.OuterIndex != null && ce.OuterIndex.Index == ar.Index) childIdx.Add(ci);
+
+            na.CreateBeforeSerializationDependencies = new List<FPackageIndex>();
+            foreach (var ci in childIdx) na.CreateBeforeSerializationDependencies.Add(new FPackageIndex(ci + 1));
+            na.CreateBeforeCreateDependencies = new List<FPackageIndex> { new FPackageIndex(lvlIdx1) };
+            na.SerializationBeforeCreateDependencies = new List<FPackageIndex>();
+            if (na.ClassIndex.IsImport()) na.SerializationBeforeCreateDependencies.Add(na.ClassIndex);
+            na.SerializationBeforeCreateDependencies.Add(FPackageIndex.FromImport(cdo));
+
+            foreach (var ci in childIdx)
+            {
+                if (!(a.Exports[ci] is NormalExport ce2)) continue;
+                string cn2 = ce2.ObjectName?.Value?.Value ?? "";
+                string sub = cn2.StartsWith(nm + "_") ? cn2.Substring(nm.Length + 1) : cn2;
+                string ccls = ClassNameOfExport(a, ce2); string cpkg2 = ClassPkgOfExport(a, ce2);
+                if (ccls.Length == 0) continue;
+                int arch = EnsureSubobject(a, sub, ccls, cpkg2, cdo);
+                ce2.TemplateIndex = FPackageIndex.FromImport(arch);
+                ce2.ObjectFlags |= EObjectFlags.RF_DefaultSubObject;
+                ce2.CreateBeforeCreateDependencies = new List<FPackageIndex> { new FPackageIndex(ar.Index) };
+                ce2.CreateBeforeSerializationDependencies = new List<FPackageIndex>();
+                ce2.SerializationBeforeCreateDependencies = new List<FPackageIndex>();
+                if (ce2.ClassIndex.IsImport()) ce2.SerializationBeforeCreateDependencies.Add(ce2.ClassIndex);
+                ce2.SerializationBeforeCreateDependencies.Add(FPackageIndex.FromImport(arch));
+                if (!na.SerializationBeforeCreateDependencies.Any(x => ce2.ClassIndex != null && x.Index == ce2.ClassIndex.Index))
+                    if (ce2.ClassIndex.IsImport()) na.SerializationBeforeCreateDependencies.Add(ce2.ClassIndex);
+                comps++;
+            }
+            na.ObjectFlags |= EObjectFlags.RF_Transactional;
+            acts++;
+        }
+        a.Write(outPath);
+        Console.WriteLine($"NORMALIZE_OK actors={acts} components={comps} imports={a.Imports.Count} -> {outPath}");
+    }
+
+    static void MergeActors(string basePath, string donorPath, string outPath, string classesCsv, string skipCsv, string onlyNames = "")
+    {
+        // Preserve untouched exports byte-for-byte: re-serialising them through UAssetAPI does not
+        // reproduce cook bytes and the game rejects the result ("Serial size mismatch").
+        UAsset.CaptureOriginalExportData = true;
+        var bas = new UAsset(basePath, EngineVersion.VER_UE5_5, Mappings);
+        var don = new UAsset(donorPath, EngineVersion.VER_UE5_5, Mappings);
+        var keep = new HashSet<string>((classesCsv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
+        var skip = new HashSet<string>((skipCsv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
+
+        int FindExport(UAsset a, string name)
+        {
+            for (int i = 0; i < a.Exports.Count; i++)
+                if ((a.Exports[i].ObjectName?.Value?.Value ?? "") == name) return i;
+            return -1;
+        }
+
+        var ctx = new MergeCtx { Base = bas, Donor = don };
+        ctx.DonorLevel = FindExport(don, "PersistentLevel");
+        ctx.BaseLevel = FindExport(bas, "PersistentLevel");
+        ctx.DonorWorld = -1;
+        ctx.BaseWorld = FindExport(bas, "C1");
+        if (ctx.BaseWorld < 0)
+            for (int i = 0; i < bas.Exports.Count; i++) if (ClassNameOf(bas, bas.Exports[i]) == "World") { ctx.BaseWorld = i; break; }
+        for (int i = 0; i < don.Exports.Count; i++) if (ClassNameOf(don, don.Exports[i]) == "World") { ctx.DonorWorld = i; break; }
+
+        // selection: classes to keep, plus everything whose outer chain reaches them
+        var pick = new HashSet<int>();
+        for (int i = 0; i < don.Exports.Count; i++)
+        {
+            var cls = ClassNameOf(don, don.Exports[i]);
+            if (cls == "World" || cls == "WorldSettings" || cls == "Model" || cls == "Level" || cls == "LevelStreamingAlwaysLoaded") continue;
+            if (skip.Contains(cls)) continue;
+            // Name filter is for ROAD actors only: it lets a build carry just the course road
+            // (NS's own shape is 2 road actors for a whole lap), while gates/nav still come along.
+            if (onlyNames.Length > 0 && cls == "MotorTownRoad")
+            {
+                // FName splits "MotorTownRoad_2" into base "MotorTownRoad" + number 2, so compare
+                // the DISPLAY form or the name filter silently matches nothing (the same FName
+                // number trap that mis-named the road ids earlier).
+                var onBase = don.Exports[i].ObjectName?.Value?.Value ?? "";
+                int onNum = don.Exports[i].ObjectName?.Number ?? 0;
+                string on = onNum > 0 ? onBase + "_" + onNum : onBase;
+                // "@course" = the road carrying a CourseKey (the race-course road). Matching by
+                // property is robust where names are ambiguous (FName numbers shift on rewrite).
+                bool isCourse = onlyNames.Trim() == "@course" &&
+                    (don.Exports[i] as NormalExport)?.Data.Any(d => (d.Name?.Value?.Value ?? "") == "CourseKey") == true;
+                if (!isCourse && !onlyNames.Split(',').Any(n => n.Trim() == on)) continue;
+            }
+            if (onlyNames.Length > 0 && cls == "MotorTownRoad" && keep.Contains(cls))
+            {
+                var dbgName = don.Exports[i].ObjectName;
+            }
+            if (keep.Contains(cls)) pick.Add(i);
+        }
+        bool grew = true;
+        while (grew)
+        {
+            grew = false;
+            for (int i = 0; i < don.Exports.Count; i++)
+            {
+                if (pick.Contains(i)) continue;
+                int o = don.Exports[i].OuterIndex?.Index ?? 0;
+                if (o > 0 && pick.Contains(o - 1)) { pick.Add(i); grew = true; }
+            }
+        }
+
+        // donor actor list, so registration is copied rather than guessed
+        var donorActors = new HashSet<int>();
+        if (ctx.DonorLevel >= 0 && don.Exports[ctx.DonorLevel] is UAssetAPI.ExportTypes.LevelExport dl && dl.Actors != null)
+            foreach (var a in dl.Actors) if ((a?.Index ?? 0) > 0) donorActors.Add(a.Index - 1);
+
+        int baseExportCount = bas.Exports.Count;
+        int next = bas.Exports.Count;
+        foreach (var i in pick.OrderBy(x => x)) ctx.ExportMap[i] = next++;
+
+        var built = new List<Export>();
+        foreach (var i in pick.OrderBy(x => x))
+        {
+            if (!(don.Exports[i] is NormalExport src)) { Console.WriteLine($"MERGE_SKIP non-normal export {i}"); continue; }
+            var nd = new NormalExport(new List<PropertyData>(), bas, Array.Empty<byte>())
+            {
+                ObjectName = ctx.Name(src.ObjectName, false),
+                ClassIndex = ctx.MapIndex(src.ClassIndex),
+                OuterIndex = ctx.MapIndex(src.OuterIndex),
+                SuperIndex = ctx.MapIndex(src.SuperIndex),
+                TemplateIndex = ctx.MapIndex(src.TemplateIndex),
+                ObjectFlags = src.ObjectFlags,
+                IsInheritedInstance = src.IsInheritedInstance,
+                bNotAlwaysLoadedForEditorGame = src.bNotAlwaysLoadedForEditorGame,
+                ObjectGuid = src.ObjectGuid
+            };
+            nd.Data = (List<PropertyData>)ctx.Deep(src.Data);
+            // Carry the donor's raw bytes. Race sections / roads / navigation use NATIVE binary
+            // serialisation (their cooked data is not a tagged-property stream), so re-serialising
+            // the parsed "--dump" view produces a tagged blob the game cannot parse
+            // ("Serial size mismatch: Got 189, Expected 149"). Writing the original bytes keeps the
+            // export exactly as the cook produced it.
+            nd.OriginalData = src.OriginalData == null ? null : (byte[])src.OriginalData.Clone();
+            nd.DataDirty = src.DataDirty;
+            // NOTE: text-based name remapping is UNSAFE on opaque blobs - an int32 that happens to
+            // equal a donor name index (e.g. an ObjectProperty's package index 41) gets rewritten and
+            // silently breaks references. Disabled until a schema-driven rewrite exists.
+            if (nd.OriginalData != null)
+            {
+                var donorNames = new List<FName>();
+                CollectFNames(src.Data, donorNames);
+                if (donorNames.Count > 0)
+                {
+                    var mappedNames = donorNames.Select(f => ctx.Name(f, false)).ToList();
+                    RemapNameIndicesInBlob(nd.OriginalData, donorNames, mappedNames, src.ObjectName?.Value?.Value ?? "?");
+                }
+            }
+            // Cooked exports carry preload dependency lists that tell the engine what must be
+            // loaded/created before this object. Empty lists on a transplanted actor mean the
+            // engine instantiates it before its class/archetype exists.
+            nd.bForcedExport = src.bForcedExport;
+            nd.bNotForClient = src.bNotForClient;
+            nd.bNotForServer = src.bNotForServer;
+            nd.bIsAsset = src.bIsAsset;
+            nd.GeneratePublicHash = src.GeneratePublicHash;
+            // Copy the donor's arcs (remapped), then guarantee an arc to the CLASS and TEMPLATE
+            // imports on the serialization-before-create list. Without the template arc the loader
+            // cannot instantiate the actor (it still needs its archetype), so an export that
+            // something requests stays "waiting for creation" forever and the async loader fatals
+            // with "Missing Dependency ... still waiting for creation".
+            nd.SerializationBeforeSerializationDependencies = ctx.MapList(src.SerializationBeforeSerializationDependencies);
+            nd.CreateBeforeSerializationDependencies = ctx.MapList(src.CreateBeforeSerializationDependencies);
+            nd.SerializationBeforeCreateDependencies = ctx.MapList(src.SerializationBeforeCreateDependencies);
+            nd.CreateBeforeCreateDependencies = ctx.MapList(src.CreateBeforeCreateDependencies);
+            void Arc(FPackageIndex pi)
+            {
+                if (pi == null || pi.Index == 0 || !pi.IsImport()) return;
+                var m = ctx.MapIndex(pi);
+                if (m == null || m.Index == 0) return;
+                if (!nd.SerializationBeforeCreateDependencies.Any(x => x.Index == m.Index))
+                    nd.SerializationBeforeCreateDependencies.Add(m);
+            }
+            Arc(src.ClassIndex);
+            Arc(src.TemplateIndex);
+            built.Add(nd);
+        }
+        foreach (var e in built) bas.Exports.Add(e);
+
+        int registered = 0;
+        var regByClass = new Dictionary<string, int>();
+        var pickByClass = new Dictionary<string, int>();
+        foreach (var i in pick) { var c = ClassNameOf(don, don.Exports[i]); pickByClass[c] = pickByClass.TryGetValue(c, out var pc) ? pc + 1 : 1; }
+        var levelEx = ctx.BaseLevel >= 0 ? bas.Exports[ctx.BaseLevel] as UAssetAPI.ExportTypes.LevelExport : null;
+        var addedActorIndices = new List<int>();
+        if (levelEx?.Actors != null)
+        {
+            foreach (var i in pick.OrderBy(x => x))
+            {
+                if (!donorActors.Contains(i)) continue;
+                var newActorIdx = new FPackageIndex(ctx.ExportMap[i] + 1);
+                levelEx.Actors.Add(newActorIdx);
+                    levelEx.DataDirty = true;
+                // The level lists every vanilla actor in CBS (create-before-serializing-level);
+                // transplanted actors missing from that list leave the loader holding an actor
+                // reference it was never told to create -> "still waiting for creation" fatal.
+                addedActorIndices.Add(newActorIdx.Index);
+                if (!levelEx.CreateBeforeSerializationDependencies.Any(x => x.Index == newActorIdx.Index))
+                    levelEx.CreateBeforeSerializationDependencies.Add(newActorIdx);
+                registered++;
+                var rc = ClassNameOf(don, don.Exports[i]);
+                regByClass[rc] = regByClass.TryGetValue(rc, out var rcv) ? rcv + 1 : 1;
+            }
+        }
+
+        // The writer synthesises property TYPE names by looking them up in the name table; a
+        // stripped cooked map (or a donor whose map never needed them) lacks them. Seed the
+        // standard set up front instead of discovering them one exception at a time.
+        foreach (var tn in new[] { "FloatProperty","DoubleProperty","IntProperty","Int8Property","Int16Property","Int64Property",
+                                   "UInt16Property","UInt32Property","UInt64Property","ByteProperty","BoolProperty","NameProperty",
+                                   "StrProperty","TextProperty","ObjectProperty","WeakObjectProperty","LazyObjectProperty",
+                                   "ClassProperty","SoftObjectProperty","SoftClassProperty","InterfaceProperty","StructProperty",
+                                   "ArrayProperty","MapProperty","SetProperty","DelegateProperty","MulticastDelegateProperty",
+                                   "MulticastInlineDelegateProperty","FieldPathProperty","EnumProperty","OptionalProperty" })
+        {
+            var tf = FString.FromString(tn);
+            if (!bas.ContainsNameReference(tf)) bas.AddNameReference(tf);
+        }
+
+        // The writer synthesises property type names ("FloatProperty", ...) by looking them up in
+        // the name table and throws when absent; a stripped cooked map does not carry them all.
+        foreach (var nm in don.GetNameMapIndexList())
+        {
+            var s = nm?.Value ?? "";
+            if (!s.EndsWith("Property", StringComparison.Ordinal)) continue;
+            if (!bas.ContainsNameReference(nm)) bas.AddNameReference(FString.FromString(s));
+        }
+
+        // ---- normalize transplanted actors the way a cook does ------------------
+        // Cooked actor exports always carry: an archetype import (TemplateIndex), a CBS edge to
+        // each of their component exports, a CBC edge to the level, and SBC edges to class,
+        // archetype and component classes. Actors we manufactured had none of these, so the async
+        // loader could reference them but never create them ("still waiting for creation").
+        var levelExportForNorm = bas.Exports.OfType<LevelExport>().FirstOrDefault();
+        int baseLevelIdx1 = levelExportForNorm != null ? bas.Exports.IndexOf(levelExportForNorm) + 1 : 0;
+        int actorsFixed = 0;
+        var regActors = new HashSet<int>();
+        if (levelExportForNorm != null)
+            foreach (var a in levelExportForNorm.Actors) if (a != null && a.Index > 0) regActors.Add(a.Index);
+        for (int bi2 = 0; bi2 < bas.Exports.Count; bi2++)
+        {
+            if (!(bas.Exports[bi2] is NormalExport na)) continue;
+            string aname2 = na.ObjectName?.Value?.Value ?? "";
+            if (!regActors.Contains(bi2 + 1)) continue;
+            bool transplanted = ctx.ExportMap.ContainsValue(bi2);
+            if (!transplanted) continue;
+
+            string cls = na.ClassIndex.IsImport() ? bas.Imports[-na.ClassIndex.Index - 1].ObjectName?.Value?.Value ?? "" : "";
+            string cpkg = na.ClassIndex.IsImport() ? bas.Imports[-na.ClassIndex.Index - 1].ClassPackage?.Value?.Value ?? "" : "";
+            if (cls.Length == 0) continue;
+
+            // archetype
+            int cdo = ctx.FindOrAddCdoImport(cls, cpkg.Replace("Default__", ""));
+            if (na.TemplateIndex == null || na.TemplateIndex.Index == 0)
+                na.TemplateIndex = FPackageIndex.FromImport(cdo);
+
+            // component edges: children exports whose outer is this actor
+            var comps = new List<int>();
+            for (int ci = 0; ci < bas.Exports.Count; ci++)
+                if (bas.Exports[ci] is NormalExport ce && ce.OuterIndex != null && ce.OuterIndex.Index == bi2 + 1) comps.Add(ci);
+
+            na.CreateBeforeSerializationDependencies = new List<FPackageIndex>();
+            foreach (var ci in comps) na.CreateBeforeSerializationDependencies.Add(new FPackageIndex(ci + 1));
+
+            na.CreateBeforeCreateDependencies = new List<FPackageIndex>();
+            if (baseLevelIdx1 > 0) na.CreateBeforeCreateDependencies.Add(new FPackageIndex(baseLevelIdx1));
+
+            na.SerializationBeforeCreateDependencies = new List<FPackageIndex>();
+            if (na.ClassIndex.IsImport()) na.SerializationBeforeCreateDependencies.Add(na.ClassIndex);
+            na.SerializationBeforeCreateDependencies.Add(FPackageIndex.FromImport(cdo));
+            foreach (var ci in comps)
+                if (bas.Exports[ci] is NormalExport ce2 && ce2.ClassIndex.IsImport() &&
+                    !na.SerializationBeforeCreateDependencies.Any(x => x.Index == ce2.ClassIndex.Index))
+                    na.SerializationBeforeCreateDependencies.Add(ce2.ClassIndex);
+
+            na.ObjectFlags = EObjectFlags.RF_Transactional;
+
+            // Components are default subobjects: their archetype is the like-named subobject of
+            // the class default object, they carry RF_DefaultSubObject, and they depend on their
+            // actor. Without this a component is a free-floating object with no owner edge.
+            foreach (var ci in comps)
+            {
+                if (!(bas.Exports[ci] is NormalExport ce3)) continue;
+                string compName = ce3.ObjectName?.Value?.Value ?? "";
+                string subName = compName.StartsWith(aname2 + "_") ? compName.Substring(aname2.Length + 1) : compName;
+                string compCls = ce3.ClassIndex.IsImport() ? bas.Imports[-ce3.ClassIndex.Index - 1].ObjectName?.Value?.Value ?? "" : "";
+                string compPkg = ce3.ClassIndex.IsImport() ? bas.Imports[-ce3.ClassIndex.Index - 1].ClassPackage?.Value?.Value ?? "" : "";
+                if (compCls.Length == 0) continue;
+                int arch = -1;
+                for (int j = 0; j < bas.Imports.Count; j++)
+                {
+                    var bi3 = bas.Imports[j];
+                    if ((bi3.ObjectName?.Value?.Value ?? "") != subName) continue;
+                    if ((bi3.ClassName?.Value?.Value ?? "") != compCls) continue;
+                    if ((bi3.OuterIndex?.Index ?? 0) != -(cdo + 1)) continue;
+                    arch = j; break;
+                }
+                if (arch < 0)
+                {
+                    bas.Imports.Add(new Import(compPkg, compCls, FPackageIndex.FromImport(cdo), subName, false, bas));
+                    arch = bas.Imports.Count - 1;
+                }
+                ce3.TemplateIndex = FPackageIndex.FromImport(arch);
+                ce3.ObjectFlags |= EObjectFlags.RF_DefaultSubObject;
+                ce3.CreateBeforeCreateDependencies = new List<FPackageIndex> { new FPackageIndex(bi2 + 1) };
+                ce3.CreateBeforeSerializationDependencies = new List<FPackageIndex>();
+                ce3.SerializationBeforeCreateDependencies = new List<FPackageIndex>();
+                if (ce3.ClassIndex.IsImport()) ce3.SerializationBeforeCreateDependencies.Add(ce3.ClassIndex);
+                ce3.SerializationBeforeCreateDependencies.Add(FPackageIndex.FromImport(arch));
+            }
+            actorsFixed++;
+        }
+        Console.WriteLine($"MERGE_NORMALIZED actors={actorsFixed}");
+
+        // Cloned exports arrive by two paths (parsed NormalExport with preserved bytes, or a RawExport
+        // whose Data is copied verbatim). Both still carry the DONOR's FName indices, so remap every
+        // added export here, once, regardless of which path produced it.
+        int remappedExports = 0;
+        for (int i = baseExportCount; i < bas.Exports.Count; i++)
+        {
+            var ex = bas.Exports[i];
+            if (ex == null) continue;
+            string nm2 = ex.ObjectName?.Value?.Value ?? "?";
+            if (ex.OriginalData == null && ex is RawExport rawChk) { /* no remap: see note above */ }
+        }
+        Console.WriteLine($"NAME_REMAP_TOTAL exports={remappedExports}");
+
+        // The level's data is a NATIVE block (int32 NumActors + that many package indices, then URL /
+        // Model / ModelComponents / script actor / nav list, and more that UAssetAPI's LevelExport.Write
+        // does not implement — it stops at NavListEnd). Re-serialising truncates it, and the engine
+        // reports "serialization error: corrupt data found". Patch the original bytes instead.
+        if (levelEx != null) PatchLevelActorBlock(levelEx, addedActorIndices);
+
+        bas.Write(outPath);
+        Console.WriteLine($"MERGE_DONOR_ACTORS={donorActors.Count} PICK_BY_CLASS={string.Join(",", pickByClass.Select(kv => kv.Key + ":" + kv.Value))}");
+        Console.WriteLine($"MERGE_REG_BY_CLASS={string.Join(",", regByClass.Select(kv => kv.Key + ":" + kv.Value))}");
+        Console.WriteLine($"MERGE_ARCS sbc_total={bas.Exports.OfType<NormalExport>().Sum(e => e.SerializationBeforeCreateDependencies.Count)} exports_with_sbc={bas.Exports.OfType<NormalExport>().Count(e => e.SerializationBeforeCreateDependencies.Count > 0)}");
+        Console.WriteLine($"MERGE_OK cloned={built.Count} registered={registered} imports={bas.Imports.Count} exports={bas.Exports.Count} dropped_refs={ctx.Dropped} -> {outPath}");
+    }
+
     static void PropProbe(string path)
     {
         var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
@@ -1251,6 +2653,318 @@ class Program
     }
 
     // ========================================================================
+    // ---- road geometry authoring -------------------------------------------------
+    // Both modes only rewrite FLOAT VALUES inside existing structs, so every export keeps its
+    // serialized size and the package layout is untouched. That is deliberate: adding exports to
+    // a cooked map has broken the load twice, changing values inside them has not.
+
+    static string PropName(PropertyData p) => p?.Name?.Value?.Value ?? "";
+
+    static PropertyData? FindNamed(List<PropertyData>? list, string name)
+    {
+        if (list == null) return null;
+        foreach (var p in list) if (p != null && PropName(p) == name) return p;
+        return null;
+    }
+
+    static NormalExport? ExportByName(UAsset asset, string name)
+    {
+        foreach (var e in asset.Exports)
+            if (e is NormalExport ne && (ne.ObjectName?.ToString() == name || ne.ObjectName?.Value?.Value == name)) return ne;
+        return null;
+    }
+
+    // Unversioned cook packages nest math structs one level deeper than the versioned writer:
+    // RelativeLocation is a StructPropertyData(StructType=Vector) whose single child is the
+    // VectorPropertyData. Match either shape, else the setter silently touches nothing.
+    static VectorPropertyData? Vec(List<PropertyData>? list, string name)
+    {
+        var p = FindNamed(list, name);
+        if (p is VectorPropertyData v) return v;
+        if (p is StructPropertyData sp && sp.Value != null)
+            foreach (var c in sp.Value) if (c is VectorPropertyData cv) return cv;
+        return null;
+    }
+
+    static RotatorPropertyData? Rot(List<PropertyData>? list, string name)
+    {
+        var p = FindNamed(list, name);
+        if (p is RotatorPropertyData r) return r;
+        if (p is StructPropertyData sp && sp.Value != null)
+            foreach (var c in sp.Value) if (c is RotatorPropertyData cr) return cr;
+        return null;
+    }
+
+    static BoxPropertyData? Box(List<PropertyData>? list, string name)
+    {
+        var p = FindNamed(list, name);
+        if (p is BoxPropertyData b) return b;
+        if (p is StructPropertyData sp && sp.Value != null)
+            foreach (var c in sp.Value) if (c is BoxPropertyData cb) return cb;
+        return null;
+    }
+
+    static void ReplaceSpline(string inPath, string outPath, string roadName, string pointsJson)
+    {
+        UAsset.CaptureOriginalExportData = true;   // must be set BEFORE load: OriginalData is captured during read
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+
+        var road = ExportByName(asset, roadName);
+        if (road == null) { Console.WriteLine($"REPLACE_SPLINE_FAIL road {roadName} not found"); return; }
+
+        var splineProp = FindNamed(road.Data, "Spline") as ObjectPropertyData;
+        if (splineProp == null) { Console.WriteLine("REPLACE_SPLINE_FAIL no Spline property"); return; }
+        int exIdx = splineProp.Value.Index;
+        if (exIdx <= 0) { Console.WriteLine("REPLACE_SPLINE_FAIL Spline is an import"); return; }
+        var splineExp = asset.Exports[exIdx - 1] as NormalExport;
+        if (splineExp == null) { Console.WriteLine("REPLACE_SPLINE_FAIL spline export missing"); return; }
+
+        var curves = FindNamed(splineExp.Data, "SplineCurves") as StructPropertyData;
+        var position = curves == null ? null : FindNamed(curves.Value, "Position") as StructPropertyData;
+        var points = position == null ? null : FindNamed(position.Value, "Points") as ArrayPropertyData;
+        if (points == null) { Console.WriteLine("REPLACE_SPLINE_FAIL SplineCurves.Position.Points not found"); return; }
+        int n = points.Value.Length;
+
+        // input: {"points": [[x,y,z], ...], "closed": true} or a bare [[x,y,z],...]
+        double[][] src;
+        bool closed = true;
+        using (var doc = JsonDocument.Parse(File.ReadAllText(pointsJson)))
+        {
+            var root = doc.RootElement;
+            var arr = root.ValueKind == JsonValueKind.Array ? root : root.GetProperty("points");
+            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("closed", out var c)) closed = c.GetBoolean();
+            src = arr.EnumerateArray().Select(v => v.EnumerateArray().Select(d => d.GetDouble()).ToArray()).ToArray();
+        }
+        Console.WriteLine($"  source loop points={src.Length} closed={closed}; spline expects {n}");
+
+        // resample by arc length so the curve follows the source shape exactly
+        int m = src.Length + (closed ? 1 : 0);
+        var cum = new double[m];
+        for (int i = 1; i < m; i++) cum[i] = cum[i - 1] + Math.Sqrt(
+            Math.Pow(src[i % src.Length][0] - src[(i - 1) % src.Length][0], 2) +
+            Math.Pow(src[i % src.Length][1] - src[(i - 1) % src.Length][1], 2) +
+            Math.Pow(src[i % src.Length][2] - src[(i - 1) % src.Length][2], 2));
+        double total = cum[m - 1];
+        var outp = new double[n][];
+        int seg = 0;
+        for (int i = 0; i < n; i++)
+        {
+            double want = total * i / (double)(closed ? n : n - 1);
+            while (seg < m - 2 && cum[seg + 1] < want) seg++;
+            double span = cum[seg + 1] - cum[seg];
+            double t = span <= 1e-9 ? 0 : (want - cum[seg]) / span;
+            var a = src[seg % src.Length]; var b = src[(seg + 1) % src.Length];
+            outp[i] = new double[3];
+            for (int k = 0; k < 3; k++) outp[i][k] = a[k] + (b[k] - a[k]) * t;
+        }
+
+        double minx = outp.Min(p => p[0]), maxx = outp.Max(p => p[0]);
+        double miny = outp.Min(p => p[1]), maxy = outp.Max(p => p[1]);
+        double minz = outp.Min(p => p[2]), maxz = outp.Max(p => p[2]);
+
+        for (int i = 0; i < n; i++)
+        {
+            var sp = points.Value[i] as StructPropertyData;
+            if (sp == null) continue;
+            var prev = outp[(i - 1 + n) % n];
+            var next = outp[(i + 1) % n];
+            var leave = new[] { (next[0] - outp[i][0]), (next[1] - outp[i][1]), (next[2] - outp[i][2]) };
+            var arrive = new[] { (outp[i][0] - prev[0]), (outp[i][1] - prev[1]), (outp[i][2] - prev[2]) };
+
+            var o = Vec(sp.Value, "OutVal"); if (o != null) o.Value = new FVector((float)outp[i][0], (float)outp[i][1], (float)outp[i][2]);
+            var lv = Vec(sp.Value, "LeaveTangent"); if (lv != null) lv.Value = new FVector((float)leave[0], (float)leave[1], (float)leave[2]);
+            var av = Vec(sp.Value, "ArriveTangent"); if (av != null) av.Value = new FVector((float)arrive[0], (float)arrive[1], (float)arrive[2]);
+        }
+
+        var box = Box(road.Data, "SplineBounds");
+        if (box != null)
+        {
+            box.Value = new TBox<FVector>(
+                new FVector((float)(minx - 1000), (float)(miny - 1000), (float)(minz - 1000)),
+                new FVector((float)(maxx + 1000), (float)(maxy + 1000), (float)(maxz + 1000)), 1);
+            Console.WriteLine($"  SplineBounds set X {minx:F0}..{maxx:F0} Y {miny:F0}..{maxy:F0} Z {minz:F0}..{maxz:F0}");
+        }
+
+        splineExp.DataDirty = true;      // capture is on: the writer replays OriginalData unless dirtied
+        road.DataDirty = true;
+        asset.Write(outPath);
+        Console.WriteLine($"REPLACE_SPLINE_OK {roadName}: {n} points from {src.Length} source points -> {outPath}");
+    }
+
+    static void FindActorBlock(string inPath)
+    {
+        UAsset.CaptureOriginalExportData = true;
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        var lvl = asset.Exports.OfType<LevelExport>().FirstOrDefault();
+        if (lvl == null || lvl.Actors == null) { Console.WriteLine("FIND no level"); return; }
+        var idx = lvl.Actors.Select(a => a.Index).ToArray();
+        Console.WriteLine($"FIND actors={idx.Length} first10={string.Join(",", idx.Take(10))}");
+        Console.WriteLine($"FIND level_export_serial={lvl.SerialSize} originalData={(lvl.OriginalData == null ? "null" : lvl.OriginalData.Length.ToString())}");
+
+        var pattern = new byte[idx.Length * 4];
+        Buffer.BlockCopy(idx, 0, pattern, 0, pattern.Length);
+        foreach (var suffix in new[] { ".uexp", ".umap" })
+        {
+            string f = Path.ChangeExtension(inPath, suffix.TrimStart('.'));
+            if (!File.Exists(f)) { Console.WriteLine($"FIND {suffix} missing"); continue; }
+            var data = File.ReadAllBytes(f);
+            int at = IndexOf(data, pattern);
+            Console.WriteLine($"FIND {suffix} len={data.Length} actorArrayAt={at}");
+            if (at >= 0)
+            {
+                int off = at - 4;
+                Console.WriteLine($"FIND {suffix} countPrefixAt={off} countValue={(off >= 0 ? BitConverter.ToInt32(data, off) : -1)}");
+            }
+        }
+    }
+
+    static int IndexOf(byte[] haystack, byte[] needle)
+    {
+        for (int i = 0; i <= haystack.Length - needle.Length; i++)
+        {
+            int j = 0;
+            while (j < needle.Length && haystack[i + j] == needle[j]) j++;
+            if (j == needle.Length) return i;
+        }
+        return -1;
+    }
+
+    static void ListActors(string inPath)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        var lvl = asset.Exports.OfType<LevelExport>().FirstOrDefault();
+        if (lvl == null || lvl.Actors == null) { Console.WriteLine("LIST_ACTORS no level"); return; }
+        Console.WriteLine($"LIST_ACTORS count={lvl.Actors.Count}");
+        var cls = new Dictionary<string, int>();
+        foreach (var idx in lvl.Actors)
+        {
+            string cn = "?";
+            int i = idx.Index;
+            if (i > 0 && i - 1 < asset.Exports.Count) cn = ClassNameOfExport(asset, asset.Exports[i - 1] as NormalExport);
+            cls[cn] = cls.GetValueOrDefault(cn) + 1;
+        }
+        foreach (var kv in cls.OrderByDescending(kv => kv.Value))
+            Console.WriteLine("  " + kv.Value.ToString().PadLeft(4) + "  " + kv.Key);
+    }
+
+    static void DropActors(string inPath, string outPath, string classList)
+    {
+        var drop = new HashSet<string>(classList.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0));
+        UAsset.CaptureOriginalExportData = true;
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        var lvl = asset.Exports.OfType<LevelExport>().FirstOrDefault();
+        if (lvl == null || lvl.Actors == null) { Console.WriteLine("DROP_ACTORS_FAIL no level"); return; }
+        var raw = lvl.OriginalData;
+        if (raw == null) { Console.WriteLine("DROP_ACTORS_FAIL no original bytes"); return; }
+
+        var keep = new List<int>();
+        var dropped = new Dictionary<string, int>();
+        foreach (var idx in lvl.Actors)
+        {
+            int i = idx.Index;
+            string cn = (i > 0 && i - 1 < asset.Exports.Count)
+                ? ClassNameOfExport(asset, asset.Exports[i - 1] as NormalExport) : "?";
+            if (drop.Contains(cn)) { dropped[cn] = dropped.GetValueOrDefault(cn) + 1; continue; }
+            keep.Add(i);
+        }
+        if (dropped.Count == 0) { Console.WriteLine("DROP_ACTORS no match"); return; }
+
+        int expected = lvl.Actors.Count;
+        int off = FindActorCountOffset(raw, expected, maxIdx: Math.Max(expected, asset.Exports.Count) + 4096, minIdx: -65536);
+        if (off < 0) { Console.WriteLine($"DROP_ACTORS_FAIL no actor block count={expected} in {raw.Length} bytes"); return; }
+
+        int arrayStart = off + 4;
+        int arrayBytes = expected * 4;
+        var outB = new List<byte>(raw.Length);
+        outB.AddRange(raw.Take(arrayStart));
+        foreach (var v in keep) outB.AddRange(BitConverter.GetBytes(v));
+        outB.AddRange(raw.Skip(arrayStart + arrayBytes));
+        var arr = outB.ToArray();
+        Array.Copy(BitConverter.GetBytes(keep.Count), 0, arr, off, 4);
+        lvl.OriginalData = arr;
+        lvl.DataDirty = false;          // write patched original bytes, never a re-serialisation
+        lvl.SerialSize = arr.Length;    // table must agree with the region we wrote
+
+        asset.Write(outPath);
+        Console.WriteLine($"DROP_ACTORS_OK actors {expected} -> {keep.Count} " +
+            $"({string.Join(",", dropped.Select(kv => kv.Key + ":" + kv.Value))}) bytes {raw.Length} -> {arr.Length}");
+    }
+
+    static void PrintSpline(string inPath, string roadName)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        var road = ExportByName(asset, roadName);
+        if (road == null) { Console.WriteLine("PRINT_SPLINE no road"); return; }
+        var splineProp = FindNamed(road.Data, "Spline") as ObjectPropertyData;
+        var splineExp = asset.Exports[splineProp.Value.Index - 1] as NormalExport;
+        var curves = FindNamed(splineExp.Data, "SplineCurves") as StructPropertyData;
+        var position = FindNamed(curves.Value, "Position") as StructPropertyData;
+        var points = FindNamed(position.Value, "Points") as ArrayPropertyData;
+        Console.WriteLine($"PRINT_SPLINE {roadName} points={points.Value.Length}");
+        foreach (int i in new[] { 0, 1, 500, points.Value.Length - 1 })
+        {
+            var sp = points.Value[i] as StructPropertyData;
+            var o = Vec(sp.Value, "OutVal"); var lv = Vec(sp.Value, "LeaveTangent");
+            var iv = FindNamed(sp.Value, "InVal") as FloatPropertyData;
+            var im = FindNamed(sp.Value, "InterpMode") as BytePropertyData;
+            Console.WriteLine($"  [{i}] InVal={iv?.Value} OutVal=({o?.Value.X:F1},{o?.Value.Y:F1},{o?.Value.Z:F1}) Leave=({lv?.Value.X:F2},{lv?.Value.Y:F2},{lv?.Value.Z:F2}) Interp={im?.Value}");
+        }
+    }
+
+    static void PrintGates(string inPath)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        for (int i = 0; i < 64; i++)
+        {
+            var gate = ExportByName(asset, $"MotorTownRaceSection_{i}");
+            if (gate == null) continue;
+            var rc = FindNamed(gate.Data, "RootComponent") as ObjectPropertyData;
+            if (rc == null || rc.Value.Index <= 0) continue;
+            var comp = asset.Exports[rc.Value.Index - 1] as NormalExport;
+            if (comp == null) continue;
+            var loc = Vec(comp.Data, "RelativeLocation");
+            var rot = Rot(comp.Data, "RelativeRotation");
+            if (i == 0) {
+                var rl = FindNamed(comp.Data, "RelativeLocation");
+                Console.WriteLine($"  DEBUG RelativeLocation type={rl?.GetType().FullName} valType={(rl as StructPropertyData)?.StructType?.ToString()} childCount={(rl as StructPropertyData)?.Value?.Count} children=[{string.Join(",", ((rl as StructPropertyData)?.Value ?? new List<PropertyData>()).Select(x => x?.GetType().Name + ":" + x?.Name?.ToString()))}]");
+            }
+            if (i == 0) Console.WriteLine($"  DEBUG gate0 comp={comp.ObjectName} props={(comp.Data == null ? "NULL" : comp.Data.Count.ToString())} names=[{string.Join(",", (comp.Data ?? new List<PropertyData>()).Take(8).Select(x => x?.Name?.ToString()))}]");
+            Console.WriteLine($"GATE {i} loc=({loc?.Value.X:F1},{loc?.Value.Y:F1},{loc?.Value.Z:F1}) yaw={rot?.Value.Yaw:F1}");
+        }
+    }
+
+    static void SetGateTransforms(string inPath, string outPath, string gatesJson)
+    {
+        UAsset.CaptureOriginalExportData = true;
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(gatesJson));
+        int done = 0, missing = 0;
+        foreach (var g in doc.RootElement.EnumerateArray())
+        {
+            int idx = g.GetProperty("index").GetInt32();
+            var pos = g.GetProperty("pos").EnumerateArray().Select(v => v.GetDouble() * 100.0).ToArray(); // m -> cm
+            double yaw = g.GetProperty("yaw").GetDouble();
+
+            var gate = ExportByName(asset, $"MotorTownRaceSection_{idx}");
+            if (gate == null) { missing++; continue; }
+            var rc = FindNamed(gate.Data, "RootComponent") as ObjectPropertyData;
+            if (rc == null || rc.Value.Index <= 0) { missing++; continue; }
+            var comp = asset.Exports[rc.Value.Index - 1] as NormalExport;
+            if (comp == null) { missing++; continue; }
+
+            var loc = Vec(comp.Data, "RelativeLocation");
+            if (loc != null) loc.Value = new FVector((float)pos[0], (float)pos[1], (float)pos[2]);
+            var rot = Rot(comp.Data, "RelativeRotation");
+            if (rot != null) rot.Value = new FRotator(0f, (float)yaw, 0f);
+            if (loc == null && rot == null) { missing++; continue; }
+            comp.DataDirty = true;
+            done++;
+        }
+        asset.Write(outPath);
+        Console.WriteLine($"SET_GATES_OK placed={done} missing={missing} -> {outPath}");
+    }
+
     static void SetClassRef(string inPath, string outPath, string exportName, string propName, string packagePath, string className)
     {
         var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
@@ -1289,6 +3003,137 @@ class Program
         asset.ResolveAncestries();
         asset.Write(outPath);
         Console.WriteLine($"SETCLASSREF_OK {exportName}.{propName} -> {packagePath}.{className} (import {classIdx}) -> {outPath}");
+    }
+
+    // --set-array-class-ref: point an ObjectProperty that lives inside a
+    // TArray<FStruct> at a class in another package (e.g. a spawn setting's
+    // VehicleClass -> /Game/Cars/Models/Hana.Hana_C). The field must already
+    // exist in the cooked struct (unversioned property schema); we only
+    // repoint it, we never insert.  Keyed by a field inside each element so
+    // the order of the array does not matter.
+    // ========================================================================
+    static void SetArrayClassRef(string inPath, string outPath, string exportName,
+        string arrayProp, string keyField, string field, string mapJsonPath)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        NormalExport? target = null;
+        foreach (var e in asset.Exports)
+        {
+            if (e is not NormalExport ne) continue;
+            var nm = ne.ObjectName?.Value?.Value ?? "";
+            var num = ne.ObjectName?.Number ?? 0;
+            var full = num > 0 ? $"{nm}_{num - 1}" : nm;
+            if (string.Equals(nm, exportName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(full, exportName, StringComparison.OrdinalIgnoreCase)) { target = ne; break; }
+        }
+        if (target == null) { Console.WriteLine($"SETARRAYCLASS_FAIL no export named {exportName}"); return; }
+
+        ArrayPropertyData? arr = null;
+        foreach (var p in target.Data)
+            if (p is ArrayPropertyData ap && string.Equals(ap.Name?.Value?.Value, arrayProp, StringComparison.OrdinalIgnoreCase))
+                arr = ap;
+        if (arr == null) { Console.WriteLine($"SETARRAYCLASS_FAIL no array {arrayProp} on {exportName}"); return; }
+
+        var map = new Dictionary<string, string[]>();
+        using (var doc = JsonDocument.Parse(File.ReadAllText(mapJsonPath)))
+            foreach (var kv in doc.RootElement.EnumerateObject())
+                map[kv.Name] = kv.Value.EnumerateArray().Select(x => x.GetString() ?? "").ToArray();
+
+        int hits = 0;
+        foreach (var el in arr.Value)
+        {
+            if (el is not StructPropertyData sp) continue;
+
+            string? key = null;
+            foreach (var pp in sp.Value)
+            {
+                if (!string.Equals(pp.Name?.Value?.Value, keyField, StringComparison.OrdinalIgnoreCase)) continue;
+                if (pp is NamePropertyData npd) key = npd.Value?.Value?.Value;
+                else if (pp is StrPropertyData spd) key = spd.Value?.Value;
+            }
+            if (key == null || !map.TryGetValue(key, out var refs) || refs.Length < 2) continue;
+
+            var (_, classIdx) = AddImportChain(asset, "/Script/Engine", "BlueprintGeneratedClass", refs[0], refs[1]);
+            bool set = false;
+            foreach (var pp in sp.Value)
+            {
+                if (pp is ObjectPropertyData op && string.Equals(op.Name?.Value?.Value, field, StringComparison.OrdinalIgnoreCase))
+                {
+                    op.Value = FPackageIndex.FromImport(classIdx - 1);
+                    set = true;
+                }
+            }
+            if (set) { hits++; Console.WriteLine($"  {key} -> {refs[0]}.{refs[1]} (import {classIdx})"); }
+            else Console.WriteLine($"  {key}: field {field} absent in struct, skipped");
+        }
+
+        asset.ResolveAncestries();
+        asset.Write(outPath);
+        Console.WriteLine($"SETARRAYCLASS_OK {hits} elements -> {outPath}");
+    }
+
+    // --set-array-bool: flip a BoolProperty inside TArray<FStruct> elements, selected by a
+    // key field (e.g. SpawnSettings[SettingKey=Police].bUseNPCPoliceDensity). Optional
+    // "key=value" filter restricts which rows are touched.
+    // ========================================================================
+    static void SetArrayBool(string inPath, string outPath, string exportName,
+        string arrayProp, string keyField, string field, bool value, string only)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        NormalExport? target = null;
+        foreach (var e in asset.Exports)
+        {
+            if (e is not NormalExport ne) continue;
+            var nm = ne.ObjectName?.Value?.Value ?? "";
+            var num = ne.ObjectName?.Number ?? 0;
+            var full = num > 0 ? $"{nm}_{num - 1}" : nm;
+            if (string.Equals(nm, exportName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(full, exportName, StringComparison.OrdinalIgnoreCase)) { target = ne; break; }
+        }
+        if (target == null) { Console.WriteLine($"SETARRAYBOOL_FAIL no export named {exportName}"); return; }
+
+        ArrayPropertyData? arr = null;
+        foreach (var p in target.Data)
+            if (p is ArrayPropertyData ap && string.Equals(ap.Name?.Value?.Value, arrayProp, StringComparison.OrdinalIgnoreCase))
+                arr = ap;
+        if (arr == null) { Console.WriteLine($"SETARRAYBOOL_FAIL no array {arrayProp} on {exportName}"); return; }
+
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(only))
+            foreach (var kv in only.Split(','))
+            {
+                var bits = kv.Split('=');
+                if (bits.Length == 2 && string.Equals(bits[0].Trim(), keyField, StringComparison.OrdinalIgnoreCase))
+                    wanted.Add(bits[1].Trim());
+            }
+
+        int hits = 0;
+        foreach (var el in arr.Value)
+        {
+            if (el is not StructPropertyData sp) continue;
+            string? key = null;
+            foreach (var pp in sp.Value)
+            {
+                if (!string.Equals(pp.Name?.Value?.Value, keyField, StringComparison.OrdinalIgnoreCase)) continue;
+                if (pp is NamePropertyData npd) key = npd.Value?.Value?.Value;
+                else if (pp is StrPropertyData spd) key = spd.Value?.Value;
+            }
+            if (key == null) continue;
+            if (wanted.Count > 0 && !wanted.Contains(key)) continue;
+            foreach (var pp in sp.Value)
+            {
+                if (pp is BoolPropertyData bp && string.Equals(bp.Name?.Value?.Value, field, StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"  {key}.{field}: {bp.Value} -> {value}");
+                    bp.Value = value;
+                    hits++;
+                }
+            }
+        }
+
+        asset.ResolveAncestries();
+        asset.Write(outPath);
+        Console.WriteLine($"SETARRAYBOOL_OK {hits} elements -> {outPath}");
     }
 
     // --set-bool: flip a BoolProperty on a named export (used to clear
@@ -2564,6 +4409,18 @@ class Program
                                         null)
                                 };
                                 break;
+                            case JsonValueKind.String when old is TextPropertyData:
+                                // Fresh Text (never mutate the template's shared child):
+                                // CultureInvariant fallback text, like SetDescriptionFallback.
+                                fresh = new TextPropertyData(name)
+                                {
+                                    Namespace = FString.FromString(""),
+                                    Value = FString.FromString(Guid.NewGuid().ToString("N").ToUpper().Substring(0, 32)),
+                                    CultureInvariantString = FString.FromString(f.Value.GetString()!),
+                                    HistoryType = TextHistoryType.Base,
+                                };
+                                ((TextPropertyData)fresh).Flags |= ETextFlag.CultureInvariant;
+                                break;
                             case JsonValueKind.Number when old is FloatPropertyData:
                                 fresh = new FloatPropertyData(name) { Value = f.Value.GetSingle() };
                                 break;
@@ -3407,6 +5264,693 @@ class Program
     // set. Rationale: shader maps cooked in a separate project are rejected by Motor Town
     // (uncooked shader map ID -> default material, magenta test proved it), whereas a
     // master MT itself ships already has shaders the game owns and resolves.
+    // Rename a texture parameter across a directory of material instances, in place of
+    // re-authoring them in the editor. Used when an instance binds a parameter name the
+    // master does not expose: the bind silently does nothing and the material renders the
+    // master default (white), which is indistinguishable from "the texture is missing".
+    static void RenameTextureParam(string inDir, string outDir, string from, string to)
+    {
+        Directory.CreateDirectory(outDir);
+        int changed = 0, scanned = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            scanned++;
+            try
+            {
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                var arr = exp?.Data.OfType<ArrayPropertyData>()
+                    .FirstOrDefault(p => p.Name?.Value?.Value == "TextureParameterValues");
+                bool hit = false;
+                if (arr != null)
+                {
+                    foreach (var el in arr.Value)
+                    {
+                        var sp = el as StructPropertyData;
+                        if (sp == null) continue;
+                        var info = sp.Value.OfType<StructPropertyData>()
+                            .FirstOrDefault(s => s.Name?.Value?.Value == "ParameterInfo");
+                        var nm = info?.Value.OfType<NamePropertyData>()
+                            .FirstOrDefault(n => n.Name?.Value?.Value == "Name");
+                        if (nm?.Value?.ToString() == from)
+                        {
+                            nm.Value = FName.FromString(asset, to);
+                            hit = true;
+                        }
+                    }
+                }
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                if (hit) changed++;
+            }
+            catch (Exception ex) { Console.WriteLine($"FAIL {Path.GetFileName(path)}: {ex.Message}"); failed++; }
+        }
+        Console.WriteLine($"rename_texture_param scanned={scanned} changed={changed} failed={failed} {from}->{to}");
+    }
+
+    // Move translucent material instances onto the translucent master and give each one an
+    // OpacityTex binding. Instances that already carry the coverage in a separate opacity map
+    // just need their "Opacity" parameter renamed; ones whose coverage lives in the colour
+    // map's alpha reuse the BaseColor texture, cloned into a second parameter.
+    static void TransMIs(string inDir, string outDir, string listFile, string masterPkg, string masterName)
+    {
+        Directory.CreateDirectory(outDir);
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (listFile != "-" && File.Exists(listFile))
+            foreach (var line in File.ReadAllLines(listFile))
+            {
+                var t = line.Trim();
+                if (t.Length != 0 && !t.StartsWith("#")) wanted.Add(t);
+            }
+
+        int changed = 0, copied = 0, renamed = 0, cloned = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            if (!wanted.Contains(stem))
+            {
+                File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
+                if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
+                copied++;
+                continue;
+            }
+
+            try
+            {
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { Console.WriteLine($"SKIP {stem}: no export"); failed++; continue; }
+
+                var parentProp = exp.Data.OfType<ObjectPropertyData>()
+                    .FirstOrDefault(p => p.Name?.Value?.Value == "Parent");
+                if (parentProp == null) { Console.WriteLine($"SKIP {stem}: no Parent"); failed++; continue; }
+                var (_, idx) = AddImportChain(asset, "/Script/Engine", "Material", masterPkg, masterName);
+                parentProp.Value = FPackageIndex.FromImport(idx - 1);
+
+                var arr = exp.Data.OfType<ArrayPropertyData>()
+                    .FirstOrDefault(p => p.Name?.Value?.Value == "TextureParameterValues");
+                StructPropertyData baseEntry = null;
+                bool didRename = false;
+                if (arr != null)
+                {
+                    foreach (var el in arr.Value)
+                    {
+                        var sp = el as StructPropertyData;
+                        var nm = sp?.Value.OfType<StructPropertyData>()
+                            .FirstOrDefault(s => s.Name?.Value?.Value == "ParameterInfo")?
+                            .Value.OfType<NamePropertyData>()
+                            .FirstOrDefault(n => n.Name?.Value?.Value == "Name");
+                        if (nm == null) continue;
+                        var cur = nm.Value?.ToString();
+                        if (cur == "Opacity") { nm.Value = FName.FromString(asset, "OpacityTex"); didRename = true; renamed++; }
+                        if (cur == "BaseColor") baseEntry = sp;
+                    }
+
+                    if (!didRename && baseEntry != null)
+                    {
+                        // Clone the BaseColor entry, then swap in a fresh ParameterInfo so the
+                        // shared child properties are not written through to the original.
+                        var clone = new StructPropertyData(baseEntry.Name, baseEntry.StructType)
+                        {
+                            Value = new List<PropertyData>(baseEntry.Value)
+                        };
+                        for (int i = 0; i < clone.Value.Count; i++)
+                        {
+                            if (clone.Value[i] is not StructPropertyData info) continue;
+                            if (info.Name?.Value?.Value != "ParameterInfo") continue;
+                            var freshInfo = new StructPropertyData(info.Name, info.StructType)
+                            {
+                                Value = new List<PropertyData>(info.Value)
+                            };
+                            for (int j = 0; j < freshInfo.Value.Count; j++)
+                            {
+                                if (freshInfo.Value[j] is NamePropertyData np && np.Name?.Value?.Value == "Name")
+                                    freshInfo.Value[j] = new NamePropertyData(np.Name) { Value = FName.FromString(asset, "OpacityTex") };
+                            }
+                            clone.Value[i] = freshInfo;
+                        }
+                        arr.Value = arr.Value.Concat(new PropertyData[] { clone }).ToArray();
+                        cloned++;
+                    }
+                }
+
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex) { Console.WriteLine($"FAIL {stem}: {ex.Message}"); failed++; }
+        }
+        Console.WriteLine($"trans_mis changed={changed} copied={copied} renamed={renamed} cloned={cloned} failed={failed} master={masterName}");
+    }
+
+    // Point a named set of material instances at a specific master, leaving every other
+    // instance in the directory byte-identical. Used to split cutout materials by how
+    // their mask is stored: alpha in the colour map (MT's foliage master reads it) vs a
+    // separate opacity texture (needs a master that samples that texture).
+    // Write the per-instance blend override only. MT masters ship opaque; an instance that
+    // inherits that paints its texture's backdrop (the "green square" foliage case). Parent,
+    // parameter names and parameter values are left exactly as they are -- this is the
+    // surgical counterpart to RetargetMIs, which reparents and renames at the same time.
+    // Drop the per-instance BasePropertyOverrides block so the instance inherits the parent
+    // material's own blend state. Unreal treats blend mode / two-sided / mask clip as compiled
+    // state (MaterialInstanceBasePropertyOverrides), NOT as parameters: a cooked game cannot
+    // build a new permutation, and the failure surfaces as a missing-shader lookup (UE-39754).
+    // For a mod pak the only correct move is to let an already-masked parent supply the blend.
+    static void ClearOverrides(string inDir, string outDir, string listFile)
+    {
+        Directory.CreateDirectory(outDir);
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (listFile != "-" && File.Exists(listFile))
+            foreach (var line in File.ReadAllLines(listFile))
+            {
+                var t = line.Trim();
+                if (t.Length != 0 && !t.StartsWith("#")) wanted.Add(t);
+            }
+
+        int cleared = 0, copied = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            try
+            {
+                if (!wanted.Contains(stem))
+                {
+                    File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
+                    if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
+                    copied++;
+                    continue;
+                }
+
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { Console.WriteLine("SKIP " + stem + ": no export"); failed++; continue; }
+
+                var removed = exp.Data.RemoveAll(p => p.Name?.Value?.Value == "BasePropertyOverrides");
+                cleared += removed;
+                var target = Path.Combine(outDir, Path.GetFileName(path));
+                asset.Write(target);
+                var newUexp = Path.ChangeExtension(target, ".uexp");
+                if (File.Exists(newUexp) == false && File.Exists(uexp))
+                {
+                    Console.WriteLine("WARN " + stem + ": no written uexp");
+                }
+            }
+            catch (Exception ex) { Console.WriteLine($"FAIL {stem}: {ex.Message}"); failed++; }
+        }
+        Console.WriteLine($"clear_overrides props_removed={cleared} copied={copied} failed={failed}");
+    }
+
+    static void SetBlend(string inDir, string outDir, string listFile, string mode, string[] scalars = null)
+    {
+        bool trans = mode.Equals("translucent", StringComparison.OrdinalIgnoreCase);
+        bool masked = mode.Equals("masked", StringComparison.OrdinalIgnoreCase);
+        if (!trans && !masked) { Console.WriteLine("FAIL: mode must be masked|translucent"); return; }
+        Console.WriteLine("set_blend start mode=" + mode + " scalars=" + (scalars == null ? "null" : string.Join(",", scalars)));
+
+        Directory.CreateDirectory(outDir);
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (listFile != "-" && File.Exists(listFile))
+            foreach (var line in File.ReadAllLines(listFile))
+            {
+                var t = line.Trim();
+                if (t.Length != 0 && !t.StartsWith("#")) wanted.Add(t);
+            }
+
+        int changed = 0, copied = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            try
+            {
+                if (!wanted.Contains(stem))
+                {
+                    File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
+                    if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
+                    copied++;
+                    continue;
+                }
+
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { Console.WriteLine("SKIP " + stem + ": no export"); failed++; continue; }
+                var props = exp.Data;
+
+                props.RemoveAll(p => p.Name?.Value?.Value == "BasePropertyOverrides");
+                var overrides = new StructPropertyData(FName.FromString(asset, "BasePropertyOverrides"))
+                {
+                    StructType = FName.FromString(asset, "MaterialInstanceBasePropertyOverrides")
+                };
+                var blend = new EnumPropertyData(FName.FromString(asset, "BlendMode"))
+                {
+                    Value = FName.FromString(asset, trans ? "BLEND_Translucent" : "BLEND_Masked"),
+                    EnumType = FName.FromString(asset, "EBlendMode")
+                };
+                blend.PropertyTypeName = MakeTypeName(asset, blend.PropertyType);
+                var two = new BoolPropertyData(FName.FromString(asset, "TwoSided")) { Value = true, IsZero = false };
+                two.PropertyTypeName = MakeTypeName(asset, two.PropertyType);
+                var clip = new FloatPropertyData(FName.FromString(asset, "OpacityMaskClipValue")) { Value = 0.3333f };
+                clip.PropertyTypeName = MakeTypeName(asset, clip.PropertyType);
+
+                overrides.Value.Add(blend);
+                overrides.Value.Add(two);
+                overrides.Value.Add(clip);
+                overrides.PropertyTypeName = MakeTypeName(asset, overrides.PropertyType);
+                props.Add(overrides);
+
+                // Optional scalar overrides, e.g. Opacity=0.8 for paint that must blend into
+                // the road instead of sitting on it as a solid plate. Clones an existing
+                // scalar struct: a freshly built one has no ancestry and cannot serialise.
+                if (scalars != null && scalars.Length > 0)
+                {
+                    var arr = props.OfType<ArrayPropertyData>()
+                                   .FirstOrDefault(p => p.Name?.Value?.Value == "ScalarParameterValues");
+                    StructPropertyData proto = arr?.Value.OfType<StructPropertyData>().FirstOrDefault()
+                        ?? props.OfType<ArrayPropertyData>()
+                               .FirstOrDefault(p => p.Name?.Value?.Value == "TextureParameterValues")
+                               ?.Value.OfType<StructPropertyData>().FirstOrDefault();
+                    if (proto == null) { Console.WriteLine("SKIP " + stem + ": no scalar proto"); failed++; continue; }
+
+                    if (arr == null)
+                    {
+                        // No scalar array yet: clone the texture array (same element struct type)
+                        // and empty it, rather than building a struct with no ancestry.
+                        var texArr = props.OfType<ArrayPropertyData>()
+                            .First(p => p.Name?.Value?.Value == "TextureParameterValues");
+                        arr = (ArrayPropertyData)texArr.Clone();
+                        arr.Name = FName.FromString(asset, "ScalarParameterValues");
+                        arr.Value = Array.Empty<PropertyData>();
+                        props.Add(arr);
+                    }
+                    foreach (var spec in scalars)
+                    {
+                        var eq = spec.IndexOf('=');
+                        if (eq <= 0) continue;
+                        var pname = spec.Substring(0, eq);
+                        if (!float.TryParse(spec.Substring(eq + 1), out var val)) continue;
+                        var clone = (StructPropertyData)proto.Clone();
+                        var info = clone.Value.OfType<StructPropertyData>()
+                                        .First(p => p.Name?.Value?.Value == "ParameterInfo");
+                        var nprop = info.Value.OfType<NamePropertyData>()
+                                          .First(p => p.Name?.Value?.Value == "Name");
+                        nprop.Value = FName.FromString(asset, pname);
+                        clone.Value.RemoveAll(p => p.Name?.Value?.Value == "ParameterValue");
+                        var f = new FloatPropertyData(FName.FromString(asset, "ParameterValue")) { Value = val };
+                        f.PropertyTypeName = MakeTypeName(asset, f.PropertyType);
+                        clone.Value.Add(f);
+                        arr.Value = arr.Value.Append(clone).ToArray();
+                    }
+                }
+
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex) { Console.WriteLine("FAIL " + stem + ": " + ex.Message); failed++; }
+        }
+        Console.WriteLine($"set_blend changed={changed} copied={copied} failed={failed} mode={mode}");
+    }
+
+    // --set-clip <inDir> <outDir> <listFile>
+    // listFile lines: "<MaterialInstanceName>\t<clip>" (or the name alone for the default).
+    // Why: BeamNG gives every alpha-tested material its own alphaRef (0-255); the port must carry
+    // that threshold as OpacityMaskClipValue = alphaRef/255 or the cut is wrong in both directions.
+    static void SetClip(string inDir, string outDir, string listFile)
+    {
+        Directory.CreateDirectory(outDir);
+        var wanted = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+        if (listFile != "-" && File.Exists(listFile))
+            foreach (var line in File.ReadAllLines(listFile))
+            {
+                var t = line.Trim();
+                if (t.Length == 0 || t.StartsWith("#")) continue;
+                var parts = t.Split('\t', StringSplitOptions.RemoveEmptyEntries);
+                var name = parts[0].Trim();
+                var clip = 0.3333f;
+                if (parts.Length > 1 && float.TryParse(parts[1].Trim(),
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var c)) clip = c;
+                wanted[name] = clip;
+            }
+
+        int changed = 0, copied = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            try
+            {
+                if (!wanted.TryGetValue(stem, out var clipValue))
+                {
+                    File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
+                    if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
+                    copied++;
+                    continue;
+                }
+
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { Console.WriteLine("SKIP " + stem + ": no export"); failed++; continue; }
+                var props = exp.Data;
+
+                props.RemoveAll(p => p.Name?.Value?.Value == "BasePropertyOverrides");
+                var overrides = new StructPropertyData(FName.FromString(asset, "BasePropertyOverrides"))
+                {
+                    StructType = FName.FromString(asset, "MaterialInstanceBasePropertyOverrides")
+                };
+                var blend = new EnumPropertyData(FName.FromString(asset, "BlendMode"))
+                {
+                    Value = FName.FromString(asset, "BLEND_Masked"),
+                    EnumType = FName.FromString(asset, "EBlendMode")
+                };
+                blend.PropertyTypeName = MakeTypeName(asset, blend.PropertyType);
+                var two = new BoolPropertyData(FName.FromString(asset, "TwoSided")) { Value = true, IsZero = false };
+                two.PropertyTypeName = MakeTypeName(asset, two.PropertyType);
+                var clip = new FloatPropertyData(FName.FromString(asset, "OpacityMaskClipValue")) { Value = clipValue };
+                clip.PropertyTypeName = MakeTypeName(asset, clip.PropertyType);
+
+                overrides.Value.Add(blend);
+                overrides.Value.Add(two);
+                overrides.Value.Add(clip);
+                overrides.PropertyTypeName = MakeTypeName(asset, overrides.PropertyType);
+                props.Add(overrides);
+
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex) { Console.WriteLine("FAIL " + stem + ": " + ex.Message); failed++; }
+        }
+        Console.WriteLine($"set_clip changed={changed} copied={copied} failed={failed}");
+    }
+
+    // --apply-plan <inDir> <outDir> <plan.json>
+    //
+    // One pass, one row at a time, from the compiled plan. Every previous attempt applied a batch
+    // with a single set of overrides, which is how 1,653 instances ended up with TwoSided=true and
+    // a uniform clip. Here the parent, the colour parameter NAME and the overrides all come from
+    // the row, so an instance can never inherit another instance's decision.
+    static void ApplyPlan(string inDir, string outDir, string planPath)
+    {
+        Directory.CreateDirectory(outDir);
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(planPath));
+        var rows = new Dictionary<string, System.Text.Json.JsonElement>(StringComparer.OrdinalIgnoreCase);
+        foreach (var r in doc.RootElement.GetProperty("rows").EnumerateArray())
+            rows[r.GetProperty("mi").GetString() ?? ""] = r.Clone();
+
+        int changed = 0, copied = 0, failed = 0, reparented = 0, renamed = 0, overridden = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            if (!rows.TryGetValue(stem, out var row)) { CopyPair(path, uexp, outDir); copied++; continue; }
+            var treatment = row.TryGetProperty("treatment", out var tEl) ? tEl.GetString() ?? "" : "";
+            if (treatment == "keep_authored" || treatment == "translucent_keep" || treatment == "")
+            {
+                CopyPair(path, uexp, outDir); copied++; continue;
+            }
+            try
+            {
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { CopyPair(path, uexp, outDir); Console.WriteLine("SKIP " + stem + ": no export"); failed++; continue; }
+                var props = exp.Data;
+
+                var master = row.GetProperty("master");
+                var pkg = master.GetProperty("pkg").GetString() ?? "";
+                var masterName = master.GetProperty("name").GetString() ?? "";
+                var colourParam = master.TryGetProperty("colour_param", out var cpEl) ? cpEl.GetString() : null;
+
+                // ---- parent ------------------------------------------------------------------
+                var parent = props.OfType<ObjectPropertyData>().FirstOrDefault(p => p.Name?.Value?.Value == "Parent");
+                // Reuse an existing import of the master if one is already there; AddImportChain does
+                // not dedupe and a second copy only bloats the table the engine has to resolve.
+                int reuse = 0;
+                for (int i = 0; i < asset.Imports.Count; i++)
+                {
+                    var im = asset.Imports[i];
+                    if (im.ObjectName?.Value?.Value == masterName
+                        && im.ClassName?.Value?.Value == "Material"
+                        && im.ClassPackage?.Value?.Value == "/Script/Engine")
+                    { reuse = i + 1; break; }
+                }
+                int idx;
+                if (reuse > 0) idx = reuse;
+                else { var (_, ni) = AddImportChain(asset, "/Script/Engine", "Material", pkg, masterName); idx = ni; }
+                if (parent != null) { parent.Value = FPackageIndex.FromImport(idx - 1); reparented++; }
+
+                // ---- colour parameter name (belongs to the MASTER, never to the project) ------
+                var arr = props.OfType<ArrayPropertyData>().FirstOrDefault(a => a.Name.Value.Value == "TextureParameterValues");
+                if (arr != null && !string.IsNullOrEmpty(colourParam))
+                    foreach (var el in arr.Value.OfType<StructPropertyData>())
+                    {
+                        var info = el.Value.OfType<StructPropertyData>().FirstOrDefault(s => s.Name.Value.Value == "ParameterInfo");
+                        var nm = info?.Value.OfType<NamePropertyData>().FirstOrDefault();
+                        if (nm == null) continue;
+                        var cur = nm.Value.ToString();
+                        if (string.Equals(cur, colourParam, StringComparison.OrdinalIgnoreCase)) continue;
+                        // Only the colour slot is ever renamed; the other bindings keep their names.
+                        if (cur == "BaseColor" || cur == "Color" || cur == "Base_Color" || cur == "Texture")
+                        { nm.Value = new FName(asset, colourParam); renamed++; }
+                    }
+
+                // ---- overrides ---------------------------------------------------------------
+                props.RemoveAll(p => p.Name?.Value?.Value == "BasePropertyOverrides");
+                bool masked = treatment == "masked" || treatment == "bake" || treatment == "ownalpha";
+                bool two = row.TryGetProperty("two_sided", out var twEl) && twEl.ValueKind == System.Text.Json.JsonValueKind.True;
+                float clip = 0.5f;
+                if (row.TryGetProperty("clip", out var cEl) && cEl.ValueKind == System.Text.Json.JsonValueKind.Number)
+                    clip = (float)cEl.GetDouble();
+
+                if (masked || two)
+                {
+                    var overrides = new StructPropertyData(FName.FromString(asset, "BasePropertyOverrides"))
+                    {
+                        StructType = FName.FromString(asset, "MaterialInstanceBasePropertyOverrides")
+                    };
+                    if (masked)
+                    {
+                        var blend = new EnumPropertyData(FName.FromString(asset, "BlendMode"))
+                        {
+                            Value = FName.FromString(asset, "BLEND_Masked"),
+                            EnumType = FName.FromString(asset, "EBlendMode")
+                        };
+                        blend.PropertyTypeName = MakeTypeName(asset, blend.PropertyType);
+                        overrides.Value.Add(blend);
+                    }
+                    if (two)
+                    {
+                        var t2 = new BoolPropertyData(FName.FromString(asset, "TwoSided")) { Value = true, IsZero = false };
+                        t2.PropertyTypeName = MakeTypeName(asset, t2.PropertyType);
+                        overrides.Value.Add(t2);
+                    }
+                    if (masked)
+                    {
+                        var cp = new FloatPropertyData(FName.FromString(asset, "OpacityMaskClipValue")) { Value = clip };
+                        cp.PropertyTypeName = MakeTypeName(asset, cp.PropertyType);
+                        overrides.Value.Add(cp);
+                    }
+                    overrides.PropertyTypeName = MakeTypeName(asset, overrides.PropertyType);
+                    props.Add(overrides);
+                    overridden++;
+                }
+
+                // asset.Write() emits the .uexp too. Copying the ORIGINAL .uexp afterwards is what
+                // silently reverted every edit here: the payload lives in the .uexp, so the file looked
+                // patched (new imports, new name map) and behaved exactly as before.
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex) { CopyPair(path, uexp, outDir); Console.WriteLine("FAIL " + stem + ": " + ex.Message); failed++; }
+        }
+        Console.WriteLine($"apply_plan changed={changed} copied={copied} failed={failed} reparented={reparented} renamed={renamed} overrides={overridden}");
+    }
+
+    static void SetMiParent(string inDir, string outDir, string listFile, string masterPkg, string masterName)
+    {
+        Directory.CreateDirectory(outDir);
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (listFile != "-" && File.Exists(listFile))
+            foreach (var line in File.ReadAllLines(listFile))
+            {
+                var t = line.Trim();
+                if (t.Length != 0 && !t.StartsWith("#")) wanted.Add(t);
+            }
+
+        int changed = 0, copied = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            try
+            {
+                if (!wanted.Contains(stem))
+                {
+                    File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
+                    if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
+                    copied++;
+                    continue;
+                }
+
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                var parent = exp?.Data.OfType<ObjectPropertyData>()
+                    .FirstOrDefault(p => p.Name?.Value?.Value == "Parent");
+                if (parent == null) { Console.WriteLine($"SKIP {stem}: no Parent"); failed++; continue; }
+
+                var (_, idx) = AddImportChain(asset, "/Script/Engine", "Material", masterPkg, masterName);
+                parent.Value = FPackageIndex.FromImport(idx - 1);
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex) { Console.WriteLine($"FAIL {stem}: {ex.Message}"); failed++; }
+        }
+        Console.WriteLine($"set_mi_parent changed={changed} copied={copied} failed={failed} master={masterName}");
+    }
+
+    // Point one texture parameter at a different texture. Needed when the fix is a *texture*
+    // change (e.g. an author mask baked into BaseColor alpha) and the instance must reference
+    // the new asset without touching parents or the other bindings.
+    // Rename a texture parameter, but only on instances whose live parent is <master>.
+    // Needed because M_AlphaTest's parameter is "Color" while M_plants expects "BaseColor":
+    // reparenting alone leaves the binding pointing at a parameter the new master ignores,
+    // so the instance renders the master default (reads as a black background on cutouts).
+    static void RenameTexParam(string inDir, string outDir, string listFile, string oldName, string newName, string master)
+    {
+        Directory.CreateDirectory(outDir);
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (listFile != "-" && File.Exists(listFile))
+            foreach (var line in File.ReadAllLines(listFile))
+            {
+                var t = line.Trim();
+                if (t.Length != 0 && !t.StartsWith("#")) wanted.Add(t);
+            }
+
+        int changed = 0, copied = 0, skipped = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            if (wanted.Count != 0 && !wanted.Contains(stem)) { CopyPair(path, uexp, outDir); copied++; continue; }
+            try
+            {
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports[0] as NormalExport;
+                var parentProp = exp?.Data.OfType<ObjectPropertyData>()
+                    .FirstOrDefault(pp => pp.Name?.Value?.Value == "Parent");
+                var parentIdx = parentProp?.Value.Index ?? 0;
+                var parentName = parentIdx > 0 ? asset.Imports[parentIdx - 1].ObjectName.Value.Value : "";
+                if (!string.Equals(parentName, master, StringComparison.OrdinalIgnoreCase))
+                { CopyPair(path, uexp, outDir); skipped++; continue; }
+
+                var props = exp.Data;
+                var arr = props.OfType<ArrayPropertyData>().FirstOrDefault(a => a.Name.Value.Value == "TextureParameterValues");
+                bool hit = false;
+                if (arr != null)
+                    foreach (var el in arr.Value.OfType<StructPropertyData>())
+                    {
+                        var info = el.Value.OfType<StructPropertyData>().FirstOrDefault(s => s.Name.Value.Value == "ParameterInfo");
+                        var nm = info?.Value.OfType<NamePropertyData>().FirstOrDefault();
+                        if (nm != null && nm.Value.ToString() == oldName) { nm.Value = new FName(asset, newName); hit = true; }
+                    }
+                if (!hit) { CopyPair(path, uexp, outDir); skipped++; continue; }
+
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex) { CopyPair(path, uexp, outDir); Console.WriteLine("FAIL " + stem + ": " + ex.Message); failed++; }
+        }
+        Console.WriteLine($"rename_texparam changed={changed} copied={copied} skipped={skipped} failed={failed} {oldName}->{newName} on={master}");
+    }
+
+    static void CopyPair(string path, string uexp, string outDir)
+    {
+        File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
+        if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
+    }
+
+    static void SetTexParam(string inDir, string outDir, string listFile, string param,
+                            string texPkg, string texName)
+    {
+        Directory.CreateDirectory(outDir);
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Lines may be "MI" or "MI<TAB>textureName"; the tab form handles a different texture
+        // per instance in a single pass (every masked MI has its own base colour map).
+        var perInstance = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (listFile != "-" && File.Exists(listFile))
+            foreach (var line in File.ReadAllLines(listFile))
+            {
+                var t = line.Trim();
+                if (t.Length == 0 || t.StartsWith("#")) continue;
+                var parts = t.Split('\t');
+                wanted.Add(parts[0].Trim());
+                if (parts.Length > 1 && parts[1].Trim().Length > 0) perInstance[parts[0].Trim()] = parts[1].Trim();
+            }
+
+        int changed = 0, copied = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            try
+            {
+                if (!wanted.Contains(stem))
+                {
+                    File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
+                    if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
+                    copied++;
+                    continue;
+                }
+
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                var arr = exp?.Data.OfType<ArrayPropertyData>()
+                    .FirstOrDefault(p => p.Name?.Value?.Value == "TextureParameterValues");
+                if (arr == null)
+                {
+                    CopyPair(path, uexp, outDir); copied++;
+                    Console.WriteLine("SKIP " + stem + ": no texture params"); failed++;
+                    continue;
+                }
+
+                var useName = perInstance.TryGetValue(stem, out var pn) ? pn : texName;
+                var (_, idx) = AddImportChain(asset, "/Script/Engine", "Texture2D", texPkg, useName);
+                var target = FPackageIndex.FromImport(idx - 1);
+
+                bool hit = false;
+                foreach (var el in arr.Value)
+                {
+                    if (el is not StructPropertyData sp) continue;
+                    var info = sp.Value.OfType<StructPropertyData>()
+                        .FirstOrDefault(s => s.Name?.Value?.Value == "ParameterInfo");
+                    var nm = info?.Value.OfType<NamePropertyData>()
+                        .FirstOrDefault(n => n.Name?.Value?.Value == "Name");
+                    if (nm?.Value?.ToString() != param) continue;
+                    var pv = sp.Value.OfType<ObjectPropertyData>()
+                        .FirstOrDefault(o => o.Name?.Value?.Value == "ParameterValue");
+                    if (pv == null) continue;
+                    pv.Value = target;
+                    hit = true;
+                }
+                if (!hit)
+                {
+                    CopyPair(path, uexp, outDir); copied++;
+                    Console.WriteLine("SKIP " + stem + ": param " + param + " not bound"); failed++;
+                    continue;
+                }
+
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex)
+            {
+                // Never drop an instance from the output: a missing MI makes the mesh fall
+                // back to the engine default, which reads as "material missing" in game.
+                CopyPair(path, uexp, outDir);
+                Console.WriteLine("FAIL " + stem + ": " + ex.Message); failed++;
+            }
+        }
+        Console.WriteLine($"set_texparam changed={changed} copied={copied} failed={failed} param={param} tex={texName}");
+    }
+
     static void RetargetMIs(string inDir, string outDir, string forceMaskedFile = null)
     {
         // Two destinations, chosen per instance:
@@ -3423,13 +5967,25 @@ class Program
         // MT's own masked foliage master -- BLEND_Masked + two-sided, reads BaseColor alpha.
         const string plantPkg  = "/Game/Models/Stylized_Forest/Materials/plants/M_plants";
         const string plantName = "M_plants";
+        // Generic cutout master: MI_FenceMetal_01 parents it with BLEND_Masked + clip 0.3333.
+        const string alphaPkg  = "/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTest";
+        const string alphaName = "M_AlphaTest";
+        // Translucent master for signed glass / light boxes: BaseColor + scalar Opacity.
+        const string transPkg  = "/Game/Env/Materials/Master/M_GlassTrans";
+        const string transName = "M_GlassTrans";
 
         var propRename = new Dictionary<string, string?>
         {
             { "BaseColor",        "BaseColor"  },
             { "Normal",           "Normal"     },
-            { "MetallicTex",      "Metallic"   },
-            { "RoughnessTex",     "Roughness"  },
+            // M_PropMaster's Metallic/Roughness/Specular are SCALAR params -- its
+            // TextureStreamingData lists exactly two textures (T_Normal_N, T_White_BC), so
+            // BaseColor and Normal are the only texture inputs. Writing a Texture2D into the
+            // scalar "Metallic"/"Roughness" params produces an instance that fails to compile
+            // and renders as the engine checkerboard, which is what "materials missing" looked
+            // like for most of the map. Drop them and let the master's scalar defaults apply.
+            { "MetallicTex",      null         },
+            { "RoughnessTex",     null         },
             { "EmissiveTex",      null         },
             { "EmissiveStrength", null         },
             { "OpacityTex",       null         },
@@ -3438,26 +5994,49 @@ class Program
         {
             { "BaseColor",        "BaseColor"  },
             { "Normal",           "Normal"     },
-            { "RoughnessTex",     "Roughness"  },
-            { "MetallicTex",      "Metallic"   },
+            { "MetallicTex",      null         },
+            { "RoughnessTex",     null         },
             { "OpacityTex",       null         },   // cutout now lives in BaseColor alpha
+            { "EmissiveTex",      null         },
+            { "EmissiveStrength", null         },
+        };
+        // M_AlphaTest declares only Color + Roughness, so the colour map must be renamed.
+        var alphaRename = new Dictionary<string, string?>
+        {
+            { "BaseColor",        "Color"      },
+            { "OpacityTex",       null         },
+            { "Normal",           null         },
+            { "MetallicTex",      null         },
+            { "RoughnessTex",     null         },
             { "EmissiveTex",      null         },
             { "EmissiveStrength", null         },
         };
 
         Directory.CreateDirectory(outDir);
         var forceMasked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var vegSet      = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var maskSet     = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var transSet    = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrEmpty(forceMaskedFile) && File.Exists(forceMaskedFile))
         {
+            // Sectioned list: [veg] / [masked] / [trans]. A bare list (no sections) is treated
+            // as vegetation, which is what earlier builds passed.
+            var cur = vegSet;
             foreach (var line in File.ReadAllLines(forceMaskedFile))
             {
                 var t = line.Trim();
                 if (t.Length == 0 || t.StartsWith("#")) continue;
-                forceMasked.Add(t);
+                if (t.StartsWith("[") && t.EndsWith("]"))
+                {
+                    var sec = t.Trim('[', ']').Trim().ToLowerInvariant();
+                    cur = sec switch { "masked" => maskSet, "trans" => transSet, _ => vegSet };
+                    continue;
+                }
+                cur.Add(t);
             }
-            Console.WriteLine($"force_masked={forceMasked.Count}");
+            Console.WriteLine($"veg={vegSet.Count} masked={maskSet.Count} trans={transSet.Count}");
         }
-        int ok = 0, fail = 0, masked = 0;
+        int ok = 0, fail = 0, masked = 0, trans = 0;
         foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
         {
             try
@@ -3474,18 +6053,40 @@ class Program
                 // force list. Vegetation/fence/wire materials carry no OpacityTex parameter --
                 // their cutout is the colour map's alpha -- so they were routed opaque and
                 // rendered with black where the texture is transparent.
-                bool isMasked = ContainsParam(props, "TextureParameterValues", "OpacityTex")
-                                || forceMasked.Contains(Path.GetFileNameWithoutExtension(path));
+                var baseName = Path.GetFileNameWithoutExtension(path);
+                // NOT auto-detected from an OpacityTex parameter: those materials sample a separate
+                // opacity map that no MT master accepts, and their BaseColor alpha is unrelated
+                // (often smoothness), so masking them punches holes. Only an explicit list masks.
+                // Vegetation MUST count as masked: M_plants cuts out through the BaseColor alpha,
+                // and without the per-instance BLEND_Masked override the quad paints its texture's
+                // green backdrop. Missing this is what left "some trees" opaque with green behind them.
+                bool isVeg   = vegSet.Contains(baseName) || forceMasked.Contains(baseName);
+                bool isMasked = isVeg || maskSet.Contains(baseName);
+                bool isTrans = transSet.Contains(baseName);
                 var rename = isMasked ? calcRename : propRename;
+                // Three destinations, each matching an MT master's verified parameter contract:
+                //  - foliage      -> M_plants      (BaseColor + masked; carries wind/grass graph)
+                //  - other cutout -> M_AlphaTest   (Color + masked; the master MI_FenceMetal_01 uses)
+                //  - translucent  -> M_GlassTrans  (BaseColor + Opacity; signed glass/light boxes)
+                //  - opaque       -> M_PropMaster  (the recipe the shipped C1 release used)
+                // M_AlphaTest's colour parameter is named Color, not BaseColor, so the rename map
+                // has to change with the parent (see alphaRename below).
+                string destPkg, destName;
+                if (isVeg)        { destPkg = plantPkg;  destName = plantName; }
+                else if (isTrans) { destPkg = transPkg;  destName = transName; }
+                else if (isMasked){ destPkg = alphaPkg;  destName = alphaName; }
+                else              { destPkg = propPkg;   destName = propName;  }
+                var usedRename = (isMasked && !isVeg && !isTrans) ? alphaRename : calcRename;
+                if (isMasked) masked++;
+                if (isTrans) trans++;
                 // Cutout surfaces go to MT's own masked foliage master (M_plants): BLEND_Masked,
                 // two-sided, and its graph reads the BaseColor alpha -- exactly how MT's own
                 // MI_TreeMedow_01 is set up (BaseColor only, masked, clip 0.3333).
                 // M_PolygonMaster has no BlendMode at all, so its graph never routes alpha to
                 // opacity and a masked override there only clips to the RGB (= black).
-                bool usePlant = isMasked && forceMasked.Contains(Path.GetFileNameWithoutExtension(path));
-                string destPkg = usePlant ? plantPkg : (isMasked ? polyPkg : propPkg);
-                string destName = usePlant ? plantName : (isMasked ? polyName : propName);
+                bool usePlant = isVeg;
                 if (isMasked) masked++;
+
 
                 var (_, assetIdx) = AddImportChain(asset, "/Script/Engine", "Material",
                     destPkg, destName);
@@ -3503,7 +6104,7 @@ class Program
                         var info = sp.Value.OfType<StructPropertyData>().FirstOrDefault(s => s.Name?.Value?.Value == "ParameterInfo");
                         var nm = info?.Value.OfType<NamePropertyData>().FirstOrDefault(n => n.Name?.Value?.Value == "Name");
                         var cur = nm?.Value?.ToString() ?? "";
-                        if (!rename.TryGetValue(cur, out var to)) { kept.Add(el); continue; }
+                        if (!usedRename.TryGetValue(cur, out var to)) { kept.Add(el); continue; }
                         if (to == null) continue;
                         if (nm != null) nm.Value = FName.FromString(asset, to);
                         kept.Add(el);
@@ -3515,7 +6116,7 @@ class Program
                 // instances (e.g. MI_Mine_Master) override the blend on the instance.
                 // BlendMode must be overridden per instance or the alpha cutout is ignored
                 // and the quad paints solid.
-                if (isMasked)
+                if (isMasked || isTrans)
                 {
                     props.RemoveAll(p => p.Name?.Value?.Value == "BasePropertyOverrides");
                     var overrides = new StructPropertyData(FName.FromString(asset, "BasePropertyOverrides"))
@@ -3524,27 +6125,32 @@ class Program
                     };
                     var blend = new EnumPropertyData(FName.FromString(asset, "BlendMode"))
                     {
-                        Value = FName.FromString(asset, "BLEND_Masked"),
+                        Value = FName.FromString(asset, isTrans ? "BLEND_Translucent" : "BLEND_Masked"),
                         EnumType = FName.FromString(asset, "EBlendMode")
                     };
                     blend.PropertyTypeName = MakeTypeName(asset, blend.PropertyType);
                     var clip = new FloatPropertyData(FName.FromString(asset, "OpacityMaskClipValue")) { Value = 0.3333f };
                     clip.PropertyTypeName = MakeTypeName(asset, clip.PropertyType);
-                    if (usePlant)
+                    if (isMasked || isTrans)
                     {
-                        // MT's tree instance is two-sided; foliage cards need it.
+                        // MT's tree instance is two-sided; foliage cards, fences and
+                        // chain-link need it too -- one-sided cutout geometry draws
+                        // nothing from the back, which reads as a broken material.
                         var ts = new BoolPropertyData(FName.FromString(asset, "TwoSided")) { Value = true, IsZero = false };
                         ts.PropertyTypeName = MakeTypeName(asset, ts.PropertyType);
                         overrides.Value.Add(ts);
                     }
                     overrides.Value.Add(blend);
-                    overrides.Value.Add(clip);
+                    if (!isTrans) overrides.Value.Add(clip);
                     overrides.PropertyTypeName = MakeTypeName(asset, overrides.PropertyType);
                     props.Add(overrides);
 
-                    // Cutout source is BaseColor's alpha on these masters.
-                    EnsureScalar(asset, props, "Use_Opacity", 1f);
-                    EnsureScalar(asset, props, "Use_OpacityFromAlpha", 1f);
+                    if (!isTrans)
+                    {
+                        // Cutout source is BaseColor's alpha on these masters.
+                        EnsureScalar(asset, props, "Use_Opacity", 1f);
+                        EnsureScalar(asset, props, "Use_OpacityFromAlpha", 1f);
+                    }
                 }
 
                 asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
@@ -3690,6 +6296,13 @@ class Program
             if (nm == "PersistentLevel") { persistentLevel = i + 1; break; }
         }
         Console.WriteLine($"MAP {Path.GetFileName(mapPath)} exports={asset.Exports.Count} imports={asset.Imports.Count} persistentLevel={(persistentLevel > 0 ? persistentLevel.ToString() : "NOT_FOUND")}");
+        if (persistentLevel > 0 && asset.Exports[persistentLevel - 1] is UAssetAPI.ExportTypes.LevelExport le)
+        {
+            Console.WriteLine($"LEVEL_EXPORT actors={le.Actors?.Count ?? -1} url=yes model={(le.Model != null ? "yes" : "no")}");
+            Console.WriteLine($"BOOKKEEPING exports={asset.Exports.Count} dependsMap={asset.DependsMap?.Count ?? -1}");
+            foreach (var a in (le.Actors ?? new List<FPackageIndex>()).Take(5))
+                Console.WriteLine($"  level_actor_index {a.Index}");
+        }
 
         string ClassOf(UAssetAPI.ExportTypes.Export ex)
         {
@@ -4027,6 +6640,28 @@ class Program
             var bits = pair.Split('=');
             if (bits.Length != 2) continue;
             string key = bits[0].Trim(), val = bits[1].Trim();
+            // Course identity and road kind are enums/names, not numbers; the generic
+            // int/float heuristics below would write them with the wrong property type.
+            if (key == "CourseKey")
+            {
+                var np = new NamePropertyData(FName.FromString(asset, key)) { Value = FName.FromString(asset, val) };
+                np.PropertyTypeName = MakeTypeName(asset, new FString("NameProperty"));
+                road.Data.Add(np);
+                Console.WriteLine($"PROP_SET {key}={val}");
+                continue;
+            }
+            if (key == "RoadType")
+            {
+                var ep = new EnumPropertyData(FName.FromString(asset, key))
+                {
+                    EnumType = FName.FromString(asset, "EMTRoadType"),
+                    Value = FName.FromString(asset, val)
+                };
+                ep.PropertyTypeName = MakeTypeName(asset, new FString("EnumProperty"));
+                road.Data.Add(ep);
+                Console.WriteLine($"PROP_SET {key}={val}");
+                continue;
+            }
             var existing = road.Data.FirstOrDefault(p => (p.Name?.Value?.Value ?? "") == key);
             bool isInt = int.TryParse(val, out int iv);
             bool isFloat = float.TryParse(val, out float fv);
@@ -4153,6 +6788,198 @@ class Program
 
         asset.Write(outPath);
         Console.WriteLine($"SPLINE_DONE -> {outPath}");
+    }
+
+    // ---- author N road actors from a lane dataset ------------------------------
+    // Each source road (BeamNG DecalRoad) becomes its own AMotorTownRoad: the cooked template's
+    // actor + SplineComponent exports are deep-cloned, the clone gets the road's own centreline
+    // and lane properties. Cooked levels reconstruct the actor list from exports whose Outer is
+    // the Level, so appending exports is all that is needed to place them.
+    static void RunLaneRoads(string inPath, string outPath, string jsonPath)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+
+        NormalExport actorTmpl = null;
+        int levelIdx1 = -1;
+        for (int i = 0; i < asset.Exports.Count; i++)
+        {
+            var ex = asset.Exports[i];
+            string cls = ClassNameOf(asset, ex);
+            if (cls == "Level" && levelIdx1 < 0) levelIdx1 = i + 1;
+            else if (cls == "MotorTownRoad" && actorTmpl == null && ex is NormalExport ne) actorTmpl = ne;
+        }
+        if (levelIdx1 < 0) { Console.WriteLine("LANEROADS_FAIL no Level export"); return; }
+        if (actorTmpl == null) { Console.WriteLine("LANEROADS_FAIL no MotorTownRoad template"); return; }
+
+        var splineRef = actorTmpl.Data.OfType<ObjectPropertyData>().FirstOrDefault(p => (p.Name?.Value?.Value ?? "") == "Spline");
+        int compRef = splineRef?.Value?.Index ?? 0;
+        if (compRef <= 0 || !(asset.Exports[compRef - 1] is NormalExport compTmpl)) { Console.WriteLine("LANEROADS_FAIL no SplineComponent template"); return; }
+        var curvesTmpl = compTmpl.Data.OfType<StructPropertyData>().FirstOrDefault(p => (p.Name?.Value?.Value ?? "") == "SplineCurves");
+        if (curvesTmpl == null) { Console.WriteLine("LANEROADS_FAIL template has no SplineCurves"); return; }
+
+        var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(jsonPath));
+        var roads = doc.RootElement.GetProperty("roads");
+
+        // The engine spawns what ULevel::Actors lists, NOT what happens to have Outer == Level.
+        // A cooked LevelExport carries that list explicitly, so every actor we add must be
+        // appended to it as well; otherwise the export exists and never spawns.
+        UAssetAPI.ExportTypes.LevelExport levelExport = null;
+        if (levelIdx1 > 0 && asset.Exports[levelIdx1 - 1] is UAssetAPI.ExportTypes.LevelExport le) levelExport = le;
+        if (levelExport == null) Console.WriteLine("LANEROADS_WARN no LevelExport - actors will not spawn");
+
+        int made = 0;
+        foreach (var r in roads.EnumerateArray())
+        {
+            string id = r.TryGetProperty("id", out var idEl) ? idEl.GetString() : made.ToString();
+            var pts = r.GetProperty("points").EnumerateArray()
+                .Select(e => new FVector(e[0].GetSingle(), e[1].GetSingle(), e[2].GetSingle())).ToList();
+            if (pts.Count < 2) continue;
+            int lanes = r.GetProperty("lanes").GetInt32();
+            double laneWidth = r.GetProperty("lane_width").GetDouble();
+
+            // The spline component is appended FIRST, so it takes the lower index; the actor gets
+            // the next one. Registering the wrong one points ULevel::Actors at a component.
+            int newCompIdx1 = asset.Exports.Count + 1;
+            int actorIdx1 = newCompIdx1 + 1;
+            string actorName = "C1Road_" + id;
+
+            // --- spline component clone -------------------------------------
+            var comp = new NormalExport(compTmpl);
+            comp.ObjectName = FName.FromString(asset, actorName + "_Spline");
+            comp.OuterIndex = new FPackageIndex(actorIdx1);
+            comp.ClassIndex = compTmpl.ClassIndex;
+            comp.Data = compTmpl.Data.Select(CloneProp).ToList();
+
+            var curves = comp.Data.OfType<StructPropertyData>().FirstOrDefault(p => (p.Name?.Value?.Value ?? "") == "SplineCurves");
+            if (curves == null) { Console.WriteLine($"LANEROADS_FAIL {actorName} no curves"); continue; }
+
+            ArrayPropertyData CurveArray(StructPropertyData parent, string name)
+            {
+                var c = parent.Value.OfType<StructPropertyData>().FirstOrDefault(p => (p.Name?.Value?.Value ?? "") == name);
+                return c?.Value.OfType<ArrayPropertyData>().FirstOrDefault(p => (p.Name?.Value?.Value ?? "") == "Points");
+            }
+
+            int n = pts.Count;
+            void Rebuild(ArrayPropertyData arr, string kind)
+            {
+                if (arr == null || arr.Value.Length == 0) return;
+                if (!(arr.Value[0] is StructPropertyData tmpl)) return;
+                var built = new List<PropertyData>(n);
+                for (int i = 0; i < n; i++)
+                {
+                    var cl = (StructPropertyData)CloneProp(tmpl);
+                    foreach (var child in cl.Value)
+                    {
+                        switch (child.Name?.Value?.Value)
+                        {
+                            case "InVal":
+                                if (child is FloatPropertyData inv) inv.Value = i;
+                                break;
+                            case "OutVal":
+                                if (kind == "Position") SetVector(child, pts[i]);
+                                else if (kind == "Rotation") SetQuat(child, new FQuat(0, 0, 0, 1));
+                                else if (kind == "Scale") SetVector(child, new FVector(1f, 1f, 1f));
+                                else SetScalar(child, i);
+                                break;
+                            case "ArriveTangent":
+                                if (kind == "Position") SetVector(child, TangentOpen(pts, i, true));
+                                else if (kind == "Rotation") SetQuat(child, new FQuat(0, 0, 0, 1));
+                                else if (kind == "Scale") SetVector(child, new FVector(0, 0, 0));
+                                else SetScalar(child, 0);
+                                break;
+                            case "LeaveTangent":
+                                if (kind == "Position") SetVector(child, TangentOpen(pts, i, false));
+                                else if (kind == "Rotation") SetQuat(child, new FQuat(0, 0, 0, 1));
+                                else if (kind == "Scale") SetVector(child, new FVector(0, 0, 0));
+                                else SetScalar(child, 0);
+                                break;
+                        }
+                    }
+                    built.Add(cl);
+                }
+                arr.Value = built.ToArray();
+            }
+
+            var posArr = curves.Value.OfType<StructPropertyData>().FirstOrDefault(p => (p.Name?.Value?.Value ?? "") == "Position");
+            Rebuild(posArr?.Value.OfType<ArrayPropertyData>().FirstOrDefault(p => (p.Name?.Value?.Value ?? "") == "Points"), "Position");
+            Rebuild(CurveArray(curves, "Rotation"), "Rotation");
+            Rebuild(CurveArray(curves, "Scale"), "Scale");
+            Rebuild(CurveArray(curves, "ReparamTable"), "ReparamTable");
+
+            // --- actor clone -------------------------------------------------
+            var actor = new NormalExport(actorTmpl);
+            actor.ObjectName = FName.FromString(asset, actorName);
+            actor.OuterIndex = new FPackageIndex(levelIdx1);
+            actor.ClassIndex = actorTmpl.ClassIndex;
+            actor.Data = actorTmpl.Data.Where(x => (x.Name?.Value?.Value ?? "") != "CourseKey").Select(CloneProp).ToList();
+            // Traffic roads are not part of the time-attack course: only the single CourseKey
+            // road may claim CourseKey=C1Shuto, so drop the inherited key and mark these as Road.
+            foreach (var ep in actor.Data.OfType<EnumPropertyData>().Where(x => (x.Name?.Value?.Value ?? "") == "RoadType"))
+                ep.Value = FName.FromString(asset, "Road");
+
+            void SetNum(string key, double val, bool asFloat)
+            {
+                var p = actor.Data.FirstOrDefault(x => (x.Name?.Value?.Value ?? "") == key);
+                if (p is IntPropertyData ip) { ip.Value = (int)Math.Round(val); return; }
+                if (p is FloatPropertyData fp) { fp.Value = (float)val; return; }
+                if (asFloat)
+                {
+                    var np = new FloatPropertyData(FName.FromString(asset, key)) { Value = (float)val };
+                    np.PropertyTypeName = MakeTypeName(asset, new FString("FloatProperty"));
+                    actor.Data.Add(np);
+                }
+                else
+                {
+                    var np = new IntPropertyData(FName.FromString(asset, key)) { Value = (int)Math.Round(val) };
+                    np.PropertyTypeName = MakeTypeName(asset, new FString("IntProperty"));
+                    actor.Data.Add(np);
+                }
+            }
+
+            SetNum("NumForwardLanes", lanes, false);
+            SetNum("NumBackwardLanes", 0, false);
+            SetNum("LaneWidth", laneWidth * 100.0, true);   // metres -> centimetres
+            SetNum("RoadFlags", 0, false);                  // AI traffic enabled
+            foreach (var p in actor.Data.OfType<ObjectPropertyData>())
+            {
+                var pn = p.Name?.Value?.Value ?? "";
+                if (pn == "Spline" || pn == "RootComponent") p.Value = new FPackageIndex(newCompIdx1);
+            }
+
+            var bounds = actor.Data.OfType<StructPropertyData>().FirstOrDefault(p => (p.Name?.Value?.Value ?? "") == "SplineBounds");
+            if (bounds != null)
+            {
+                double mnx = pts.Min(v => v.X), mny = pts.Min(v => v.Y), mnz = pts.Min(v => v.Z);
+                double mxx = pts.Max(v => v.X), mxy = pts.Max(v => v.Y), mxz = pts.Max(v => v.Z);
+                foreach (var child in bounds.Value)
+                {
+                    switch (child.Name?.Value?.Value)
+                    {
+                        case "Min": SetVector(child, new FVector(mnx, mny, mnz)); break;
+                        case "Max": SetVector(child, new FVector(mxx, mxy, mxz)); break;
+                        case "IsValid": if (child is BoolPropertyData bv) bv.Value = true; break;
+                    }
+                }
+            }
+
+            asset.Exports.Add(comp);
+            asset.Exports.Add(actor);
+            levelExport?.Actors?.Add(new FPackageIndex(actorIdx1));
+            made++;
+        }
+
+        asset.Write(outPath);
+        Console.WriteLine($"LANEROADS_DONE roads={made} -> {outPath}");
+    }
+
+    // Non-wrapping Catmull-Rom tangent: these road splines are open, so the ends must not
+    // borrow curvature from the opposite end of the road.
+    static FVector TangentOpen(List<FVector> pts, int i, bool arrive)
+    {
+        int prev = Math.Max(0, i - 1), next = Math.Min(pts.Count - 1, i + 1);
+        return arrive
+            ? new FVector((pts[i].X - pts[prev].X) * 0.5f, (pts[i].Y - pts[prev].Y) * 0.5f, (pts[i].Z - pts[prev].Z) * 0.5f)
+            : new FVector((pts[next].X - pts[i].X) * 0.5f, (pts[next].Y - pts[i].Y) * 0.5f, (pts[next].Z - pts[i].Z) * 0.5f);
     }
 
     // Catmull-Rom tangent so the curve passes smoothly through every point.
@@ -4508,7 +7335,31 @@ class Program
             Type(node, "StructProperty");
             node.StructType = FName.FromString(asset, "MTRoadGraphNode");
 
-            var r = new ObjectPropertyData(FName.FromString(asset, "Road")) { Value = new FPackageIndex(roadIdx1) };
+            // Each node belongs to its own road actor; a single hard-wired road reference is only
+            // correct for one-road maps.
+            int nodeRoadIdx1 = roadIdx1;
+            if (n.TryGetProperty("road", out var roadEl) && roadEl.ValueKind == JsonValueKind.String)
+            {
+                string want = roadEl.GetString() ?? "";
+                bool found = false;
+                for (int ri = 0; ri < asset.Exports.Count; ri++)
+                {
+                    if ((asset.Exports[ri].ObjectName?.Value?.Value ?? "") == want) { nodeRoadIdx1 = ri + 1; found = true; break; }
+                }
+                if (!found)
+                {
+                    Console.WriteLine($"BAKENAV_WARN road not found: '{want}' (len={want.Length})");
+                    string head = want.Substring(0, Math.Min(14, want.Length));
+                    for (int ri = 0; ri < asset.Exports.Count; ri++)
+                    {
+                        string nm = asset.Exports[ri].ObjectName?.Value?.Value ?? "";
+                        if (nm.StartsWith(head) || ClassOf(asset.Exports[ri]) == "MotorTownRoad")
+                            Console.WriteLine($"   candidate export[{ri}] '{nm}' (len={nm.Length}) raw='{asset.Exports[ri].ObjectName}' cls={ClassOf(asset.Exports[ri])}");
+                    }
+                }
+            }
+
+            var r = new ObjectPropertyData(FName.FromString(asset, "Road")) { Value = new FPackageIndex(nodeRoadIdx1) };
             Type(r, "ObjectProperty");
             node.Value.Add(r);
 
