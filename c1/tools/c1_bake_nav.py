@@ -44,7 +44,7 @@ DEFAULTS = {
     # like a legal successor at 4 m link range and the AI drives into the barrier
     # between them.
     'deck_dz_cm': 150.0,
-    'deck_dz_abs_cm': 250.0,
+    'deck_dz_abs_cm': 100.0,
     'deck_dist_cm': 1200.0,
     # and the long shallow version of the same defect
     'grade_max': 0.25,
@@ -312,7 +312,7 @@ def main():
     parallel_skip = float(cfg.get('parallel_skip_cm', 400.0))
     normal_dot = float(cfg.get('normal_dot', 0.85))
     deck_dz = float(cfg.get('deck_dz_cm', 150.0))
-    deck_abs = float(cfg.get('deck_dz_abs_cm', 250.0))
+    deck_abs = float(cfg.get('deck_dz_abs_cm', 100.0))
     deck_dist = float(cfg.get('deck_dist_cm', 1200.0))
     grade_max = float(cfg.get('grade_max', 0.25))
     # Continuity gate: how far sideways a link may move the car. BeamNG's own lane
@@ -406,10 +406,10 @@ def main():
                     if abs(dz) > deck_dz and d < deck_dist:
                         skipped_deck += 1
                         continue
-                    # A junction is never metres apart in height, and the radius test above
-                    # only covers short hops. Long links used to slip through on the grade
-                    # test alone (17 m drop over 39 m = 44%, under the old 50% limit), which
-                    # is exactly "the car noses off the deck onto the one below".
+                    # A junction is never metres apart in height. This used to allow 2.5 m at
+                    # any distance, so a link could climb 2.4 m over 16 m (15%). At 1.0 m the
+                    # gate means "same deck", and the linker is free to pick a same-level target
+                    # further along instead (Rd069 -> Rd138 rather than Rd069 -> +2.4 m Rd133).
                     if abs(dz) > deck_abs:
                         skipped_deck += 1
                         continue
@@ -595,6 +595,51 @@ def main():
                 softened += 1
         log('soften: re-aimed %d steep cross links (>%.0f deg)' % (softened, smax))
 
+    # ---- 2b2c. rescue: a chain tail must never be a trap ------------------------------
+    # Tightening the deck gate (Rd069 no longer climbs 2.4 m onto Rd133) left that slip
+    # road with four ways in and none out: anything routed down it stopped dead. At a
+    # genuine road end the car has to be able to continue on the same deck, so search
+    # forward past the normal lateral limits and take the first aligned same-level node.
+    rescued = 0
+    if float(cfg.get('tail_rescue_cm', 0.0)) > 0.0:
+        reach = float(cfg['tail_rescue_cm'])
+        tails = {}
+        for idx, n in enumerate(nodes):
+            k = (id(n['road']), abs(int(n['lane'])))
+            if k not in tails or n['k'] > nodes[tails[k]]['k']:
+                tails[k] = idx
+        cell = 4000.0
+        grid = {}
+        for idx, n in enumerate(nodes):
+            grid.setdefault((int(n['loc'][0] // cell), int(n['loc'][1] // cell)), []).append(idx)
+        for t in tails.values():
+            n = nodes[t]
+            if any(id(nodes[j]['road']) != id(n['road']) for j in edges[t]):
+                continue            # already has an exit
+            gx, gy = int(n['loc'][0] // cell), int(n['loc'][1] // cell)
+            best = None
+            for a in (gx - 1, gx, gx + 1):
+                for b in (gy - 1, gy, gy + 1):
+                    for j in grid.get((a, b), ()):
+                        m = nodes[j]
+                        if id(m['road']) == id(n['road']):
+                            continue
+                        d = math.dist(n['loc'], m['loc'])
+                        if d > reach or d < 1.0:
+                            continue
+                        if abs(m['loc'][2] - n['loc'][2]) > 50.0:
+                            continue
+                        fwd = sum((m['loc'][c] - n['loc'][c]) * n['dir'][c] for c in range(3)) / d
+                        if fwd < 0.85:
+                            continue
+                        if best is None or d < best[0]:
+                            best = (d, j)
+            if best is None:
+                continue
+            edges[t][best[1]] = (0.0, best[0])
+            rescued += 1
+        log('rescue: gave %d trapped chain tails an exit' % rescued)
+
     # ---- 2b3. dedupe: one link per target zone -----------------------------------------
     # A junction produces ONE link, not one per station. At Shibaura the same road pair
     # emitted seven links from consecutive stations onto the same target head, and the AI
@@ -674,7 +719,7 @@ def main():
     # rescue: nothing may end with zero outgoing edges. A truly isolated node makes the AI
     # stop the vehicle, so link it to the nearest node on the same road that faces roughly
     # the same way.
-    rescued = 0
+    lat_rescued = 0
     for idx, nd in enumerate(nodes):
         if edges[idx]:
             continue
@@ -691,9 +736,9 @@ def main():
                 best = (j, dv)
         if best:
             edges[idx][best[0]] = (lateral_cost, best[1])
-            rescued += 1
+            lat_rescued += 1
     log('lane-change edges=%d (step=%d stations, %d flat at a chain end, %d rescued)'
-        % (lat, lane_step, lat_flat, rescued))
+        % (lat, lane_step, lat_flat, lat_rescued))
 
     # ---- 2d. merge out of a lane that dies at a junction -----------------------------------
     # 17 chain ends have no onward edge and no cross-road link: their lane simply does not
@@ -940,7 +985,7 @@ def main():
               'skipped_deck': skipped_deck, 'skipped_grade': skipped_grade,
               'skipped_pos': skipped_pos, 'seam_links': seam_links, 'seam_stubs': seam_stubs,
               'dedupe_dropped': deduped, 'excluded_roads': len(excluded_roads),
-              'softened': softened,
+              'softened': softened, 'rescued': rescued,
               'islands': len(remap), 'crossroads': len(final_groups),
               'crossroad_nodes': len(nodes) - sum(1 for x in cross if x == -1),
               'junction_merges': merges,
