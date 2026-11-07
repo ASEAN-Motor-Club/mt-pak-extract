@@ -70,3 +70,14 @@ After the split: 6 paks, 10,537 entries, **0 duplicates**, shipped set **1.96 GB
 carrying its byte size, sha256 and full asset list. Commit it alongside the build that produced it:
 it is the only artifact that lets a later session answer "which pak owned this asset, and was it the
 one on disk" without re-listing 700 MB of paks.
+
+## Dev vs release
+
+The split above is the **development** layout: six paks, each rebuilt independently, so iterating on
+meshes never touches lights and a nav bake never evicts a lighting pass.
+
+A **release** is still one consolidated pak (`zzz_AMC_Shuto_P.pak`), because players should install
+one file. It is built by *unpacking the family paks and repacking the union* — never by shipping two
+paks that claim the same asset. The ownership rule still applies while assembling it: the union must
+contain each path exactly once, and `pakset.py check` on the pre-consolidation set is what proves the
+merge is a union rather than a race with a winner.
