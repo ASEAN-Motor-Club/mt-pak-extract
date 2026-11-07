@@ -1,7 +1,7 @@
 {
-"pak": "zzzzz_AMC_C1Mesh_v2_P.pak",
-"bytes": 554611354,
-"sha256": "6e63d47311f9bc2b421d723d31591648d7f54c088246ac4544fb4b5a151b9342",
+"pak": "zzzzz_AMC_C1Mesh_v3_P.pak",
+"bytes": 554611827,
+"sha256": "3f2c18f7c5ef11c00be2705f5db6136ee1caaf54c857095cacb34aa0a8195b3b",
 "assets": [
 "MotorTown/Content/Mods/C1Full/Meshes/c-10_-20.uasset",
 "MotorTown/Content/Mods/C1Full/Meshes/c-10_-20.uexp",

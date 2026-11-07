@@ -1052,3 +1052,21 @@ paths from any script that changes directory.
 Also: UAssetTool resolves `Mappings.usmap` from `Path.Combine(cwd, "../..")`, so batch tool runs
 must execute with cwd = `<repo>/csharp/UAssetTool`. From the repo root it dies in the `Usmap`
 constructor and looks like a broken DLL.
+
+## §40 — A pak that ships a level asset it does not own silently deletes the other one
+
+The nav pak installed on 2026-11-07 carried FOUR assets — `C1Full.umap`, `C1Full.uexp` and the two
+`C1Full_Roads` files. `zzzzzzzz_AMC_C1NavTest_P` sorts after `zzzzzzz_AMC_C1Map_v4_P`, so the stale
+copy of the persistent level inside the nav pak won the mount and the map pak's spawn/garage edits
+disappeared with no error, no log line and no missing-asset warning. Same class of failure as the
+2026-10 mount-order incident; this time the culprit was an unversioned pak that no manifest tracked.
+
+Rules that follow:
+
+- Build every level pak with `c1/tools/build_levelpak.sh <dir> <ABSOLUTE out.pak> <stem>` — it stages
+  one asset and fails on a leaked sibling. Hand-rolled `repak pack` on a cooked Maps dir ships all
+  three levels at once.
+- An unversioned pak (`…NavTest_P.pak`) is invisible to `pakset.py check`, which only compares
+  manifests. Either version every pak or the gate has a blind spot.
+- After any install, list the pak set and grep the paks for `C1Full.umap` ownership; the map pak
+  must be the only claimant.
