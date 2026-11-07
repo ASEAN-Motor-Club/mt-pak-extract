@@ -27,9 +27,11 @@ ROWS = os.environ.get("C1_MAP_ROWS", r"D:/C1FullMirror/Scripts/map_rows.json")
 REPORT = os.environ.get("C1_MAP_REPORT", r"D:/C1FullMirror/Scripts/author_all_lights.json")
 PREFIXES = ("C1Port_", "C1MapLight_", "C1Lamp_", "C1NativeLight_")
 
-# Shadow-casting is opt-in per source group (comma separated). Empty = the shipped default.
+# Shadow-casting is opt-in per source group (comma separated). Empty = the shipped default:
+# tunnel shadows were authored, rendered badly and were reverted -- do not turn them on without
+# an explicit C1_SHADOW_GROUPS and a screenshot check first.
 SHADOW_GROUPS = set(g.strip() for g in
-                    os.environ.get("C1_SHADOW_GROUPS", "tunnel_lights").split(",") if g.strip())
+                    os.environ.get("C1_SHADOW_GROUPS", "").split(",") if g.strip())
 
 CD_PER_BRIGHTNESS = 5000.0     # BeamNG spot: 1 brightness ~= 5,000 cd
 DEFAULT_BRIGHTNESS = 1.0       # source class default when the record declares none
