@@ -1,7 +1,22 @@
 {
-  "_comment": "SettingKey -> [package path, class name] for UAssetTool --set-array-class-ref. Packages are addressed by their real folder (Stinger lives under Muscle_01/). Class names come from motortown.db `vehicles`, not from guessing.",
-  "Small": ["/Game/Cars/Models/Muscle_01/Stinger", "Stinger_C"],
-  "Special": ["/Game/Cars/Models/Campy", "Campy_C"],
-  "Truck": ["/Game/Cars/Models/Maity", "Maity_C"],
-  "Bus": ["/Game/Cars/Models/Liliput", "Liliput_C"]
+ "Small": [
+  "/Game/Cars/Models/Muscle_01/Stinger",
+  "Stinger_C"
+ ],
+ "Special": [
+  "/Game/Cars/Models/Campy",
+  "Campy_C"
+ ],
+ "Truck": [
+  "/Game/Cars/Models/Campy",
+  "Campy_C"
+ ],
+ "Bus": [
+  "/Game/Cars/Models/Liliput",
+  "Liliput_C"
+ ],
+ "Police": [
+  "/Game/Cars/Models/Muscle_01/Stinger",
+  "Stinger_C"
+ ]
 }

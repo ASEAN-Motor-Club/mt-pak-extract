@@ -7,9 +7,31 @@ re-deriving.
 
 Toolchain paths
 - Cook host: `D:\UEProjects\C1` (Win64, UE 5.5.4 at `D:\UE_5.5`)
-- Level/asset patcher: `mt-pak-extract-wt-0719/csharp/UMapPatch`
+- Level/asset patcher: `mt-pak-extract-wt-0719/csharp/{UAssetTool,UMapPatch}`
 - Scratch work: `/opt/data/cache/scratch/c1`
 - Client paks: `D:\SteamLibrary\steamapps\common\Motor Town\MotorTown\Content\Paks`
+
+---
+
+## Audit 2026-11-05 — entries that were wrong and caused regressions
+
+Every entry was re-checked against live measurements. Three were actively harmful:
+
+- **§22 "bake offsets into vertices, leave components at origin" — over-broad, now scoped.**
+  Correct only for components inside a blueprint actor chain. Standalone `StaticMeshActor`
+  transforms do move what renders (554 actors, verified). Following it literally is why
+  placement was "fixed" by re-importing the whole mesh set over and over.
+- **§23 "pre-negate Y in the OBJ" — wrong for BeamNG sources, now scoped.** The importer
+  negating Y *is* the BeamNG→MT conversion (opposite Y axis). Cancelling it mirrors the
+  map against splines authored in MT space. Carry the sign in the actor transform instead
+  and mirror UV **V**.
+- **§17 "collision rc=1 but succeeds, gate on the marker" — not a collision gate.** The
+  marker counted write attempts; the meshes ended up with 0 simple collision and only 76
+  of 555 with `CTF_UseComplexAsSimple`. Gate on the per-mesh trace flag read back.
+
+Lesson that generalises: **a doc entry is a hypothesis about a specific build.** When a
+symptom reappears after a documented fix, re-measure before re-applying — a stale entry
+applied confidently is worse than no entry.
 
 ---
 
@@ -172,6 +194,16 @@ reported one after packing.
 and cooked meshes carry per-triangle (complex) collision. Treat rc as advisory,
 gate on the marker.
 
+> **CORRECTION 2026-11-05 — that marker is not a collision gate.** It counts write
+> *attempts*, not resulting state. Measured on the 555-mesh full map: **0 meshes had
+> simple collision and only 76 carried `CTF_UseComplexAsSimple`**; the remaining 479 sat
+> at `CTF_UseDefault` with an empty body setup — geometry you can see and fall straight
+> through. The only trustworthy check reads the flag back per mesh, in a fresh process:
+> `mesh.get_editor_property("body_setup").get_editor_property("collision_trace_flag")`.
+> Also note `get_collision_complexity()` disagrees with that property (see the
+> 2026-11-03 collision notes) — and that the cook still emits `ConvexElems`, so "0 convex
+> hulls" is not a state you can rely on either.
+
 ## 18. Everything must be installed AND verified from the installed pak
 
 **Pattern:** build → copy to `Paks` → pull the installed pak back → extract the
@@ -226,6 +258,18 @@ spawn area, not merely touch it.
 
 ## 22. Component `RelativeLocation` is ignored — bake offsets into vertices
 
+> **SCOPE CORRECTION 2026-11-05 — this entry caused repeated re-imports and a collision
+> regression; read the scope before applying it.** "Component transforms do nothing" is
+> true only for components that belong to a **blueprint actor chain** (the NS prop
+> hierarchy), where the parent transform wins and the vertices are already world-space.
+> It is **false for standalone `StaticMeshActor`s**: verified 2026-11-05 by moving 554
+> cell actors with `set_actor_location` — the world union went from a collapsed 5.1 ×
+> 12.1 km to the correct 19.2 × 27.6 km, with no re-import and no vertex edit.
+> Rule: fix **placement** with actor transforms (idempotent, cheap, keeps collision and
+> UVs); touch vertices only when the geometry itself is wrong. Re-importing to fix
+> placement discards `BodySetup`/`CollisionTraceFlag` — that is how a build ships with
+> no collision (see §17 correction).
+
 **Symptom:** the spline moves every build; the 3D geometry never moves. Player
 always spawns far from visible roads while the minimap shows a spline at their feet.
 **Cause:** writing `RelativeLocation` onto those static-mesh components has **no
@@ -258,6 +302,18 @@ was re-mirrored back out. It also silently reverses triangle winding.
 **Fix:** pre-negate Y in the OBJ (`y = -y`) before import, so the importer's flip
 cancels. Then verify the cooked asset bounds, not the source file:
 `c4_19` must span Y `201658 … 259718` to contain the spawn at Y `223603`.
+
+> **SUPERSEDED 2026-11-05 — do not apply this fix blindly.** The *observation* stands
+> (the OBJ importer negates Y; X and Z pass through). The *fix* only applies when the
+> source geometry must keep its own Y sign. For a **BeamNG source**, the negation **is
+> the conversion**: MT runs the opposite Y axis, so `y_MT = -y_BeamNG`. Pre-negating the
+> OBJ cancels that and puts the map back in the wrong handedness — the whole map ends up
+> mirrored against road splines that were authored in MT coordinates.
+> Correct handling for BeamNG sources: leave the OBJ alone, let the importer's negation
+> stand, and carry the offset in the actor transform (`y = -origin_y * 100`). Then mirror
+> **V** in the UVs, because the same mirror reverses the texture (checklist §2h, gate C).
+> Also: the "trace winding" note below means imported meshes are back-facing — this is
+> why masked/foliage surfaces need `TwoSided`.
 **Detection that works:** compare **cooked asset bounds** (`mesh.get_bounds()` /
 `get_bounding_box()` in UE python) against the source OBJ bbox, axis by axis. Any
 sign difference is a handedness bug. Comparing meshes to splines in source space can
@@ -403,6 +459,14 @@ is a separate axis from shader *presence*. Verify the platform string, not just 
 `TBasePass`/`FMaterialShaderMapContent` strings.
 
 ## 29. Materials cooked in a separate project NEVER render in Motor Town — reparent to a vanilla master
+
+> Six material paks were shipped chasing "the blend mode is wrong" before the real defects (a
+> dead parameter binding, and textures carrying no alpha) were found. Read
+> `docs/MATERIALS_ALPHA_BLEND.md` before building a second variant on alpha or blending — it
+> carries the attempt ledger and the diagnosis order. The single most expensive rule in it:
+> **reparenting changes the parent, not the parameter names**; an instance reparented onto
+> `M_plants` while its colour parameter is still `Color` binds nothing and renders a *black*
+> background, which is indistinguishable from a broken mask.
 
 **Symptom**: the whole map renders flat-coloured with checkerboard patches. Textures,
 UVs, MI parameters, master graph, import paths, shader platform (SM5 *and* SM6) all
@@ -603,3 +667,286 @@ main pak. Textured corridor confirmed in-game.
   vanilla `T_WorldMap_Jeju`, so the row itself is valid.
 - **FName Number vs Value**: `NavigationSystemModuleConfig_0` is stored as value
   `NavigationSystemModuleConfig` with `Number = 1`; string comparisons must rebuild the suffix.
+- **An MI set travels with its masters — reparenting to a vanilla master is a regression,
+  not a fix**: C1's 1,633 material instances parent to four masters shipped in the same pak
+  (`M_C1_Surface`, `M_C1_Surface_Tex`, `M_C1_Surface_Masked`, `M_C1_Surface_Trans`) and
+  render correctly. Flattening them onto `M_PropMaster` renames texture parameters
+  (`MetallicTex → Metallic`, `RoughnessTex → Roughness`) so values stop binding, and
+  destroys masking/translucency outright — `_Masked` and `_Trans` have no equivalent, so
+  those surfaces draw nothing. Result: "some materials load, most are missing, roads
+  among them". The earlier "MT rejects third-party master shaders" conclusion was wrong:
+  the two invisible-geometry incidents were a texture-namespace rename and a 100× scale
+  error, neither of which was a material fault.
+- **Gate for the above**: for every MI resolve `Parent (Object): Index=-N` to
+  `Import[N-1].Name` (negative index is 1-based, so `-9` is `Import[8]`) and require that
+  name to exist as an asset **inside the same pak**. Bundling the MIs but not their masters
+  fails silently at load with no log line.
+- **A Texture2D written into a SCALAR parameter invalidates the instance → engine
+  checkerboard**: MT builds shader maps into its own library, so a master cooked in our
+  project can never render (its `.uexp` is ~3–8 KB, there is no shader data to ship). Only
+  instances of MT's own masters render. When retargeting `M_C1_Surface_Tex` instances onto
+  `M_PropMaster`, its parameter set is **`BaseColor` (texture), `Normal` (texture),
+  `Metallic` (scalar), `Roughness` (scalar), `Specular` (scalar), `UV_Tiling`** — prove it
+  from the master's `TextureStreamingData`, which lists exactly two textures (`T_Normal_N`,
+  `T_White_BC`). Renaming `MetallicTex → Metallic` and keeping the Texture2D value produces
+  an instance that fails to compile and draws the default checkerboard, exactly like a
+  missing material. Drop such parameters instead and let the scalar defaults apply.
+- **"Backface" of the same bug — probe disagrees with the screen**: `GetMaterial(0)` on the
+  component returns the assigned MI and reports `comp_default_material=0`, while the screen
+  shows checkerboard, because assignment succeeds and only compilation fails. Do not treat a
+  clean material-resolution probe as proof the materials render; a checkerboard screenshot
+  outranks it.
+
+- **NEVER ship `ShaderArchive-*.ushaderbytecode` in a mod pak — it crashes the client**
+  (2026-11-05, v11, reproduced): the game ships exactly two archives,
+  `ShaderArchive-Global-PCD3D_SM5` (13,242,450 B) and `ShaderArchive-MotorTown-PCD3D_SM5`
+  (56,636,716 B) — **no SM6 archive at all**, so MT runs `PCD3D_SM5`. A UE cook of our project
+  emits the same two names but partial (13,181,977 B / 6,186,317 B). Mounting them shadows the
+  game's files and the client dies at boot with
+  `LowLevelFatalError [GlobalShader.cpp] [Line: 803] Could not load section 11 (of 330) of the
+  global shadermap`. Mod paks cannot extend MT's shader library, so **custom material masters
+  can never render in MT regardless of how cleanly they cook**. Ship instances of MT's own
+  masters only, and add a packaging gate: no `ShaderArchive-*` entry may appear in a mod pak.
+- **"Compiled successfully" is not proof a master can render — check the payload.** A master
+  that failed to compile cooks at ~3.6 KB with zero shader strings; a real one is 17–32 KB and
+  carries `PCD3D_SM5`/`PCD3D_SM6` plus `TBasePass*` shader-map names. Gate on size + strings;
+  the cook exit code and `LogCook: Done!` say nothing about it.
+- **A cook with no `TargetedRHIs` silently emits uncompilable materials.** `DefaultEngine.ini`
+  needs `[/Script/WindowsTargetPlatform.WindowsTargetSettings]` with `TargetedRHIs=PCD3D_SM5`
+  (MT's platform) or the log fills with `Failed to compile Material for platform PCD3D_SM6 …
+  Default Material will be used in game`.
+- **Repairing a broken master never works; rebuild it.** The compiled pair in the C1Full project
+  (`M_C1_Tex2`, `M_C1_TexMasked2`) is a from-scratch rebuild that kept the original parameter
+  names (`BaseColor`, `MetallicTex`, `Normal`, `RoughnessTex`, `EmissiveTex`, plus scalars), so
+  original instances bind with no renaming. Editing `M_C1_Surface*` re-cooks the same 3,640 B
+  failure every time.
+- **Meshes reference material names that were never created.** A mesh slot is a hard import of
+  `/Game/Mods/<root>/Materials/MI_<name>`; if no asset has that name the slot draws the engine
+  default and looks like a broken material. C1Full had 30 such names — `MI_C1_mat_wal` alone was
+  referenced by 99 meshes — because the instances were later renamed with suffixes
+  (`MI_C1_mat_wal_15`) and the meshes were never updated. Gate builds on mesh→material coverage
+  (checklist §2c). Fix by cloning the surviving sibling under the name the mesh expects.
+- **Loose assets at the namespace root are part of the map, not of the folders.** `BP_C1_Sky`
+  (carries the `SunSky` child component) and `BP_C1_Prop` live directly under
+  `/Game/Mods/C1Full/`. A packer that copies only `Materials/ Maps/ Meshes/` ships a level with
+  no sun and no skylight; the result is an unlit scene that is easy to misread as "materials not
+  applied". Gate: every `/Game/Mods/<root>/…` import in the map resolves inside the pak
+  (checklist §2d).
+- **Verify which namespace the *cooked map* references, not which one the project contains.** A
+  project can hold two full content trees while the level still points at the older one: C1Full
+  had `Mods/C1` (4,587 assets) and `Mods/C1Full` (5,300) with divergent mesh generations
+  (`c-10_-20` 71,574 B vs 72,890 B), and the map referenced `Mods/C1` until it was repointed.
+  Check `strings <map>.umap | grep -oE '/Game/Mods/[A-Za-z0-9_]+/Meshes'` on the *cooked* map.
+  Duplicated trees are the underlying defect — one namespace per release pair is the fix
+  (`.hermes/plans/2026-11-05-single-content-namespace.md`).
+- **The cook writes texture parameter values as NULL — never source instances from a cook output.**
+  A cooked `MaterialInstanceConstant` keeps the parameter *name* but stores
+  `ParameterValue (Object): Index=0`, i.e. no texture, and the surface renders **flat white**. Measured:
+  every instance in the project cook had null `BaseColor`, while the same instance in the shipped C1
+  pak carried `Index=-7` → `Texture2D mat_wal_15_file0`. The duplicate `C1Full/Materials` tree was
+  degraded the same way. Authoritative source for instances = the build that demonstrably rendered.
+  Gate: `UAssetTool --dump <mi>.uasset | grep 'ParameterValue (Object)'` must show non-zero indices,
+  sampled per material family.
+- **White ≠ checkerboard, and the distinction is diagnostic.** Checkerboard = material never resolved
+  (missing asset, dead parent, uncompilable master). White = material resolved and rendered with a
+  sampler on its default (null `BaseColor`, or a parameter name the master does not declare). Seeing
+  white after seeing checkerboard means the chain is connected and only the bindings are wrong.
+- **The mask flag and the parent are decided by different inputs — wire both or the surface stays opaque.**
+  A sectioned route list (`[veg]`/`[masked]`/`[trans]`) fed the parent choice but the
+  `isMasked` test only read the masked list, so vegetation was parented to `M_plants` **without**
+  the per-instance `BLEND_Masked` override and drew its texture's green backdrop. Symptom is
+  selective: instances that were *also* in the authored-masked list got the override and looked
+  fixed, which reads as "some trees work, some don't". Fix: vegetation implies masked
+  (`isMasked = isVeg || maskSet.Contains(name)`).
+- **Verify the override actually serialised, per instance, by dumping it — the write fails silently.**
+  `UAssetTool --dump <mi>.uasset` must show all three of `BasePropertyOverrides` →
+  `BlendMode (Enum): BLEND_Masked`, `TwoSided (Bool): True`, `OpacityMaskClipValue (Float): 0.3333`.
+  A struct that carries only `TwoSided` + clip (or `BlendMode (Byte): 0`) is opaque: the property
+  was dropped during serialisation and nothing logs it. Sample one instance per route, never one
+  instance total — the dropped-property case is per-asset.
+
+## 30. A pipeline stage that skips on a missing input reads as success
+
+**Symptom:** `06_postcook_patch.sh <wrong-path> <out>` printed
+`== parent map absent, skipping (delta build)` and **exited 0**, so the patch looked
+applied. Shipping that would have shipped an unpatched level (no game mode, no sunsky,
+no spawner classes) with a green log.
+
+**Cause:** the "delta build" convenience path treated a missing file the same as a
+deliberate partial build.
+
+**Fix:** absent parent map is now `exit 5` unless `ALLOW_DELTA=1` is set explicitly.
+
+**Rule:** any stage whose job is "patch X" must fail when X is absent. A skip is only
+legitimate when the caller asked for it. Same class of bug as trusting a printed counter
+(§6): the gate must observe the *output*, not the intent.
+
+## 31. `set_actor_location` can be a no-op on a component-less actor
+
+**Symptom:** `MotorTownRaceSection` gates: `set_actor_location` + `set_actor_rotation`
+returned without error, the script reported `placed=40`, and a re-read showed all 40
+still at `(0,0,0)` (`GATE_PLACE_FAIL`).
+
+**Cause:** not established; the actor class carries no components at all, so there is
+nothing for the transform to move and the write does not persist.
+
+**Fix applied:** deleted the actors instead of positioning them (they are not required
+by the map).
+
+**Rule:** after any transform write, re-read the value in the same process and include it
+in a gate. `set_*` returning cleanly is not a write (same trap as §6, §17).
+
+## 32. Ported lights: unitless intensity and sRGB colour (2026-11-06)
+
+Four separate defects presented as one symptom — "the lights are too dim / too red / not on the
+poles" — and three of them were unit errors, not lighting bugs.
+
+**Symptom 1 — a brightness ladder where every rung looked wrong.**
+Lamps at 20000 unitless read as a match flame; 200,000 still looked dim; the ladder
+60k / 200k / 600k / 2,000,000 produced "all of them too bright" and "still dim" in the same session.
+
+**Cause:** the two engines were never in the same unit.
+- BeamNG: `SpotLight` intensity is **candelas**, `PointLight` is **lumens**, and the legacy
+  `brightness` fallback is **1 brightness ≈ 5,000 cd (spot) / ≈ 62,832 lm (point)**; `range` only
+  clamps an inverse-square falloff.
+- UE: point/spot accept Candela / Lumen / Unitless, with **1 cd = 625 unitless**.
+
+So 200,000 unitless ≈ **320 cd** — ~30× *dimmer* than the 10,000 cd that brightness 2 actually
+means, and the 2M rung only reached ~3,200 cd. There was no value on the ladder that corresponded to
+the source lamp, which is why the reports conflicted.
+
+**Fix:** set `intensity_units = CANDELAS` (LUMENS for point lamps) and compute from the source:
+`cd = brightness × 5000`, `lm = brightness × 62832`, `attenuation_radius = range_m × 100`.
+Result on 2,169 lights: 10,000 cd ×1,083, 7,500 ×107, 5,000 ×623, 62,832 lm ×356.
+
+**Symptom 2 — "they're all too red".**
+Source colour `[1, 0.392, 0, 1]` written into `unreal.Color` came out as `(255,100,0)`.
+
+**Cause:** source colours are **linear RGBA**; `unreal.Color` / the `light_color` editor property is
+**sRGB**. Turning a linear value into a byte by multiplying by 255 saturates the hue.
+
+**Fix:** convert `s = 12.92x if x <= 0.0031308 else 1.055·x^(1/2.4) − 0.055`, then ×255. Linear
+0.392 → sRGB 168, not 100. The amber then reads as amber.
+
+**Symptom 3 — `/lampcolor` turned the lamps black.**
+`SetLightColor({r=…, g=…, b=…}, true)` via UE4SS produced a black light.
+
+**Cause:** the Lua table did not cross into `FLinearColor` as anything but zero. Not a setter defect —
+a marshalling one, and it silently *succeeded*.
+
+**Rule:** never conclude "runtime colour control works" from a call that returned without error. Read
+the component's colour back in the same call, and treat "the light went black" as a zeroed struct
+before blaming the engine.
+
+**Symptom 4 — per-lamp values could not be expressed.**
+One `BP_C1_Lamp` produced identical lamps; trying to vary intensity per instance changed nothing.
+
+**Cause:** a blueprint's light component is a **class default**. Every instance of the BP shares it,
+and per-instance component overrides are not reliably cooked (a per-instance `visible=true` was lost).
+
+**Fix:** when rows differ, author **native** `unreal.SpotLight` / `unreal.PointLight` actors — their
+component properties serialise per actor. Keep a blueprint only for a lamp type that is genuinely
+uniform. Consequence: after converting to native actors the level no longer references
+`BP_C1_Lamp`, so the BP drops out of the cook (`MISSING Blueprints/BP_C1_Lamp`) and the pak contains
+only the map. That is correct, not a regression.
+
+**Rule:** choose the primitive from the data, not from convenience — uniform lamps can be a BP,
+per-row lamps must be native actors.
+
+**Docs:** BeamNG `documentation.beamng.com/modding/lighting/pbl` + `/lights/`; Epic *Using Physical
+Lighting Units*. Skill: `motortown-map-lighting`, `references/light-units-beamng-to-ue.md`.
+
+## 33. "Just delete them" vs find the real config — sign lights (2026-11-06)
+
+**Symptom:** after the corridor port, lamps beside signs were white and blown out.
+
+**First hypothesis (wrong):** the 356 corridor `sign_lights` carry no brightness, range, colour or
+cone angles in the source, and every one is `isEnabled: false` — so they look like inert
+placeholders, and the tempting fix is to drop them.
+
+**What the level actually does:** `levels/c1/mainlevel.lua` builds a partition grid (384 m cells)
+over `lightGroupNames = {"Tunnel_lights","Tunnel_sounds","sign_lights","LightGroup1", …,
+"garage_japan_unpacked"}` and calls `light:setLightEnabled(value)` per cell as the camera moves, with
+`texSize` raised to 256 when enabled. So the group *is* live; `isEnabled:false` in the file just
+means "off until the manager says otherwise" — true for the street lamp groups too.
+
+**What the objects specify:** position, `texSize: 32`, `flareScale: 0`, `animate: false`,
+`locked: true`. Nothing photometric. They run on **PointLight class defaults**.
+
+**Why the port blew out:** the class default is legacy `brightness 1`, converted at the documented
+rate to **62,832 lm** (the isotropic equivalent of a 5,000 cd spot). BeamNG's own guidance for a
+point light of this kind is **400–1,000 lm at radius 5–12 m**. We ported the class default literally,
+~60× too strong, and it clipped to white against Motor Town's exposure. BeamNG absorbs it; UE at MT's
+exposure does not.
+
+**Fix:** keep the lamps, give value-less ones a documented small-point-light default (800 lm, 8 m)
+instead of the legacy-brightness default.
+
+**Rules**
+- **"No values in the file" is not "no light".** Before deleting a group, grep the level's Lua for its
+  group name and for `setLightEnabled`; a runtime light manager is common in converted levels.
+- **Class defaults are config too.** Port them deliberately, and sanity-check the magnitude against
+  the engine's own guidance table rather than only against the unit-conversion formula.
+- **A unit conversion can be arithmetically right and operationally absurd.** 62,832 lm is the correct
+  conversion and the wrong light. Cross-check any converted value against the docs' recommended range
+  for that fixture type.
+
+**Separate defect found in passing (not the cause):** sign materials declare only `colorMap` and
+`alphaRef` — no roughness map — yet **1,638 of 1,653 material instances carry `Roughness = 0.65`**,
+and only 217 of 1,605 source materials declare roughness at all. That constant is invented during the
+material build, so every ported surface has a specular lobe the source never asked for. Flat signage
+should be fully rough (1.0). Worth a material pass; it did not cause the white lamps.
+
+## 34. Two features in one sublevel evict each other (2026-11-07)
+
+`c1/tools/c1_bake_nav.py` and `c1/tools/author_corridor_lights.py` both load
+`/Game/Mods/C1Full/Maps/C1Full_Roads` and save it. Each cook therefore produced its own copy of
+that ONE asset, and pak mounting keeps exactly one copy per asset (last-alphabetical filename
+wins). Installing the nav test pak at `zzzzzzzz_` over the lights pak at `zzzzzzz_` silently
+replaced the lit roads sublevel with the nav one: **the lights disappeared** with no error at all,
+ten minutes after they had been confirmed working.
+
+Fix: the lights live in their own sublevel, `C1Full_Lights`, attached to the persistent
+`C1Full.umap` as **Always Loaded** (`LevelStreamingAlwaysLoaded`), and the lights pak ships
+`C1Full.umap` + `C1Full_Lights.umap` but **never** `C1Full_Roads`
+(`c1/tools/build_lightspak.sh` fails if it leaks in). Nav keeps `C1Full_Roads`.
+
+Rules that follow — **one level asset, one pak**, enforced by `c1/tools/build_levelpak.sh`:
+
+| asset | owner pak | contents |
+|---|---|---|
+| `C1Full.umap` | map pak (`zzzzzz_AMC_C1Map_v2`) | persistent level; the only place the sublevel references live |
+| `C1Full_Lights.umap` | lights pak (`zzzzzzzzzz_AMC_Shuto_Lights_v10`) | all 10,474 light actors |
+| `C1Full_Roads.umap` | nav pak (`zzzzzzzz_AMC_C1NavTest_v2`) | roads + nav graph |
+
+The script takes exactly one stem and fails if a second level asset appears in the staging dir.
+
+**Materials are their own pak too** (`zzzzz_AMC_C1Mats_P*`, all 1,653 instances). An experiment
+that changes a material instance must be folded INTO that pak, never shipped as a second mats pak:
+two paks claiming the same MI is the same shadowing bug, only silent at the shader level. The
+roughness trial (4 road MIs moved to `MI_GroundMaster` with a real `Roughness` texture) was
+delivered as its own pak first; that was wrong and it was folded into `P21`.
+A nav pak that also shipped `C1Full.umap` evicted the sublevel reference on filename sort alone
+and the lights vanished again — that is a build error, not a sort-order policy to manage.
+- Always-Loaded by streaming class, not by a `b_always_loaded` property: that property does not
+  exist on `LevelStreamingAlwaysLoaded` in this build (`Failed to find property 'b_always_loaded'`).
+- Sublevels are for packaging isolation, **not** performance. Streaming corridor lights by distance
+  makes them pop while driving. The perf problem (10,474 lights) is a separate, still-open question
+  and BeamNG's answer to it is a 384 m partition manager that toggles lamps inside one loaded level.
+
+## 35. A fresh cook path silently skips stage 6 and the map loads with "missing game mode" (2026-11-07)
+
+Cooking the map and packing it directly shipped a map that loaded with **missing game mode**, no
+sky and no garage. A cooked mod map carries **no `WorldSettings.DefaultGameMode`, no
+`SunSky.ChildActorClass` and no `Child.ChildActorClass`** until `c1/pipeline/06_postcook_patch.sh`
+(`repair_class_refs.sh`) restores them as property references — that is what the stage exists for,
+and any build path that does not run it produces exactly this failure.
+
+`c1/tools/build_lightspak.sh` now greps the `.umap` for `DriveGameModeBP`, `MTSunSky` and
+`GarageActorBP` and refuses to pack without all three. Verify with bytes, not by assuming the
+pipeline ran: `repair_class_refs.sh` printing `REPAIR_OK` is the last step of the fix, but the pack
+gate is what stops the next silent regression.
+
+Also: `repair_class_refs.sh` must be pointed at the tool that actually has `--set-class-ref`
+(`TOOL=` env). The stale copy under `mt-pak-wt-c1commit/csharp/UAssetTool/bin/...` fails with a
+confusing `File not found: <rootdir>/Cargos.uasset` instead of an unknown-argument error.

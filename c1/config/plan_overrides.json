@@ -1,0 +1,14 @@
+{
+  "_comment": "Deliberate overrides applied on top of the compiled plan. These are port decisions, not source facts, so they live here rather than being silently folded into compile_materials.py output.",
+  "two_sided": {
+    "MI_C1_mat_obj_tnl_01": "tunnel shell: the source marks the walls two-sided but not this one. One-sided geometry whose normals face the interior is visible to the player and culled in the sun's shadow-depth pass, so sunlight reaches the tunnel floor."
+  },
+  "masked_master_split": {
+    "_why": "M_AlphaTest ships TwoSided=True, so every instance parented to it renders two-sided regardless of the canonical (canonical: 77 of 1,605 materials are double-sided). The game also ships the one-sided twin M_AlphaTestOneSided — same BLEND_Masked, same 'Texture' parameter. Masked rows the canonical does NOT mark double-sided belong there.",
+    "one_sided_master": {
+      "pkg": "/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTestOneSided",
+      "name": "M_AlphaTestOneSided",
+      "colour_param": "Texture"
+    }
+  }
+}

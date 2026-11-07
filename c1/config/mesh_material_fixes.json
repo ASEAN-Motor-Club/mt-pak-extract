@@ -1,0 +1,11 @@
+{
+  "_comment": "Slots the BeamNG->UE conversion left on WorldGridMaterial while keeping the correct slot name. Diagnosed by scanning every C1 mesh for WorldGridMaterial references.",
+  "rules": [
+    {
+      "mesh": "c3_17",
+      "slot": "mat_sitamiti00_sh",
+      "mi_package": "/Game/Mods/C1Full/Materials",
+      "mi_name": "MI_C1_mat_mat_sitamiti00_sh"
+    }
+  ]
+}
