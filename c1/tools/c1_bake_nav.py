@@ -239,6 +239,75 @@ def main():
     if not nodes:
         raise RuntimeError('no nodes sampled')
 
+    # ---- 1a2. project onto the driving surface ------------------------------------------
+    # BeamNG's DecalRoads are decals "projected/clipped onto existing surfaces" and every one
+    # of these 155 roads sets overObjects:true, so their generated edges take the height of
+    # the mesh they cross, not the height of their control points. We had been promoting the
+    # raw control-point Z to lane height: Rd133 has 17 nodes over 2.5 km (one 588 m segment),
+    # so its spline floated 3.5 m above the carriageway near Shibaura and AI cars climbed
+    # that step. Trace down onto whatever surface is really there instead.
+    tr_up = float(cfg.get('surface_up_cm', 100.0))
+    tr_down = float(cfg.get('surface_down_cm', 800.0))
+    tr_off = float(cfg.get('surface_off_cm', 0.0))
+    tr_max = float(cfg.get('surface_max_delta_cm', 1500.0))
+    surf_hits = 0
+    surf_moved = 0
+    if tr_up > 0.0 and tr_down > 0.0:
+        _TRACE_COL = unreal.LinearColor(1.0, 0.0, 0.0, 1.0)
+        _TRACE_COL2 = unreal.LinearColor(0.0, 1.0, 0.0, 1.0)
+        world = None
+        try:
+            world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        except Exception:
+            try:
+                world = unreal.EditorLevelLibrary.get_editor_world()
+            except Exception:
+                world = None
+        if world is None:
+            log('surface trace: no editor world, keeping control-point Z')
+        else:
+            hits = 0
+            moved = 0
+            biggest = 0.0
+            orig_z = [n['loc'][2] for n in nodes]
+            for n in nodes:
+                px, py, pz = n['loc']
+                start = unreal.Vector(px, py, pz + tr_up)
+                end = unreal.Vector(px, py, pz - tr_down)
+                try:
+                    # UE5 Python binding: the HitResult is the RETURN value (no out param).
+                    # to_tuple() = (bBlockingHit, bStartPenetrating, time, distance,
+                    #               location, impact_point, normal, impact_normal, ...)
+                    tup = unreal.SystemLibrary.line_trace_single(
+                        world, start, end, unreal.TraceTypeQuery.TRACE_TYPE_QUERY1,
+                        True, [], unreal.DrawDebugTrace.NONE, True,
+                        _TRACE_COL, _TRACE_COL2, 0.0).to_tuple()
+                except Exception:
+                    continue
+                if not tup or not tup[0]:
+                    continue
+                try:
+                    hz = float(tup[4].z)
+                except Exception:
+                    continue
+                d = hz - pz
+                if abs(d) > tr_max:
+                    continue        # something else in the way (beam, sign, deck above)
+                hits += 1
+                if abs(d) > 1.0:
+                    moved += 1
+                    biggest = max(biggest, abs(d))
+                n['loc'] = (px, py, hz + tr_off)
+            surf_hits = hits
+            surf_moved = moved
+            frac = float(hits) / float(len(nodes)) if nodes else 0.0
+            log('surface trace: %d/%d nodes hit (%.0f%%), %d moved, max |dz| %.1f m'
+                % (hits, len(nodes), frac * 100.0, moved, biggest / 100.0))
+            if frac < 0.30:
+                log('surface trace: REJECTED (hit rate too low, keeping control-point Z)')
+                for n, z0 in zip(nodes, orig_z):
+                    n['loc'] = (n['loc'][0], n['loc'][1], z0)
+
     # ---- 1b. travel direction from the chain geometry, not the spline tangent -----------
     # get_direction_at_distance_along_spline returns a NEGATED tangent at isolated samples
     # (24 samples on C1Full). The position is fine, but the node then points back down the
@@ -986,6 +1055,7 @@ def main():
               'skipped_pos': skipped_pos, 'seam_links': seam_links, 'seam_stubs': seam_stubs,
               'dedupe_dropped': deduped, 'excluded_roads': len(excluded_roads),
               'softened': softened, 'rescued': rescued,
+              'surf_hits': surf_hits, 'surf_moved': surf_moved,
               'islands': len(remap), 'crossroads': len(final_groups),
               'crossroad_nodes': len(nodes) - sum(1 for x in cross if x == -1),
               'junction_merges': merges,
