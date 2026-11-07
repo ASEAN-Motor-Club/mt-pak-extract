@@ -1010,3 +1010,45 @@ Tooling:
 
 `pakset.py check` is the gate that matters: run it after every install and before every ship. A pak
 set either has one owner per asset or it has a future silent eviction.
+
+## §38 — The spawn and garages live in two places, and only one of them survives a cook
+
+`apply_map_edits_p22.sh` moves the `PlayerStart` to Shibaura and clones `BP_C1_Prop_C_0` into the
+Tatsumi garage **on the cooked umap**. That is the step that ships, but it is also the step a recook
+silently undoes: the source level still has the map's original spawn and a single un-parented prop,
+so every fresh cook ships a map with the player standing at the old origin. Fix both, in this order:
+
+  c1/scripts/restore_spawn_garages.py   in-editor: PlayerStart + BP_C1_Prop_C_0 -> Shibaura
+  c1/scripts/apply_map_edits_p22.sh     post-cook: re-assert the move + clone the Tatsumi garage
+
+Canonical values (source units, cm):
+
+  PlayerStart      110237 -470902 87411   yaw  90
+  BP_C1_Prop_C_0   same XY, Z - 100       yaw  90
+  BP_C1_Prop_C_1   593234 -466784 87449   yaw  75.57   (clone of _0)
+
+Verify in the shipped pak, not in the editor: grep the extracted `C1Full.uexp` for `<3d` packed
+triples. `SHIBAURA` must appear twice (spawn + garage), `TATSUMI` once, and the old spawn
+(136645 -654630 85944) zero times. Sizes alone prove nothing — v3 and v4 are both 211,107 bytes.
+
+Three traps found while doing this:
+
+- `UnrealEditor-Cmd.exe` **crashes** in PythonScriptPlugin when duplicating `BP_C1_Prop_C`: the
+  Child component's class (`GarageActorBP_C`) is a game asset that does not exist in this project, so
+  duplication tears down mid-copy. Only the cooked umap can be cloned (P22 does it by export index).
+- `unreal.load_class(None, "/Game/Objects/GarageActorBP.GarageActorBP_C")` fails in the commandlet for
+  the same reason. Never try to set that class from Python; stage 6 fixes the class ref on the cook.
+- `unreal.Rotator(0.0, 90.0, 0.0)` is `(roll, pitch, yaw)` positionally and lands the actor at yaw
+  **180** once the level is saved. Always use `unreal.Rotator(roll=…, pitch=…, yaw=…)`.
+
+## §39 — `build_levelpak.sh` needs an ABSOLUTE output path
+
+The script `cd`s into a `mktemp -d` staging dir before packing and the `trap` deletes that dir on
+exit, so a relative output path writes a perfectly valid pak into the staging dir and then removes
+it. The run still prints `LEVEL_PAK_OK … <size> <sha>` — the pak is real at that instant and gone a
+millisecond later. Pass `$PWD/name_P.pak`. Same trap applies to `repak` invocations with relative
+paths from any script that changes directory.
+
+Also: UAssetTool resolves `Mappings.usmap` from `Path.Combine(cwd, "../..")`, so batch tool runs
+must execute with cwd = `<repo>/csharp/UAssetTool`. From the repo root it dies in the `Usmap`
+constructor and looks like a broken DLL.
