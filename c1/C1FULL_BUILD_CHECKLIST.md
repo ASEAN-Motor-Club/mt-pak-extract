@@ -196,15 +196,28 @@ for `PCD3D_SM6`.
 
 ## 5. Pack
 
-`RAYON_NUM_THREADS=1 repak pack -m "../../../" --version V11 --compression Zlib pack2 <out>.pak`
+**One asset, one pak** — the single-pak tree below is superseded; see `docs/PAK_LAYOUT.md`. Each pak
+stages exactly one family and the builders refuse to stage another's assets:
 
-Tree must contain `MotorTown/Content/Mods/C1Full/Maps/*` **and**
-`MotorTown/Content/Mods/C1/{Meshes,Materials,Textures}/*`.
+```bash
+c1/tools/build_basepak.sh <source-pak>            out/zzz_AMC_C1Base_v2_P.pak      # /Game/Mods/C1 + BPs
+c1/tools/build_meshpak.sh <cooked>/Mods/C1Full/Meshes out/zzzzz_AMC_C1Mesh_v2_P.pak 554
+c1/tools/build_matspak.sh <mats-dir>              out/zzzzz_AMC_C1Mats_P21_P.pak
+c1/tools/build_levelpak.sh <cooked>/Maps          out/zzzzzz_AMC_C1Map_v3_P.pak    C1Full
+c1/tools/build_levelpak.sh <cooked>/Maps          out/zzzzzzzz_AMC_C1NavTest_v2_P.pak C1Full_Roads
+c1/tools/build_levelpak.sh <cooked>/Maps          out/zzzzzzzzzz_AMC_Shuto_Lights_v12_P.pak C1Full_Lights
+```
 
-Gate: `mod_explore --list` → mount `../../../`, 4,359 files
-(554 mesh / 1,653 material / 2,148 texture `.uasset` + 4 map files). Round-trip: extract
-the 4 map files and sha256 them against the tree copies — the hashes change every
-re-authoring, so compare, never reuse a recorded hex.
+Then the ownership gate — this is the ship condition, not an optional check:
+
+```bash
+for p in out/zzz*_P.pak; do python3 c1/tools/pakset.py manifest "$p" c1/out/pakset; done
+python3 c1/tools/pakset.py check c1/out/pakset   # must print "OK: every asset has exactly one owner"
+```
+
+Historical single-pak tree (kept for reference only): `MotorTown/Content/Mods/C1Full/Maps/*` **and**
+`MotorTown/Content/Mods/C1/{Meshes,Materials,Textures}/*`, mount `../../../`, 4,359 files. That
+layout is what produced 4,420 double-claimed entries across 6 paks — do not rebuild it.
 
 ## 6. Registration (`zzz_AMC_C1FullOffline_*`)
 

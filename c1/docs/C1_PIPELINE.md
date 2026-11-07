@@ -299,17 +299,24 @@ placebo on the parallel-link guard.
 
 ## 7. Packaging and release layout
 
-Client install is **one content pak plus small extras**, all at mount
-`../../../MotorTown/Content/Mods/C1/`:
+**Superseded — see [`PAK_LAYOUT.md`](PAK_LAYOUT.md).** Client install is now **one pak per asset
+family**, not one content pak plus extras: base textures, meshes, materials, persistent map, nav and
+lights each own a disjoint set of paths, because a second pak shipping the same `/Game/...` path is
+silently dropped by filename sort rather than merged.
 
-- `zzz_AMC_C1_P.pak` — content **and** the road layer (`Maps/C1.umap` with the
-  streaming link, `Maps/C1_Roads.*`, `BP_C1_Prop`, `BP_C1_Sky`).
-- `zzzz_AMC_C1Mats_P.pak`, `zzz_AMC_C1Courses_P.pak`, `zzz_AMC_C1Offline_P.pak`.
+```text
+zzz_AMC_C1Base_v2_P.pak            /Game/Mods/C1/** textures + BP_C1_Prop/BP_C1_Sky
+zzzzz_AMC_C1Mesh_v2_P.pak          Mods/C1Full/Meshes/**           (554 meshes)
+zzzzz_AMC_C1Mats_P21_P.pak         Mods/C1Full/Materials/**        (1,653 MIs)
+zzzzzz_AMC_C1Map_v3_P.pak          C1Full.umap                     (persistent level; owns the
+                                                                    sublevel references)
+zzzzzzzz_AMC_C1NavTest_v2_P.pak    C1Full_Roads.umap
+zzzzzzzzzz_AMC_Shuto_Lights_v12_P.pak  C1Full_Lights.umap
+```
 
-Load order is filename order; `zzzz_` sorts after `zzz_`. Before the consolidation,
-the road layer shipped as a separate `zzzz_…Map…` overlay needed precisely because a
-pak cannot merge into another pak — the merge was done by extracting, overlaying, and
-repacking, not by mounting two paks.
+Any set must pass `python3 c1/tools/pakset.py check c1/out/pakset` → `OK: every asset has exactly one
+owner` before it ships. That gate catches both failure modes seen in practice: an asset claimed twice
+(4,420 of them before the split) and two versions of one pak installed together.
 
 Server artifact is a separate full pak built from the same cooked map bytes.
 

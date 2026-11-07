@@ -657,6 +657,9 @@ content pak mounting `Mods/<X>/` overrides the new one.
 
 - [ ] backup + hash manifest of existing paks
 - [ ] installed files `SHA_MATCH`
+- [ ] **one asset, one pak**: `python3 c1/tools/pakset.py check c1/out/pakset` prints
+      `OK: every asset has exactly one owner` — no asset claimed twice, no two versions of one pak
+      installed (`docs/PAK_LAYOUT.md`)
 - [ ] no other pak mounts the same namespaces
 - [ ] in-game: correct name, intended game mode, player controllable, geometry
       visible **and textured**, traffic present

@@ -1,0 +1,9 @@
+{
+"pak": "zzz_AMC_C1FullOffline_v4_P.pak",
+"bytes": 50544,
+"sha256": "8aed996fb6624df1f657e3c6b9f67237dad7c6cec1d603fa1b293f8e941a2eab",
+"assets": [
+"MotorTown/Content/DataAsset/GameResource.uasset",
+"MotorTown/Content/DataAsset/GameResource.uexp"
+]
+}
