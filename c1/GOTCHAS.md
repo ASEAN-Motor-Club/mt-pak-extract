@@ -950,3 +950,33 @@ gate is what stops the next silent regression.
 Also: `repair_class_refs.sh` must be pointed at the tool that actually has `--set-class-ref`
 (`TOOL=` env). The stale copy under `mt-pak-wt-c1commit/csharp/UAssetTool/bin/...` fails with a
 confusing `File not found: <rootdir>/Cargos.uasset` instead of an unknown-argument error.
+
+## 36. Reimporting cell meshes: three gates that pass while the asset is wrong (2026-11-07)
+
+The 134 auto-LOD cells came from engine import defaults on the `LevelArchitecture` group, not from
+anything in `c1/pipeline` or `c1/tools`. `MAP_PORTING_GUIDE.md` §2.2 already records the decision
+(LOD0 only) and the mechanism: **`replace_existing=True` rewrites LOD0 and keeps the extra levels**,
+so the asset has to be deleted before the import. Delete-then-import produces exactly one LOD with
+no LOD-removal API involved, and `lod_fixed_by: none-needed` on all 555 cells confirms it.
+
+Three gates that look green while the asset is broken:
+
+1. **Triangle count does not prove scale.** A mesh imported at the wrong `import_uniform_scale` has
+   the same triangle count at any size. Gate on size instead: `2 * bounds.box_extent` vs the OBJ's
+   bounding box × 100. X/Y/Z all have to agree.
+2. **Measure the OBJ bbox over *referenced* vertices.** Two cells (`c-1_-3`, `c1_-8`) failed the
+   scale gate with a Z extent 3× and 11× too small. Cause: the earlier `dum` face strip deleted
+   faces but left 36 orphan vertices in the OBJ, inflating its raw bbox to 409 m. Over referenced
+   vertices the extent is 3746.0 cm — identical to the mesh. A raw-`v`-line bbox produces a
+   permanent false failure on any stripped OBJ.
+3. **Dropping an empty material slot shifts every later slot index.** Seven cells have intentionally
+   empty slots in the shipped pak (1, 2, 1, 2, 2, 1, 5). A restore that skips null interfaces makes
+   the mesh render with the *wrong* material on its faces, and slot *count* alone doesn't catch it
+   because the non-null count still matches. Rebuild the array from the pak's own `StaticMaterials`
+   (order + nulls + `ImportedMaterialSlotName`) and gate on `got_slots == want_slots` **and**
+   `got_nonnull == want_nonnull`.
+
+Also: the geometry pak used to carry `C1Full.umap` and `C1Full_Roads.umap`. Rebuilding it the
+obvious way ships a raw-cooked persistent level (no game mode, no sunsky, no P22 spawn/garage) and a
+nav-less roads level, harmless only while the map/nav paks sort later. `c1/tools/build_meshpak.sh`
+now stages meshes only and fails on a leaked `.umap`, a `Materials/` dir, or a missing `.uexp`.
