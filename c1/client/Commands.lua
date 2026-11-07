@@ -872,7 +872,12 @@ Commands["/lamps"] = function(PC, args)
       local ok, l = pcall(function() return pawn:K2_GetActorLocation() end)
       if ok and l then here = l end
     end
-    add("pawn=" .. tostring(here and "yes" or "NONE (nothing to measure from)") )
+    if here then
+      add(string.format("pawn at %.0f,%.0f,%.0f (%.0f,%.0f,%.0f m)", here.X, here.Y, here.Z,
+                        here.X / 100, here.Y / 100, here.Z / 100))
+    else
+      add("pawn=NONE (nothing to measure from)")
+    end
     local rows = {}
     local function scan(list, kind)
       for _, a in ipairs(list) do
@@ -893,7 +898,8 @@ Commands["/lamps"] = function(PC, args)
     local n = math.min(tonumber(args) or 3, #rows)
     for i = 1, n do
       local r = rows[i]
-      add(string.format("[%d] %s d=%.1fm z=%.0f", i, r.kind, r.d / 100.0, r.l.Z))
+      add(string.format("[%d] %s d=%.1fm at %.0f,%.0f,%.0f", i, r.kind, r.d / 100.0,
+                        r.l.X, r.l.Y, r.l.Z))
       local cls = (r.kind == "spot") and StaticFindObject("/Script/Engine.SpotLightComponent")
                                       or StaticFindObject("/Script/Engine.PointLightComponent")
       local c = nil
@@ -1076,6 +1082,48 @@ Commands["/lampme"] = function(PC, args)
   end)
 end
 
+Commands["/lampto"] = function(PC, args)
+  ExecuteInGameThread(function()
+    local out = { "== LAMPTO ==" }
+    local function add(x) out[#out + 1] = x end
+    local pawn = PC.Pawn
+    if pawn == nil then add("no pawn"); print(table.concat(out, "\n")); return end
+    local pq = nil
+    pcall(function() pq = pawn:K2_GetActorLocation() end)
+    local best, bestd, bestkind = nil, 1e18, nil
+    local function scan(list, kind)
+      for _, a in ipairs(list) do
+        local ok, l = pcall(function() return a:K2_GetActorLocation() end)
+        if ok and l then
+          local d = 0
+          if pq then
+            local dx, dy, dz = l.X - pq.X, l.Y - pq.Y, l.Z - pq.Z
+            d = dx * dx + dy * dy + dz * dz
+          end
+          if d < bestd then bestd, best, bestkind = d, l, kind end
+        end
+      end
+    end
+    scan(FindAllOf("SpotLight") or {}, "spot")
+    scan(FindAllOf("PointLight") or {}, "pt")
+    if best == nil then add("no lights found at all"); print(table.concat(out, "\n")); return end
+    add(string.format("nearest %s at %.0f,%.0f,%.0f  (%.0f m away)",
+                      bestkind, best.X, best.Y, best.Z, math.sqrt(bestd) / 100.0))
+    local target = { X = best.X, Y = best.Y, Z = best.Z + 150.0 }
+    local moved = false
+    pcall(function() moved = pawn:K2_SetActorLocation(target, false, {}, true) end)
+    if moved ~= true then
+      pcall(function() pawn:SetActorLocation(target, false, {}, true) end)
+    end
+    local now = nil
+    pcall(function() now = pawn:K2_GetActorLocation() end)
+    if now then
+      add(string.format("pawn now %.0f,%.0f,%.0f moved=%s", now.X, now.Y, now.Z, tostring(moved)))
+    end
+    print(table.concat(out, "\n"))
+  end)
+end
+
 Commands["/lamphere"] = function(PC, args)
   local idx = tonumber(args[1] or "1")
   local actors = FindAllOf("BP_C1_Lamp_C") or {}
@@ -1123,6 +1171,38 @@ Commands["/setint"] = function(PC, args)
       end
     end
     print("== SETINT " .. tostring(v) .. " applied to " .. tostring(n) .. " components ==")
+  end)
+end
+
+-- /con <console command>: stat unit / stat fps / stat none. Used to measure shadow cost.
+Commands["/con"] = function(PC, args)
+  local cmd = table.concat(args, " ")
+  if cmd == "" then
+    print("usage: /con stat unit | /con stat fps | /con stat none")
+    return
+  end
+  ExecuteInGameThread(function()
+    local ok, err = pcall(function() ExecuteConsoleCommand(cmd) end)
+    if ok then print("con> " .. cmd) else print("con> failed: " .. tostring(err)) end
+  end)
+end
+
+-- /shadows <on|off>: flip CastShadows on every spot light at runtime, so the A/B perf test
+-- needs no restart and no second pak. Lamps are Movable, so this is a legal runtime change.
+Commands["/shadows"] = function(PC, args)
+  local want = string.lower(args[1] or "")
+  if want ~= "on" and want ~= "off" then
+    print("usage: /shadows on|off")
+    return
+  end
+  ExecuteInGameThread(function()
+    local b = (want == "on")
+    local n, failed = 0, 0
+    for _, c in pairs(FindAllOf("SpotLight") or {}) do
+      local ok = pcall(function() c:SetCastShadows(b) end)
+      if ok then n = n + 1 else failed = failed + 1 end
+    end
+    print(string.format("shadows %s -> %d spot component(s), %d failed", want, n, failed))
   end)
 end
 

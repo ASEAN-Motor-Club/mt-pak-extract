@@ -27,6 +27,10 @@ ROWS = os.environ.get("C1_MAP_ROWS", r"D:/C1FullMirror/Scripts/map_rows.json")
 REPORT = os.environ.get("C1_MAP_REPORT", r"D:/C1FullMirror/Scripts/author_all_lights.json")
 PREFIXES = ("C1Port_", "C1MapLight_", "C1Lamp_", "C1NativeLight_")
 
+# Shadow-casting is opt-in per source group (comma separated). Empty = the shipped default.
+SHADOW_GROUPS = set(g.strip() for g in
+                    os.environ.get("C1_SHADOW_GROUPS", "tunnel_lights").split(",") if g.strip())
+
 CD_PER_BRIGHTNESS = 5000.0     # BeamNG spot: 1 brightness ~= 5,000 cd
 DEFAULT_BRIGHTNESS = 1.0       # source class default when the record declares none
 POINT_LM_DEFAULT = 800.0       # documented small-point-light default (400-1,000 lm @ 5-12 m)
@@ -36,6 +40,7 @@ les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 
 out = {"placed": 0, "failed": 0, "deleted": 0, "errors": [], "by_group": {},
+       "shadow_casters": 0, "shadow_groups": sorted(SHADOW_GROUPS),
        "intensity_hist": {}, "radius_hist": {}, "sublevel": SUBLEVEL}
 
 
@@ -50,25 +55,53 @@ def main():
     out["world"] = world.get_path_name()
     out["actors_before"] = len(eas.get_all_level_actors())
 
-    # (Re)attach the sublevel. add_level_to_world is a no-op if it is already in the world, so
-    # this is safe to re-run; create_new_streaming_level is only for the first time.
-    if unreal.EditorAssetLibrary.does_asset_exist(SUBLEVEL):
-        sl = unreal.EditorLevelUtils.add_level_to_world(world, SUBLEVEL, unreal.LevelStreamingAlwaysLoaded)
-        out["sublevel_added"] = "existing"
+    # (Re)attach the sublevel. add_level_to_world ASSERTS (SharedPointer IsValid) if the level is
+    # already in the world -- and after the first cook the persistent map itself carries the
+    # streaming entry, so on the second run it always is. Look for it first; only add when absent.
+    sl = None
+    try:
+        for l in world.get_streaming_levels():
+            try:
+                if l.get_world_asset_package_name() == SUBLEVEL:
+                    sl = l
+                    break
+            except Exception:
+                continue
+    except Exception as e:
+        out["streaming_levels_err"] = str(e)[:100]
+
+    if sl is not None:
+        out["sublevel_added"] = "already-in-world"
+    elif unreal.EditorAssetLibrary.does_asset_exist(SUBLEVEL):
+        # Do NOT call add_level_to_world here: under -nullrhi commandlets it asserts
+        # (SharedPointer IsValid) even when the level is legitimately not attached yet. The
+        # persistent map already references the sublevel, so just open it and author into it.
+        les.load_level(SUBLEVEL)
+        out["sublevel_added"] = "opened-directly"
     else:
         sl = unreal.EditorLevelUtils.create_new_streaming_level(
             unreal.LevelStreamingAlwaysLoaded, SUBLEVEL, False)
         out["sublevel_added"] = "created"
     out["streaming_level"] = sl.get_name() if sl else None
     if sl is None:
-        raise RuntimeError("could not attach %s to %s" % (SUBLEVEL, PERSISTENT))
+        # Opened directly instead of attached: the current level must be the sublevel or we would
+        # author the lights into the persistent map.
+        cur0 = les.get_current_level()
+        out["opened_as"] = cur0.get_path_name() if cur0 else None
+        if not cur0 or "C1Full_Lights" not in cur0.get_path_name():
+            raise RuntimeError("could not attach %s to %s (current=%s)"
+                               % (SUBLEVEL, PERSISTENT, out["opened_as"]))
 
     try:
         out["always_loaded"] = str(sl.get_editor_property("b_always_loaded"))
     except Exception as e:
         out["always_loaded_err"] = str(e)[:100]
 
-    unreal.EditorLevelUtils.make_level_current(sl)
+    if sl is not None:
+        try:
+            unreal.EditorLevelUtils.make_level_current(sl)
+        except Exception as e:
+            out["make_current_err"] = str(e)[:100]
     cur = les.get_current_level()
     out["current_level"] = cur.get_path_name() if cur else None
 
@@ -114,10 +147,22 @@ def main():
             c.set_editor_property("intensity_units", units)
             c.set_editor_property("intensity", inten)
             c.set_editor_property("attenuation_radius", radius)
-            # Shadows off: 10,474 shadow-casting dynamic lights is not affordable, and the
-            # source lamps do not cast directional shadows either (shadow_softness is a texel
-            # blur, not a shadow map).
-            c.set_editor_property("cast_shadows", False)
+            # Shadows: opt-in per group, never global, never on a point light.
+            # Stationary mobility is NOT the answer here -- its static shadows require a Lightmass
+            # build with unique lightmap UVs, and the engine allows only ~4 overlapping stationary
+            # shadow casters before the extras fall back to whole-scene dynamic shadows (up to 20x
+            # the cost of an unshadowed light). Tunnels overlap far more than that by design.
+            # Instead: stay Movable so night toggling still works, and cache the shadow map -- the
+            # lamps never move, so Rigid invalidation means the depth pass is paid essentially once.
+            shadow = (not is_point) and (r.get("group") in SHADOW_GROUPS)
+            c.set_editor_property("cast_shadows", bool(shadow))
+            if shadow:
+                try:
+                    c.set_editor_property("shadow_cache_invalidation_behavior",
+                                          unreal.ShadowCacheInvalidationBehavior.RIGID)
+                except Exception as e:
+                    out.setdefault("cache_errs", []).append(str(e)[:80])
+                out["shadow_casters"] += 1
             c.set_editor_property("light_color", color)
             if not is_point:
                 c.set_editor_property("inner_cone_angle", inner)
