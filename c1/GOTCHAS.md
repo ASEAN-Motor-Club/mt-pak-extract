@@ -980,3 +980,33 @@ Also: the geometry pak used to carry `C1Full.umap` and `C1Full_Roads.umap`. Rebu
 obvious way ships a raw-cooked persistent level (no game mode, no sunsky, no P22 spawn/garage) and a
 nav-less roads level, harmless only while the map/nav paks sort later. `c1/tools/build_meshpak.sh`
 now stages meshes only and fails on a leaked `.umap`, a `Materials/` dir, or a missing `.uexp`.
+
+## 37. Paks that overlap are not a naming problem, they are an ownership problem (2026-11-07)
+
+Pak mounting keeps exactly one copy of each asset path and silently drops the rest, so any two paks
+that ship the same path are resolved by filename sort. That is not a policy, it is an accident of
+alphabet — and it has already cost the lights twice.
+
+The fix is exclusive ownership plus a checker, not discipline:
+
+  base   /Game/Mods/C1/**                textures the MIs reference (+ BP_C1_Prop, BP_C1_Sky)
+  meshes /Game/Mods/C1Full/Meshes        554 cell meshes
+  mats   /Game/Mods/C1Full/Materials     1,653 MIs
+  map    C1Full.umap                     persistent level, sole owner of the sublevel references
+  nav    C1Full_Roads.umap
+  lights C1Full_Lights.umap
+
+What this replaced: the "geometry" pak used to carry Meshes + Materials + all four Maps **and** the
+legacy texture tree, so it overlapped four other paks — 10,535 assets across 6 paks, with 4,420 of
+them claimed twice. Splitting it dropped the shipped set from 1.96 GB to 664 MB and made sort order
+irrelevant. The legacy tree is not dead weight: shipped MIs reference `/Game/Mods/C1` 806 times, so a
+base pak must keep it and must keep nothing else the other paks own.
+
+Tooling:
+  c1/tools/build_basepak.sh   extract only the owned trees (`-i`), strip the rest, gate on both
+  c1/tools/build_meshpak.sh   meshes only; fails on a leaked .umap, Materials/ or missing .uexp
+  c1/tools/pakset.py          manifest <pak> <dir> / check <dir> — fails on any asset with two
+                              owners and on two versions of one pak installed together
+
+`pakset.py check` is the gate that matters: run it after every install and before every ship. A pak
+set either has one owner per asset or it has a future silent eviction.
