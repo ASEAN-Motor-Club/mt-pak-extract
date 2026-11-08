@@ -158,6 +158,28 @@ def main():
             canon_w = [float(w) for w in canon.get('widths_cm') or []]
             if canon_w:
                 total_w = sum(canon_w) / len(canon_w)
+            # A tapering decal cannot hold its wide-mouth lane count through the narrow body:
+            # Rd149 carries 3 lanes across 5 m of paint, so each lane is 1.67 m -- narrower
+            # than a car -- and they overlap each other and bleed into the neighbouring
+            # decals. Take the count from the narrow quartile of the width profile with the
+            # same BeamNG rule, but only when the mod did not state a count of its own.
+            if canon.get('src') == 'auto' and canon_w:
+                m_w = len(canon_w)
+                samp = []
+                for q in range(21):
+                    t = (q / 20.0) * (m_w - 1)
+                    i = int(min(m_w - 2, max(0, int(math.floor(t)))))
+                    f = t - i
+                    samp.append(canon_w[0] if m_w < 2
+                                else canon_w[i] * (1.0 - f) + canon_w[i + 1] * f)
+                samp.sort()
+                n_p25 = max(1, min(4, int(math.floor(samp[len(samp) // 4] / 361.0 + 0.5))))
+                if n_p25 != n_canon:
+                    log('P25_LANES %s %d -> %d (narrow quartile %.0f cm)'
+                        % (road.get_actor_label(), n_canon, n_p25, samp[len(samp) // 4]))
+                    n_canon = n_p25
+                    nf = n_canon
+                    rebalanced += 1
             width = total_w / float(n_canon)
             if n_canon != int(road.get_editor_property('num_forward_lanes')):
                 rebalanced += 1
@@ -770,11 +792,12 @@ def main():
             nl = nd['lane'] + dl
             if nd['lane'] * nl <= 0:
                 continue
-            # step 2 first (9.5 deg), then 1 (19 deg), then 0 -- same station, i.e. the old
-            # perpendicular hop. Step 0 only ever fires at a chain end, where there is no
-            # station ahead to aim at; without it a lane that also failed its cross-road
-            # link ends with NO outgoing edge and AI vehicles halt there forever.
-            for st in range(lane_step, -1, -1):
+            # step 2 first (9.5 deg), then 1 (19 deg). The same-station hop (step 0) is gone:
+            # it fired at every chain tail, where no station lies ahead, and produced 216
+            # 3.5 m / 90 deg bars straight across the carriageway -- the "stray lane" strokes.
+            # A lane that ends there gets its exit from the merge pass or the tail rescue below,
+            # both of which run along the road instead of sideways.
+            for st in range(lane_step, 0, -1):
                 j = idx_of.get((id(nd['road']), nd['k'] + st, nl))
                 if j is None:
                     continue
@@ -782,8 +805,6 @@ def main():
                 if d > 1.0:
                     edges[idx][j] = (lateral_cost, d)
                     lat += 1
-                    if st == 0:
-                        lat_flat += 1
                 break
     # rescue: nothing may end with zero outgoing edges. A truly isolated node makes the AI
     # stop the vehicle, so link it to the nearest node on the same road that faces roughly
