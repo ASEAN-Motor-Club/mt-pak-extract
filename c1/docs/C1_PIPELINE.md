@@ -126,16 +126,65 @@ A node is one sample point on one lane. Node count ≈ `sum(points × lanes)`.
 - **Connect every node, not just road endpoints.** Endpoint-only linking leaves every
   mid-road merge and on-ramp with no outgoing edge; in game that is "the car drives a
   stretch then stops". Rule: each node links to the nearest node of a **different**
-  road within `connect_any_cm = 4000`, same lane sign, forward dot ≥ `0.55`.
+  road within `connect_any_cm = 4000`, same lane, passing the four guards below.
 - **Lane-change edges** between adjacent lanes at the same spline point, non-zero cost
   (`30.0`), so traveling straight stays preferred and no lane becomes its own island.
 - **Near-parallel guard:** skip a cross-road link when the candidate is closer than
-  `parallel_skip_cm = 400` **and** near-parallel (`dot > 0.90`). Junction links
-  survive because their tangents are perpendicular. On the current map this rejects
-  574 candidates and changes nothing (the graph is identical) — it is a guard against
-  future map edits, **not** a fix, and must not be presented as one.
+  `parallel_skip_cm = 400` **and** near-parallel (`dot > 0.90`).
+- **Turn guard** (`forward_dot = 0.85`, 31.8°): the old 0.55 allowed a 56° cut and the
+  graph used the whole allowance — AI turned across a merge instead of following it.
+- **Lateral-frame guard** (`normal_dot = 0.85`): the right vectors must agree. A link
+  that mirrors them hops to the far side of the carriageway. On planar roads this
+  tracks the turn guard and rejects nothing extra; it is there for crests and curved
+  merges.
+- **Deck guard** (`deck_dz_cm = 150`, `deck_dist_cm = 1200`): reject a link between
+  points that are metres apart in Z but close in plan — stacked decks of one
+  interchange. This is the one that stops AI driving at the barrier between two
+  bridges. Nothing in `FMTRoadGraphNode` marks "bridge above road", so the height
+  difference is the only signal available at bake time.
+- **Grade guard** (`grade_max = 0.5`): reject when `|dz| / horizontal > 0.5`, which
+  catches the long, low-slope version of the same defect.
 
-Acceptance: `dead_ends == 0`. Log the count on every bake.
+**Slope cost of all four** (C1Full 42,578 nodes / 155 roads, corridor 7,248 / 54):
+cross links 10,167 → 9,911 and 2,245 → 2,196, max turn 56.6° → 31.7°, deck jumps
+1,413 → 0, no road loses its cross links, no new stranded node.
+
+**Island / crossroad / flags pass (`crossroad_pass = 0` by default).** After the edge set
+is final, the baker reproduces the two graph passes recovered from `BuildNavigation`:
+
+- `IslandId` = connected-component index over the finished edge graph (direction
+  ignored). Always written. C1Full collapses to a single island once the deck jumps are
+  gone; before the guards it was 7 components all labelled 0.
+- junction candidates = nodes on a link between two **different** roads, merged when
+  they are inside `max(5 m, carriageway width)` of each other — the game's own radius;
+  single-node groups are not junctions and keep `CrossroadId = -1`
+  (`crossroad_min_nodes = 2`). `Flags` bit `0x4` marks junction nodes, edge bit `0` marks
+  edges inside one group.
+
+**The crossroad half is OFF and the shipped levels carry `CrossroadId -1` / `Flags 0`.**
+Reason: it does not reproduce the shipped shape. Stock `Jeju_World` holds **2,908 nodes at
+`Flags = 4` but 6,244 nodes with `CrossroadId != -1`** — the game's ids cover ~2.15x the
+flagged set, because a group id also lands on nodes that never carry the flag. Our
+clustering marks exactly the candidate nodes, so switching it on produced 2,958 flagged
+nodes and 2,958 ids — the right order of magnitude, the wrong structure. Writing ids that
+the game would never write is worse than writing the shipped default, and `Flags 0` /
+`CrossroadId -1` is *inside* the stock distribution (`Flags 0` is the plurality value,
+6,352 of 17,619 nodes). Turn it on with `crossroad_pass: 1` only after measuring the real
+Jeju per-group spread (`flags & 0x4` nodes vs nodes sharing the id), not from a ratio guess.
+
+Either way this is metadata, not a proven behavioural fix: the RE shows the passes exist
+and what they write, not that the pathfinder reads `IslandId`/`CrossroadId`. The barrier
+crash came from the deck links, which the link guards removed.
+
+**The baker must save the level that OWNS the nav actor.** `save_current_level()`
+writes only the current level; on C1Full the actor lives in the streamed sublevel
+`C1Full_Roads`, so a bake reported "saved" and persisted nothing. `c1_bake_nav.py`
+now calls `EditorAssetLibrary.save_asset(<actor's outermost package>)` and
+`save_dirty_packages` before the level save, and logs every target it saved.
+
+Acceptance: `dead_ends == 0`. Log the counts on every bake, and re-export
+`graph_data` from the saved level afterwards — the in-script `readback_nodes` is
+always `-1` (the struct array has no `nodes` attribute in Python) and proves nothing.
 
 ---
 
@@ -250,17 +299,24 @@ placebo on the parallel-link guard.
 
 ## 7. Packaging and release layout
 
-Client install is **one content pak plus small extras**, all at mount
-`../../../MotorTown/Content/Mods/C1/`:
+**Superseded — see [`PAK_LAYOUT.md`](PAK_LAYOUT.md).** Client install is now **one pak per asset
+family**, not one content pak plus extras: base textures, meshes, materials, persistent map, nav and
+lights each own a disjoint set of paths, because a second pak shipping the same `/Game/...` path is
+silently dropped by filename sort rather than merged.
 
-- `zzz_AMC_C1_P.pak` — content **and** the road layer (`Maps/C1.umap` with the
-  streaming link, `Maps/C1_Roads.*`, `BP_C1_Prop`, `BP_C1_Sky`).
-- `zzzz_AMC_C1Mats_P.pak`, `zzz_AMC_C1Courses_P.pak`, `zzz_AMC_C1Offline_P.pak`.
+```text
+zzz_AMC_C1Base_v2_P.pak            /Game/Mods/C1/** textures + BP_C1_Prop/BP_C1_Sky
+zzzzz_AMC_C1Mesh_v2_P.pak          Mods/C1Full/Meshes/**           (554 meshes)
+zzzzz_AMC_C1Mats_P21_P.pak         Mods/C1Full/Materials/**        (1,653 MIs)
+zzzzzz_AMC_C1Map_v3_P.pak          C1Full.umap                     (persistent level; owns the
+                                                                    sublevel references)
+zzzzzzzz_AMC_C1NavTest_v2_P.pak    C1Full_Roads.umap
+zzzzzzzzzz_AMC_Shuto_Lights_v12_P.pak  C1Full_Lights.umap
+```
 
-Load order is filename order; `zzzz_` sorts after `zzz_`. Before the consolidation,
-the road layer shipped as a separate `zzzz_…Map…` overlay needed precisely because a
-pak cannot merge into another pak — the merge was done by extracting, overlaying, and
-repacking, not by mounting two paks.
+Any set must pass `python3 c1/tools/pakset.py check c1/out/pakset` → `OK: every asset has exactly one
+owner` before it ships. That gate catches both failure modes seen in practice: an asset claimed twice
+(4,420 of them before the split) and two versions of one pak installed together.
 
 Server artifact is a separate full pak built from the same cooked map bytes.
 

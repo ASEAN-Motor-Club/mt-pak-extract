@@ -9,6 +9,16 @@
 set -euo pipefail
 source "$(dirname "$0")/00_env.sh"
 
+# Baseline set: corridor (54 roads) is the default; C1FULL builds must pass
+# C1_BAKE_SET=c1full or the gate compares against the wrong numbers and always drifts.
+BASELINE="${C1_BAKE_SET:-corridor}"
+case "$BASELINE" in
+  corridor) KEY=expected ;;
+  c1full)   KEY=expected_c1full ;;
+  *) echo "FAIL: C1_BAKE_SET must be corridor|c1full" >&2; exit 2 ;;
+esac
+echo "bake baseline: $BASELINE ($KEY)"
+
 CFG="${1:-$C1_PIPE/nav_bake_config.json}"
 [ -f "$CFG" ] || { echo "FAIL: bake config missing: $CFG" >&2; exit 2; }
 
@@ -31,10 +41,10 @@ REPORT="$(bash "$WIN_PS" "D:/greplog.ps1 $TAG C1BAKE_DONE" 2>&1 | grep -o 'C1BAK
 [ -n "$REPORT" ] || { echo "FAIL: no C1BAKE_DONE line — the bake did not run or raised" >&2; exit 3; }
 echo "$REPORT"
 
-python3 - "$REPORT" "$C1_PIPE/constants.json" <<'PY'
+python3 - "$REPORT" "$C1_PIPE/constants.json" "$KEY" <<'PY'
 import json,sys,re
 rep=json.loads(sys.argv[1].split(" ",1)[1])
-exp=json.load(open(sys.argv[2]))["expected"]
+exp=json.load(open(sys.argv[2]))[sys.argv[3]]
 checks={"roads":"roads","nodes":"nodes","cross_links":"cross_links","lane_change":"lane_change","dead_ends":"dead_ends"}
 bad=[]
 for k,field in checks.items():
@@ -45,7 +55,7 @@ if rep.get("dead_ends")!=0:
     bad.append("dead_ends must be 0")
 if bad:
     print("BAKE DRIFT: "+"; ".join(bad))
-    print("BAKE_NOTE: drift is expected after a road-set change — re-record constants.json:expected and re-run")
+    print("BAKE_NOTE: drift is expected after a road-set change — re-record constants.json:%s and re-run" % sys.argv[3])
     sys.exit(4)
 print("BAKE_OK")
 PY
