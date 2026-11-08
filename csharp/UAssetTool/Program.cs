@@ -67,6 +67,25 @@ class Program
         
         PatchMappingsForVersion();
         
+
+        if (args.Contains("--set-array-class-ref"))
+        {
+            int li = Array.IndexOf(args, "--set-array-class-ref");
+            if (li + 7 > args.Length) { Console.WriteLine("usage: --set-array-class-ref <in.uasset> <out.uasset> <exportName> <arrayProp> <keyField> <field> <mapJson>"); return; }
+            SetArrayClassRef(args[li + 1], args[li + 2], args[li + 3], args[li + 4], args[li + 5], args[li + 6], args[li + 7]);
+            return;
+        }
+
+        if (args.Contains("--set-array-bool"))
+        {
+            int bi = Array.IndexOf(args, "--set-array-bool");
+            if (bi + 7 >= args.Length) { Console.WriteLine("usage: --set-array-bool <in.uasset> <out.uasset> <exportName> <arrayProp> <keyField> <field> <true|false> [key=value]"); return; }
+            var onlyFilter = bi + 8 < args.Length ? args[bi + 8] : "";
+            SetArrayBool(args[bi + 1], args[bi + 2], args[bi + 3], args[bi + 4], args[bi + 5], args[bi + 6],
+                string.Equals(args[bi + 7], "true", StringComparison.OrdinalIgnoreCase), onlyFilter);
+            return;
+        }
+
         if (ptProbe)
         {
             var asset = new UAsset(args[ptIdx + 1], EngineVersion.VER_UE5_5, Mappings);
@@ -2894,6 +2913,131 @@ class Program
         }
     }
     
+
+    // --set-array-class-ref: repoint an ObjectProperty inside TArray<FStruct> elements at a
+    // class in another package (spawn setting VehicleClass -> /Game/Cars/Models/X.X_C).
+    static void SetArrayClassRef(string inPath, string outPath, string exportName,
+        string arrayProp, string keyField, string field, string mapJsonPath)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        NormalExport? target = null;
+        foreach (var e in asset.Exports)
+        {
+            if (e is not NormalExport ne) continue;
+            var nm = ne.ObjectName?.Value?.Value ?? "";
+            var num = ne.ObjectName?.Number ?? 0;
+            var full = num > 0 ? $"{nm}_{num - 1}" : nm;
+            if (string.Equals(nm, exportName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(full, exportName, StringComparison.OrdinalIgnoreCase)) { target = ne; break; }
+        }
+        if (target == null) { Console.WriteLine($"SETARRAYCLASS_FAIL no export named {exportName}"); return; }
+
+        ArrayPropertyData? arr = null;
+        foreach (var p in target.Data)
+            if (p is ArrayPropertyData ap && string.Equals(ap.Name?.Value?.Value, arrayProp, StringComparison.OrdinalIgnoreCase))
+                arr = ap;
+        if (arr == null) { Console.WriteLine($"SETARRAYCLASS_FAIL no array {arrayProp} on {exportName}"); return; }
+
+        var map = new Dictionary<string, string[]>();
+        using (var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(mapJsonPath)))
+            foreach (var kv in doc.RootElement.EnumerateObject())
+                map[kv.Name] = kv.Value.EnumerateArray().Select(x => x.GetString() ?? "").ToArray();
+
+        int hits = 0;
+        foreach (var el in arr.Value)
+        {
+            if (el is not StructPropertyData sp) continue;
+            string? key = null;
+            foreach (var pp in sp.Value)
+            {
+                if (!string.Equals(pp.Name?.Value?.Value, keyField, StringComparison.OrdinalIgnoreCase)) continue;
+                if (pp is NamePropertyData npd) key = npd.Value?.Value?.Value;
+                else if (pp is StrPropertyData spd) key = spd.Value?.Value;
+            }
+            if (key == null || !map.TryGetValue(key, out var refs) || refs.Length < 2) continue;
+
+            var (_, classIdx) = AddImportChain(asset, "/Script/Engine", "BlueprintGeneratedClass", refs[0], refs[1]);
+            bool set = false;
+            foreach (var pp in sp.Value)
+            {
+                if (pp is ObjectPropertyData op && string.Equals(op.Name?.Value?.Value, field, StringComparison.OrdinalIgnoreCase))
+                {
+                    op.Value = FPackageIndex.FromImport(classIdx - 1);
+                    set = true;
+                }
+            }
+            if (set) { hits++; Console.WriteLine($"  {key} -> {refs[0]}.{refs[1]} (import {classIdx})"); }
+            else Console.WriteLine($"  {key}: field {field} absent, skipped");
+        }
+
+        asset.ResolveAncestries();
+        asset.Write(outPath);
+        Console.WriteLine($"SETARRAYCLASS_OK {hits} elements -> {outPath}");
+    }
+
+    // --set-array-bool: flip a BoolProperty inside TArray<FStruct> elements selected by a key
+    // field (SpawnSettings[SettingKey=Police].bUseNPCPoliceDensity). Value only: setting IsZero
+    // as well makes UAssetAPI write the stale byte back.
+    static void SetArrayBool(string inPath, string outPath, string exportName,
+        string arrayProp, string keyField, string field, bool value, string only)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        NormalExport? target = null;
+        foreach (var e in asset.Exports)
+        {
+            if (e is not NormalExport ne) continue;
+            var nm = ne.ObjectName?.Value?.Value ?? "";
+            var num = ne.ObjectName?.Number ?? 0;
+            var full = num > 0 ? $"{nm}_{num - 1}" : nm;
+            if (string.Equals(nm, exportName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(full, exportName, StringComparison.OrdinalIgnoreCase)) { target = ne; break; }
+        }
+        if (target == null) { Console.WriteLine($"SETARRAYBOOL_FAIL no export named {exportName}"); return; }
+
+        ArrayPropertyData? arr = null;
+        foreach (var p in target.Data)
+            if (p is ArrayPropertyData ap && string.Equals(ap.Name?.Value?.Value, arrayProp, StringComparison.OrdinalIgnoreCase))
+                arr = ap;
+        if (arr == null) { Console.WriteLine($"SETARRAYBOOL_FAIL no array {arrayProp}"); return; }
+
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(only))
+            foreach (var kv in only.Split(','))
+            {
+                var bits = kv.Split('=');
+                if (bits.Length == 2 && string.Equals(bits[0].Trim(), keyField, StringComparison.OrdinalIgnoreCase))
+                    wanted.Add(bits[1].Trim());
+            }
+
+        int hits = 0;
+        foreach (var el in arr.Value)
+        {
+            if (el is not StructPropertyData sp) continue;
+            string? key = null;
+            foreach (var pp in sp.Value)
+            {
+                if (!string.Equals(pp.Name?.Value?.Value, keyField, StringComparison.OrdinalIgnoreCase)) continue;
+                if (pp is NamePropertyData npd) key = npd.Value?.Value?.Value;
+                else if (pp is StrPropertyData spd) key = spd.Value?.Value;
+            }
+            if (key == null) continue;
+            if (wanted.Count > 0 && !wanted.Contains(key)) continue;
+            foreach (var pp in sp.Value)
+            {
+                if (pp is BoolPropertyData bp && string.Equals(bp.Name?.Value?.Value, field, StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"  {key}.{field}: {bp.Value} -> {value}");
+                    bp.Value = value;
+                    hits++;
+                }
+            }
+        }
+
+        asset.ResolveAncestries();
+        asset.Write(outPath);
+        Console.WriteLine($"SETARRAYBOOL_OK {hits} elements -> {outPath}");
+    }
+
     static (int pkgIdx, int assetIdx) AddImportChain(
         UAsset asset, string classPackage, string className,
         string packagePath, string assetName, bool addCdoImport = false)

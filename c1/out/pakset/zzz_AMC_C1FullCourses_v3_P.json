@@ -1,0 +1,9 @@
+{
+"pak": "zzz_AMC_C1FullCourses_v3_P.pak",
+"bytes": 3179,
+"sha256": "4d384701fd281db064c3d1830fb4dbd110eee41500ecd15126733de84b9b5b81",
+"assets": [
+"MotorTown/Content/DataAsset/Courses.uasset",
+"MotorTown/Content/DataAsset/Courses.uexp"
+]
+}

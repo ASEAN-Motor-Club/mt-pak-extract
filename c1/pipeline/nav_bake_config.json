@@ -1,0 +1,23 @@
+{
+  "_comment": "Consumed by tools/c1_bake_nav.py through nav.get_editor_property/load_config. Values mirror constants.json:bake.",
+  "limit_roads": 0,
+  "step_cm": 1000.0,
+  "connect_cm": 2500.0,
+  "connect_any_cm": 2000.0,
+  "forward_dot": 0.85,
+  "normal_dot": 0.85,
+  "deck_dz_cm": 150.0,
+  "deck_dist_cm": 1200.0,
+  "grade_max": 0.25,
+  "crossroad_min_nodes": 2,
+  "parallel_dot": 0.9,
+  "parallel_skip_cm": 400.0,
+  "lateral_cost": 30.0,
+  "crossroad_pass": 0,
+  "_crossroad_note": "0 = leave CrossroadId -1 / Flags 0 (shipped Jeju plurality). Shipped Jeju has 2,908 nodes at Flags 4 but 6,244 with a CrossroadId, so our clustering does not reproduce the shipped spread; enable only after that shape is measured.",
+  "deck_dz_abs_cm": 250.0,
+  "lanes_from_width": 1,
+  "max_lateral_cm": 190.0,
+  "_lanes_note": "Lane count comes from the painted width: round(width/3.61), min 1, max 4 -- BeamNG's numOfLanesFromRadius in lua/ge/map.lua. The mod's lanesLeft is only read when autoLanes == false, so it is not authoritative.",
+  "_lateral_note": "A cross-road link may move the car at most 190 cm sideways. Lane numbers are not comparable across roads once lane counts follow painted width, so links match on the physical offset instead."
+}

@@ -1,0 +1,9 @@
+{
+"pak": "zzzzzzzz_AMC_C1NavTest_v3_P.pak",
+"bytes": 5289911,
+"sha256": "65fc122921135a7440c6ef65e94ce9db1143b2614f018db97715d9663c17f225",
+"assets": [
+"MotorTown/Content/Mods/C1Full/Maps/C1Full_Roads.uexp",
+"MotorTown/Content/Mods/C1Full/Maps/C1Full_Roads.umap"
+]
+}

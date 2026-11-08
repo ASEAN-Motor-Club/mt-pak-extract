@@ -1,0 +1,750 @@
+{
+ "level": "/Game/Mods/C1/Maps/C1Roads",
+ "scan": {
+  "/Game/Mods/C1/Maps/C1": {
+   "actors": 78,
+   "classes": {
+    "StaticMeshActor": 74,
+    "PlayerStart": 1,
+    "BP_C1_Sky_C": 1,
+    "ExponentialHeightFog": 1,
+    "BP_C1_Prop_C": 1
+   }
+  },
+  "/Game/Mods/C1/Maps/C1_Preview": {
+   "actors": 162,
+   "classes": {
+    "StaticMeshActor": 158,
+    "DirectionalLight": 1,
+    "SkyLight": 1,
+    "SkyAtmosphere": 1,
+    "ExponentialHeightFog": 1
+   }
+  },
+  "/Game/Mods/C1/Maps/C1_Roads": {
+   "actors": 0,
+   "classes": {}
+  },
+  "/Game/Mods/C1/Maps/C1Roads": {
+   "actors": 69,
+   "classes": {
+    "MotorTownRoad": 28,
+    "MotorTownRaceSection": 40,
+    "MotorTownNavigation": 1
+   }
+  }
+ },
+ "road_count": 28,
+ "roads": [
+  {
+   "label": "C1_Seg00_r40",
+   "name": "MotorTownRoad_0",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 400.0,
+   "forward_lanes": 1,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 16,
+   "closed": false,
+   "start": [
+    234976.0,
+    -769399.0,
+    84731.0
+   ],
+   "end": [
+    224267.5,
+    -758189.5,
+    84725.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg01_r36 start"
+  },
+  {
+   "label": "C1_Seg01_r36",
+   "name": "MotorTownRoad_1",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 32,
+   "closed": false,
+   "start": [
+    224267.5,
+    -758189.5,
+    84725.0
+   ],
+   "end": [
+    202027.5,
+    -735202.5,
+    84671.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg02_r55 start"
+  },
+  {
+   "label": "C1_Seg02_r55",
+   "name": "MotorTownRoad_2",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 49,
+   "closed": false,
+   "start": [
+    202027.5,
+    -735202.5,
+    84671.0
+   ],
+   "end": [
+    174353.0,
+    -696204.0,
+    84068.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg03_r37 start"
+  },
+  {
+   "label": "C1_Seg03_r37",
+   "name": "MotorTownRoad_3",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 15,
+   "closed": false,
+   "start": [
+    174353.0,
+    -696204.0,
+    84068.5
+   ],
+   "end": [
+    161021.5,
+    -689666.5,
+    84126.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg04_r54 start"
+  },
+  {
+   "label": "C1_Seg04_r54",
+   "name": "MotorTownRoad_4",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 33,
+   "closed": false,
+   "start": [
+    161021.5,
+    -689666.5,
+    84126.5
+   ],
+   "end": [
+    141775.5,
+    -663690.0,
+    85682.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg05_r53 start"
+  },
+  {
+   "label": "C1_Seg05_r53",
+   "name": "MotorTownRoad_5",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 21,
+   "closed": false,
+   "start": [
+    141775.5,
+    -663690.0,
+    85682.0
+   ],
+   "end": [
+    129778.0,
+    -646455.0,
+    85856.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg06_r75 start"
+  },
+  {
+   "label": "C1_Seg06_r75",
+   "name": "MotorTownRoad_6",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 333.0,
+   "forward_lanes": 3,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 52,
+   "closed": false,
+   "start": [
+    129778.0,
+    -646455.0,
+    85856.5
+   ],
+   "end": [
+    133163.0,
+    -596196.0,
+    85935.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg07_r91 start"
+  },
+  {
+   "label": "C1_Seg07_r91",
+   "name": "MotorTownRoad_7",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 350.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 22,
+   "closed": false,
+   "start": [
+    133163.0,
+    -596196.0,
+    85935.0
+   ],
+   "end": [
+    131485.5,
+    -574436.5,
+    86018.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg08_r77 start"
+  },
+  {
+   "label": "C1_Seg08_r77",
+   "name": "MotorTownRoad_8",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 8,
+   "closed": false,
+   "start": [
+    131485.5,
+    -574436.5,
+    86018.0
+   ],
+   "end": [
+    125188.0,
+    -569867.0,
+    86183.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg09_r73 start"
+  },
+  {
+   "label": "C1_Seg09_r73",
+   "name": "MotorTownRoad_9",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 32,
+   "closed": false,
+   "start": [
+    125188.0,
+    -569867.0,
+    86183.0
+   ],
+   "end": [
+    93345.0,
+    -572137.0,
+    86255.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg10_r7 start"
+  },
+  {
+   "label": "C1_Seg10_r7",
+   "name": "MotorTownRoad_10",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 319,
+   "closed": false,
+   "start": [
+    93345.0,
+    -572137.0,
+    86255.0
+   ],
+   "end": [
+    -49409.5,
+    -740463.5,
+    87777.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg11_r11 start"
+  },
+  {
+   "label": "C1_Seg11_r11",
+   "name": "MotorTownRoad_11",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 61,
+   "closed": false,
+   "start": [
+    -49409.5,
+    -740463.5,
+    87777.0
+   ],
+   "end": [
+    -7164.5,
+    -782702.5,
+    85685.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg12_r9 start"
+  },
+  {
+   "label": "C1_Seg12_r9",
+   "name": "MotorTownRoad_12",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 22,
+   "closed": false,
+   "start": [
+    -7164.5,
+    -782702.5,
+    85685.5
+   ],
+   "end": [
+    11409.5,
+    -793539.5,
+    85399.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg13_r10 start"
+  },
+  {
+   "label": "C1_Seg13_r10",
+   "name": "MotorTownRoad_13",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 59,
+   "closed": false,
+   "start": [
+    11409.5,
+    -793539.5,
+    85399.5
+   ],
+   "end": [
+    27224.5,
+    -844801.5,
+    85702.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg14_r21 start"
+  },
+  {
+   "label": "C1_Seg14_r21",
+   "name": "MotorTownRoad_14",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 31,
+   "closed": false,
+   "start": [
+    27224.5,
+    -844801.5,
+    85702.5
+   ],
+   "end": [
+    4838.5,
+    -864810.5,
+    85895.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg15_r8 start"
+  },
+  {
+   "label": "C1_Seg15_r8",
+   "name": "MotorTownRoad_15",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 65,
+   "closed": false,
+   "start": [
+    4838.5,
+    -864810.5,
+    85895.0
+   ],
+   "end": [
+    -9068.0,
+    -924096.0,
+    86107.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg16_r19 start"
+  },
+  {
+   "label": "C1_Seg16_r19",
+   "name": "MotorTownRoad_16",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 15,
+   "closed": false,
+   "start": [
+    -9068.0,
+    -924096.0,
+    86107.0
+   ],
+   "end": [
+    -6307.0,
+    -938844.0,
+    86107.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg17_r8 start"
+  },
+  {
+   "label": "C1_Seg17_r8",
+   "name": "MotorTownRoad_17",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 35,
+   "closed": false,
+   "start": [
+    -6307.0,
+    -938844.0,
+    86107.0
+   ],
+   "end": [
+    3810.0,
+    -971323.5,
+    86623.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg18_r16 start"
+  },
+  {
+   "label": "C1_Seg18_r16",
+   "name": "MotorTownRoad_18",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 47,
+   "closed": false,
+   "start": [
+    3810.0,
+    -971323.5,
+    86623.5
+   ],
+   "end": [
+    49799.5,
+    -976140.0,
+    86146.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg19_r15 start"
+  },
+  {
+   "label": "C1_Seg19_r15",
+   "name": "MotorTownRoad_19",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 21,
+   "closed": false,
+   "start": [
+    49799.5,
+    -976140.0,
+    86146.5
+   ],
+   "end": [
+    68243.0,
+    -986183.5,
+    86150.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg20_r23 start"
+  },
+  {
+   "label": "C1_Seg20_r23",
+   "name": "MotorTownRoad_20",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 263,
+   "closed": false,
+   "start": [
+    68243.0,
+    -986183.5,
+    86150.0
+   ],
+   "end": [
+    295520.0,
+    -916173.5,
+    86055.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg21_r27 start"
+  },
+  {
+   "label": "C1_Seg21_r27",
+   "name": "MotorTownRoad_21",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 1,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 35,
+   "closed": false,
+   "start": [
+    295520.0,
+    -916173.5,
+    86055.5
+   ],
+   "end": [
+    283417.0,
+    -884011.5,
+    85967.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg22_r26 start"
+  },
+  {
+   "label": "C1_Seg22_r26",
+   "name": "MotorTownRoad_22",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 333.0,
+   "forward_lanes": 3,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 41,
+   "closed": false,
+   "start": [
+    283417.0,
+    -884011.5,
+    85967.5
+   ],
+   "end": [
+    265514.5,
+    -847115.5,
+    84759.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg23_r22 start"
+  },
+  {
+   "label": "C1_Seg23_r22",
+   "name": "MotorTownRoad_23",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 36,
+   "closed": false,
+   "start": [
+    265514.5,
+    -847115.5,
+    84759.0
+   ],
+   "end": [
+    249053.5,
+    -815097.0,
+    84834.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg24_r38 start"
+  },
+  {
+   "label": "C1_Seg24_r38",
+   "name": "MotorTownRoad_24",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 400.0,
+   "forward_lanes": 1,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 15,
+   "closed": false,
+   "start": [
+    249053.5,
+    -815097.0,
+    84834.5
+   ],
+   "end": [
+    245884.0,
+    -800711.0,
+    84825.5
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg25_r56 start"
+  },
+  {
+   "label": "C1_Seg25_r56",
+   "name": "MotorTownRoad_25",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 300.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 14,
+   "closed": false,
+   "start": [
+    245884.0,
+    -800711.0,
+    84825.5
+   ],
+   "end": [
+    242969.0,
+    -787042.0,
+    84707.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg26_r58 start"
+  },
+  {
+   "label": "C1_Seg26_r58",
+   "name": "MotorTownRoad_26",
+   "road_type": "ROAD: 1>",
+   "course_key": "None",
+   "lane_width": 400.0,
+   "forward_lanes": 1,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 0,
+   "points": 20,
+   "closed": false,
+   "start": [
+    242969.0,
+    -787042.0,
+    84707.0
+   ],
+   "end": [
+    234976.0,
+    -769399.0,
+    84731.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg00_r40 start"
+  },
+  {
+   "label": "C1_Course",
+   "name": "MotorTownRoad_27",
+   "road_type": "TRACK_COURSE: 3>",
+   "course_key": "C1Shuto",
+   "lane_width": 350.0,
+   "forward_lanes": 2,
+   "backward_lanes": 0,
+   "speed_kph": 120.0,
+   "flags": 136,
+   "points": 1379,
+   "closed": true,
+   "start": [
+    234976.0,
+    -769399.0,
+    84731.0
+   ],
+   "end": [
+    234976.0,
+    -769399.0,
+    84731.0
+   ],
+   "seam_gap": 0.0,
+   "seam_to": "C1_Seg00_r40 start"
+  }
+ ],
+ "nav": [
+  {
+   "label": "MotorTownNavigation",
+   "nodes": 0
+  }
+ ],
+ "other_classes": {
+  "MotorTownRaceSection": 40,
+  "MotorTownNavigation": 1
+ }
+}
