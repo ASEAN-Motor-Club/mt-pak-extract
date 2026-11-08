@@ -40,6 +40,10 @@ sys.path.insert(0, HERE)
 # fails to compile and the mesh draws with the engine default (grey checkerboard).
 MASKED_MASTER_PKG = "/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTest"
 MASKED_MASTER_NAME = "M_AlphaTest"
+# Names an instance may use for its base-colour texture parameter before the reparent. `BaseColor`
+# is the modern convention; `Texture` is what the older M_C1_Surface-derived instances carry, and
+# missing that one silently orphans the override (see finish()).
+COLOUR_PARAMS = ("BaseColor", "Texture")
 DEFAULT_CLIP = 0.3333
 BAKE_CLIP = 0.5
 
@@ -94,6 +98,38 @@ def opacity_name(base: str) -> list[str]:
         cands.append(base.replace("_color", "_o_data"))
     cands.append(base + "_o_data")
     return cands
+
+
+def _dump(mi_path: str, tool: str, dotnet: str, cwd: str) -> str:
+    return run([dotnet, tool, "--dump", mi_path], cwd=cwd)
+
+
+def mi_texture_param_name(out: str) -> str | None:
+    """Name of the instance's texture parameter override, or None if it has none.
+
+    `--rename-texture-param BaseColor Color` used to be hardcoded, but not every instance speaks
+    `BaseColor`: several predate that convention and name the parameter `Texture`. Missing them is
+    silent (the rename writes the file unchanged and still exits 0), and the instance then gets
+    reparented onto a master that declares `Color`, so its texture override no longer resolves and
+    a masked material cuts everything away.
+    """
+    i = out.find("TextureParameterValues (Array[")
+    if i < 0:
+        return None
+    window = out[i:i + 800]
+    m = re.search(r"Name \(Name\): ([A-Za-z0-9_]+)", window)
+    return m.group(1) if m else None
+
+
+def mi_parent_name(out: str) -> str | None:
+    """Resolve the Parent object reference against the dump's import table."""
+    imports = {int(k) + 1: v for k, v in
+               re.findall(r"Import\[(\d+)\]: .*?Name=([^,\s]+)", out)}
+    m = re.search(r"Parent \(Object\): Index=(-?\d+)", out)
+    if not m:
+        return None
+    idx = abs(int(m.group(1)))
+    return imports.get(idx)
 
 
 def classify(src: dict, key: str) -> tuple[str, float | None, str | None]:
@@ -189,7 +225,7 @@ def main() -> int:
         return out
 
     def finish(group_dir: str, names: list[str], tag: str, clips: dict[str, float]) -> str:
-        """rename BaseColor->Color, reparent to the masked master, clear overrides, set per-material clip."""
+        """rename the texture param to Color, reparent to the masked master, clear overrides, set clip."""
         cur = group_dir
         if not names:
             return cur
@@ -198,18 +234,70 @@ def main() -> int:
         clip_tsv = os.path.join(work, f"{tag}_clip.tsv")
         open(clip_tsv, "w").write("\n".join(f"{n}\t{clips.get(n, DEFAULT_CLIP):.4f}" for n in names) + "\n")
 
-        steps = [
-            ("r", ["--rename-texture-param", "@cur", "@out", "BaseColor", "Color"]),
+        # The texture parameter is NOT always named BaseColor. Instances built on the older
+        # M_C1_Surface/Texture convention carry `Texture`; renaming only BaseColor leaves them
+        # orphaned once they are reparented onto a master that declares `Color`, and a masked
+        # material then cuts every pixel away (invisible, collision intact). Rename whatever name
+        # each instance actually has, and record the ones that have no texture param at all.
+        param_names: dict[str, list[str]] = {}
+        no_param: list[str] = []
+        unexpected: list[str] = []
+        for n in names:
+            out = _dump(os.path.join(cur, n + ".uasset"), a.tool, a.dotnet, tool_cwd)
+            pn = mi_texture_param_name(out)
+            if pn is None:
+                no_param.append(n)
+            elif pn not in COLOUR_PARAMS:
+                unexpected.append(f"{n}:{pn}")
+            elif pn != "Color":
+                param_names.setdefault(pn, []).append(n)
+        if unexpected:
+            # e.g. a masked instance whose only texture parameter is `Normal` — renaming that to
+            # Color would feed a normal map into base colour. Needs a human, not a guess.
+            raise RuntimeError("masked instance(s) with a non-colour texture parameter: "
+                               + ", ".join(unexpected))
+        if no_param:
+            report.setdefault("no_texture_param", []).extend(
+                {"mi": n, "tag": tag} for n in no_param)
+            print(f"  {tag}: WARNING {len(no_param)} instance(s) have no texture parameter: "
+                  f"{', '.join(no_param[:5])}{' ...' if len(no_param) > 5 else ''}")
+        print(f"  {tag}: texture params to rename -> " +
+              (", ".join(f"{k}x{len(v)}" for k, v in param_names.items()) or "none"))
+
+        steps = []
+        for pn in param_names:
+            steps.append(("r", ["--rename-texture-param", "@cur", "@out", pn, "Color"]))
+        steps += [
             ("p", ["--set-mi-parent", "@cur", "@out", lst, MASKED_MASTER_PKG, MASKED_MASTER_NAME]),
             ("o", ["--clear-overrides", "@cur", "@out", lst]),
             ("c", ["--set-clip", "@cur", "@out", clip_tsv]),
         ]
-        for letter, sargs in steps:
-            out = os.path.join(work, f"{tag}_{letter}")
+        for i, step in enumerate(steps):
+            letter, sargs = step[0], step[1]
+            out = os.path.join(work, f"{tag}_{letter}{i if letter == 'r' else ''}")
             argv = [x.replace("@cur", cur).replace("@out", out) for x in sargs]
-            run([a.dotnet, a.tool] + argv, cwd=tool_cwd)
+            text = run([a.dotnet, a.tool] + argv, cwd=tool_cwd)
+            if letter == "r":
+                m = re.search(r"changed=(\d+)", text)
+                if m and int(m.group(1)) == 0:
+                    raise RuntimeError(f"rename {sargs[3]}->Color matched nothing in {cur}")
             cur = out
         print(f"  {tag}: {len(names)} instances -> {os.path.basename(cur)}")
+
+        # Post-condition: every instance must actually point at the masked master and, if it has a
+        # texture override, name it `Color`. Without this check a silent no-op ships as success.
+        bad = []
+        for n in names:
+            out = _dump(os.path.join(cur, n + ".uasset"), a.tool, a.dotnet, tool_cwd)
+            parent = mi_parent_name(out)
+            pn = mi_texture_param_name(out)
+            if parent != MASKED_MASTER_NAME:
+                bad.append(f"{n}: parent={parent}")
+            elif pn not in (None, "Color"):
+                bad.append(f"{n}: texture param={pn}")
+        if bad:
+            raise RuntimeError(f"{tag}: {len(bad)} instance(s) failed verification: "
+                               + "; ".join(bad[:10]))
         return cur
 
     # --- masked group -------------------------------------------------------
