@@ -1070,3 +1070,76 @@ Rules that follow:
   manifests. Either version every pak or the gate has a blind spot.
 - After any install, list the pak set and grep the paks for `C1Full.umap` ownership; the map pak
   must be the only claimant.
+
+## 38. A decoder's channel order is a claim to verify — the "zero-alpha textures" finding was one (2026-11-08)
+
+An audit of 1,653 material instances reported that 369 masked instances bound zero-alpha colour textures
+and drew nothing, and proposed reparenting the whole masked family. **The measurement was wrong:** this
+library's BC3 decode puts alpha in the **low** byte of each pixel, and the audit read `(p >> 24) & 0xFF`,
+a constant 0.
+
+Re-run with `p & 0xFF`: 371 masked instances have real cut-out alpha, 0 have an empty channel, and the
+bollard texture matches its source DDS (mean 143, 24% fully opaque). Reparenting would have stripped every
+tree and fence cut-out in the map to fix nothing.
+
+- Prove channel order first: one synthetic 4×4 block, colour zero, alpha endpoints `FF FF`, indices zero.
+  A constant reading means you are reading the wrong byte.
+- A statistic that agrees with a real symptom is not evidence for its cause. Props were missing; alpha
+  was not why.
+- Do not run a family-wide material rewrite off a texture statistic. This near-miss was caught by an
+  assertion in the build script that decoded the patched texture and refused to write the pak — keep that
+  pattern.
+- What survives: texture provenance (1,643 of 1,653 parameter values resolve inside the master's package,
+  only 6 bind a texture we ship), source-name normalisation, and the format rules (DXT1 has no alpha
+  channel, BC4U/BC5U are masks, DX10 carries the DXGI format at 132).
+- Still open: why the bollards do not draw. Alpha is eliminated; look at slot binding, the one-sided
+  flag, UVs, or the geometry not being reached.
+
+
+## §42 — A merged mesh renders NOTHING if it has more sections than material slots (2026-11-08)
+
+Symptom: the decal mesh `C1_Decals` never drew — no geometry, no checkerboard, no error. The actor
+was valid (mesh pointer resolved, `bVisible` true, `bHiddenInGame` false, Static mobility, scale 1),
+the pak contained real vertex data, and the geometry/UVs/winding matched the source exactly. None of
+that matters if the sections have nothing to draw with.
+
+Cause: the OBJ importer emits **one section per contiguous `usemtl` run**, not one per unique
+material. Merging 187 cell OBJs re-emitted the same 92 materials in 651 runs, so the asset carried
+**651 sections against a 92-slot material array**. Sections past the end of the slot array have no
+material and produce no draw — silently. The import gate passed because it checked slot count and
+triangle count, and both were correct.
+
+Rule: before importing any merged/concatenated OBJ, **regroup the faces so each material appears in
+exactly one contiguous run** (`usemtl` written once per material; all `v`/`vt`/`vn` first so indices
+are unchanged). Then gate on *sections*, not just slots:
+`GetNumSections(0) == len(StaticMaterials)`.
+
+How to read it at runtime (UEBridge `eval`): `mesh:GetNumSections(0)` vs `#StaticMaterials`.
+A healthy cell reads 12/12; the broken decal mesh read 651/92.
+
+Numbers: 20,756 faces, 92 groups, 20,750 tris cooked, uexp 2,882,182 → 2,853,114 B after regrouping.
+
+Corollary: "materials are bound and the mesh still doesn't appear" is not a material bug. Ask for
+sections vs slots before touching a single material.
+
+## 43. Installed pak filenames carry NO version; versions live only in the archive (2026-11-08)
+
+Freeman approves each NEW filename that lands in the game's `Content/Paks` directory, and version
+numbers in installed filenames are confusing to read in the folder. Both problems have one fix:
+the installed filename is a stable, versionless name, and a rebuild overwrites it in place.
+
+Installed set (frozen, 2026-11-08):
+  zzz_AMC_C1Base_P.pak / zzz_AMC_C1FullCourses_P.pak / zzz_AMC_C1FullOffline_P.pak
+  zzzzz_AMC_C1Mats_P.pak / zzzzz_AMC_C1Mesh_P.pak / zzzzzz_AMC_C1Map_P.pak
+  zzzzzzzz_AMC_C1NavTest_P.pak / zzzzzzzzzz_AMC_Shuto_Lights_P.pak
+
+The z-count is the mount priority (lexicographic, later wins). Never change a file's z-count when
+overwriting it, and keep the relative order of siblings — `Mats` must stay before `Mesh`, and
+`Base` before `FullCourses`/`FullOffline`.
+
+Versions live in `D:/c1full_paks` (`zzzzz_AMC_C1Mats_P23_P.pak`, `zzzzzz_AMC_C1Map_v8_P.pak`, ...).
+When reporting what shipped, read the version from the archive copy or the build log — never infer
+it from the installed filename, which is deliberately versionless.
+
+Corollary: a rebuild is `Copy-Item staging\<versioned>.pak Paks\<stable>.pak -Force`, one approval
+ever, no new names.
