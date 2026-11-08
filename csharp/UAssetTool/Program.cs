@@ -34,6 +34,30 @@ class Program
     static void Main(string[] args)
     {
         Console.WriteLine("=== MotorTown UAsset Tool ===");
+
+        // Audit is a whole-directory read-only pass; it must be dispatched before the mode flags
+        // below, because unknown args fall through to the default batch parse.
+        int retargetIdx = Array.IndexOf(args, "--retarget-materials");
+        if (retargetIdx >= 0)
+        {
+            if (retargetIdx + 3 >= args.Length) { Console.WriteLine("usage: --retarget-materials <inDir> <config.json> <outDir>"); return; }
+            RootDir = Path.GetFullPath(Path.Combine("..", ".."));
+            Mappings = new Usmap(Path.Combine(RootDir, "Mappings.usmap"));
+            RetargetMaterials(args[retargetIdx + 1], args[retargetIdx + 2], args[retargetIdx + 3]);
+            return;
+        }
+
+        int auditIdx = Array.IndexOf(args, "--audit-materials");
+        {
+            if (auditIdx >= 0)
+            {
+                if (auditIdx + 2 >= args.Length) { Console.WriteLine("usage: --audit-materials <dir> <out.tsv>"); return; }
+                RootDir = Path.GetFullPath(Path.Combine("..", ".."));
+                Mappings = new Usmap(Path.Combine(RootDir, "Mappings.usmap"));
+                AuditMaterials(args[auditIdx + 1], args[auditIdx + 2]);
+                return;
+            }
+        }
         
         RootDir = Path.GetFullPath(Path.Combine("..", ".."));
         var usmapPath = Path.Combine(RootDir, "Mappings.usmap");
@@ -51,13 +75,16 @@ class Program
         bool propProbeMode = args.Contains("--propprobe");
         bool alignImportsMode = args.Contains("--align-imports");
         bool dumpMode = args.Contains("--dump");
+        bool dumpBatchMode = args.Contains("--dump-batch");
         bool ptProbe = args.Contains("--ptprobe");
         bool retargetMode = args.Contains("--retarget-mis");
         bool renameTexMode = args.Contains("--rename-texture-param");
         bool setMiParentMode = args.Contains("--set-mi-parent");
         bool setBlendMode = args.Contains("--set-blend");
         bool setTexParamMode = args.Contains("--set-texparam");
+        bool ensureTexParamMode = args.Contains("--ensure-texparam");
         bool clearOverridesMode = args.Contains("--clear-overrides");
+        bool setMiParamsMode = args.Contains("--set-mi-params");
         bool transMiMode = args.Contains("--trans-mis");
         int ptIdx = Array.IndexOf(args, "--ptprobe");
         
@@ -76,6 +103,104 @@ class Program
         
         PatchMappingsForVersion();
         
+        // Factor of the `--dump` body so a batch run pays ONE process start instead of one per file.
+        // Everything below writes to Console; the batch caller redirects Console.Out per file.
+        void DumpAssetFile(string dumpPath)
+        {
+var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
+            Console.WriteLine($"\n=== Dump: {Path.GetFileName(dumpPath)} ===");
+            Console.WriteLine($"  HasUnversioned={dumpAsset.HasUnversionedProperties}, FolderName: {dumpAsset.FolderName}");
+            Console.WriteLine($"  PackageFlags: {dumpAsset.PackageFlags} (0x{(uint)dumpAsset.PackageFlags:X8})");
+            Console.WriteLine($"  PackageGuid: {dumpAsset.PackageGuid}");
+            
+            Console.WriteLine($"\n  --- NameMap ({dumpAsset.GetNameMapIndexList().Count} entries) ---");
+            for (int i = 0; i < dumpAsset.GetNameMapIndexList().Count; i++)
+            {
+                Console.WriteLine($"  Name[{i}]: '{dumpAsset.GetNameReference(i)}'");
+            }
+            
+            Console.WriteLine($"\n  --- Imports ({dumpAsset.Imports.Count}) ---");
+            for (int i = 0; i < dumpAsset.Imports.Count; i++)
+            {
+                var imp = dumpAsset.Imports[i];
+                Console.WriteLine($"  Import[{i}]: ClassPkg={imp.ClassPackage}, Class={imp.ClassName}, Outer={imp.OuterIndex}, Name={imp.ObjectName}");
+            }
+            
+            Console.WriteLine($"\n  --- Exports ({dumpAsset.Exports.Count}) ---");
+            for (int i = 0; i < dumpAsset.Exports.Count; i++)
+            {
+                var exp = dumpAsset.Exports[i];
+                Console.WriteLine($"  Export[{i}]: Name={exp.ObjectName}, Class={exp.GetExportClassType()}, Outer={exp.OuterIndex}, C#Type={exp.GetType().Name}, SerialOffset=0x{exp.SerialOffset:X}, SerialSize={exp.SerialSize}");
+                
+                if (exp is StructExport sexp)
+                {
+                    var superName = sexp.SuperStruct.IsImport() ? sexp.SuperStruct.ToImport(dumpAsset).ObjectName.ToString() : (sexp.SuperStruct.IsExport() ? sexp.SuperStruct.ToExport(dumpAsset).ObjectName.ToString() : $"idx={sexp.SuperStruct.Index}");
+                    Console.WriteLine($"    StructExport: SuperStruct={superName}, LoadedProperties={sexp.LoadedProperties?.Length ?? 0}, Children={sexp.Children?.Length ?? 0}");
+                    if (sexp.LoadedProperties != null)
+                    {
+                        for (int pi = 0; pi < sexp.LoadedProperties.Length; pi++)
+                        {
+                            var fp = sexp.LoadedProperties[pi];
+                            Console.WriteLine($"      FProperty[{pi}]: Name={fp.Name}, SerializedType={fp.SerializedType}, ArrayDim={fp.ArrayDim}, ElementSize={fp.ElementSize}, Flags={fp.PropertyFlags}");
+                        }
+                    }
+                    if (exp is ClassExport cexp)
+                    {
+                        Console.WriteLine($"    ClassExport: ClassFlags={cexp.ClassFlags}, ClassGeneratedBy={cexp.ClassGeneratedBy.Index}, ClassDefaultObject={cexp.ClassDefaultObject.Index}, FuncMap.Count={cexp.FuncMap?.Count ?? 0}");
+                    }
+                }
+                
+                // Dump raw export data for CDO
+                if (exp.ObjectName?.Value?.Value?.StartsWith("Default__") == true)
+                {
+                    if (exp is UAssetAPI.ExportTypes.RawExport rawExp)
+                    {
+                        Console.WriteLine($"    RawExport CDO data ({rawExp.Data?.Length ?? 0} bytes):");
+                        if (rawExp.Data != null && rawExp.Data.Length > 0)
+                        {
+                            for (int di = 0; di < Math.Min(rawExp.Data.Length, 256); di += 16)
+                            {
+                                var hexLine = string.Join(" ", rawExp.Data.Skip(di).Take(16).Select(b => $"{b:X2}"));
+                                Console.WriteLine($"      0x{di:X4}: {hexLine}");
+                            }
+                        }
+                    }
+                    else if (exp is UAssetAPI.ExportTypes.NormalExport neCdo)
+                    {
+                        Console.WriteLine($"    NormalExport CDO: {neCdo.Data?.Count ?? 0} properties");
+                        foreach (var p in neCdo.Data ?? new List<PropertyData>())
+                        {
+                            Console.WriteLine($"      {p.Name?.Value?.Value} ({p.PropertyType}) IsZero={p.IsZero}");
+                            DumpProperty(p, "        ");
+                        }
+                    }
+                }
+                
+                // Dump export data (properties) - skip CDO since we already printed it
+                if (exp is UAssetAPI.ExportTypes.DataTableExport dte)
+                {
+                    Console.WriteLine($"    Rows ({dte.Table?.Data?.Count ?? 0}):");
+                    foreach (var row in dte.Table?.Data ?? new List<StructPropertyData>())
+                    {
+                        Console.WriteLine($"      Row '{row.Name?.Value?.Value}':");
+                        foreach (var p in row.Value ?? new List<PropertyData>())
+                        {
+                            DumpProperty(p, "        ");
+                        }
+                    }
+                }
+                else if (exp is UAssetAPI.ExportTypes.NormalExport normalExp && !exp.ObjectName?.Value?.Value?.StartsWith("Default__") == true)
+                {
+                    Console.WriteLine($"    Properties ({normalExp.Data.Count}):");
+                    foreach (var prop in normalExp.Data)
+                    {
+                        DumpProperty(prop, "      ");
+                    }
+                }
+            }
+        
+        }
+
         if (renameTexMode)
         {
             int ri = Array.IndexOf(args, "--rename-texture-param");
@@ -89,6 +214,14 @@ class Program
             int ti = Array.IndexOf(args, "--trans-mis");
             if (ti + 4 >= args.Length) { Console.WriteLine("usage: --trans-mis <inDir> <outDir> <listFile> <masterPkg> <masterName>"); return; }
             TransMIs(args[ti + 1], args[ti + 2], args[ti + 3], args[ti + 4], args[ti + 5]);
+            return;
+        }
+
+        if (ensureTexParamMode)
+        {
+            int ti = Array.IndexOf(args, "--ensure-texparam");
+            if (ti + 5 >= args.Length) { Console.WriteLine("usage: --ensure-texparam <inDir> <outDir> <listFile|MI<TAB>texName> <param> <texPkg|->"); return; }
+            EnsureTexParam(args[ti + 1], args[ti + 2], args[ti + 3], args[ti + 4], args[ti + 5]);
             return;
         }
 
@@ -126,11 +259,48 @@ class Program
             return;
         }
 
+        if (setMiParamsMode)
+        {
+            int mi = Array.IndexOf(args, "--set-mi-params");
+            if (mi + 1 >= args.Length) { Console.WriteLine("usage: --set-mi-params <config.json>"); return; }
+            SetMiParams(args[mi + 1]);
+            return;
+        }
+
         if (clearOverridesMode)
         {
             int ci = Array.IndexOf(args, "--clear-overrides");
             if (ci + 3 >= args.Length) { Console.WriteLine("usage: --clear-overrides <inDir> <outDir> <listFile|->"); return; }
             ClearOverrides(args[ci + 1], args[ci + 2], args[ci + 3]);
+            return;
+        }
+
+        if (setMiParentMode && args.Contains("--in-place"))
+        {
+            int pi2 = Array.IndexOf(args, "--set-mi-parent");
+            if (pi2 + 4 >= args.Length) { Console.WriteLine("usage: --set-mi-parent --in-place <inDir> <outDir> <listFile|-> <masterPkg> <masterName>"); return; }
+            SetMiParentInPlace(args[pi2 + 1], args[pi2 + 2], args[pi2 + 3], args[pi2 + 4], args[pi2 + 5]);
+            return;
+        }
+
+        if (args.Contains("--rename-export"))
+        {
+            int ri2 = Array.IndexOf(args, "--rename-export");
+            if (ri2 + 3 >= args.Length) { Console.WriteLine("usage: --rename-export <inAsset> <outDir> <newExportName>"); return; }
+            var a2 = new UAsset(args[ri2 + 1], EngineVersion.VER_UE5_5, Mappings);
+            var newN = args[ri2 + 3];
+            var renamed = 0;
+            foreach (var ex in a2.Exports)
+            {
+                var oldN = ex.ObjectName?.Value?.Value ?? "";
+                ex.ObjectName = FName.FromString(a2, newN);
+                Console.WriteLine($"  export '{oldN}' -> '{newN}'");
+                renamed++;
+            }
+            Directory.CreateDirectory(args[ri2 + 2]);
+            var outP = Path.Combine(args[ri2 + 2], newN + ".uasset");
+            a2.Write(outP);
+            Console.WriteLine($"rename_export renamed={renamed} written={outP}");
             return;
         }
 
@@ -381,6 +551,18 @@ class Program
                 double.Parse(args[li + 4], System.Globalization.CultureInfo.InvariantCulture),
                 double.Parse(args[li + 5], System.Globalization.CultureInfo.InvariantCulture),
                 double.Parse(args[li + 6], System.Globalization.CultureInfo.InvariantCulture));
+            return;
+        }
+
+        if (args.Contains("--clone-actor"))
+        {
+            int li = Array.IndexOf(args, "--clone-actor");
+            if (li + 8 >= args.Length) { Console.WriteLine("usage: --clone-actor <in.umap> <out.umap> <templateActor> <newActorName> <x> <y> <z> <yaw>"); return; }
+            CloneActorSubtree(args[li + 1], args[li + 2], args[li + 3], args[li + 4],
+                double.Parse(args[li + 5], System.Globalization.CultureInfo.InvariantCulture),
+                double.Parse(args[li + 6], System.Globalization.CultureInfo.InvariantCulture),
+                double.Parse(args[li + 7], System.Globalization.CultureInfo.InvariantCulture),
+                double.Parse(args[li + 8], System.Globalization.CultureInfo.InvariantCulture));
             return;
         }
 
@@ -648,103 +830,55 @@ class Program
             }
             return;
         }
+        else if (dumpBatchMode)
+        {
+            int bi = Array.IndexOf(args, "--dump-batch");
+            var listPath = args.ElementAtOrDefault(bi + 1);
+            var outDir = args.ElementAtOrDefault(bi + 2);
+            if (string.IsNullOrEmpty(listPath) || string.IsNullOrEmpty(outDir))
+            {
+                Console.WriteLine("usage: --dump-batch <list.txt> <outDir>");
+                return;
+            }
+            if (!Path.IsPathRooted(listPath)) listPath = Path.Combine(RootDir, listPath);
+            if (!Path.IsPathRooted(outDir)) outDir = Path.Combine(RootDir, outDir);
+            if (!File.Exists(listPath)) { Console.WriteLine($"DUMP_BATCH_ERR missing list {listPath}"); return; }
+            Directory.CreateDirectory(outDir);
+            var origOut = Console.Out;
+            int batchN = 0, batchFail = 0;
+            foreach (var rawLine in File.ReadLines(listPath))
+            {
+                var linePath = rawLine.Trim();
+                if (linePath.Length == 0 || linePath.StartsWith("#")) continue;
+                var fullPath = Path.IsPathRooted(linePath) ? linePath : Path.Combine(RootDir, linePath);
+                var sw = new StringWriter();
+                Console.SetOut(sw);
+                try
+                {
+                    if (File.Exists(fullPath)) DumpAssetFile(fullPath);
+                    else sw.WriteLine($"ERR missing {fullPath}");
+                }
+                catch (Exception ex)
+                {
+                    sw.WriteLine($"ERR {ex.GetType().Name}: {ex.Message}");
+                    batchFail++;
+                }
+                finally
+                {
+                    Console.SetOut(origOut);
+                }
+                var outFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(fullPath) + ".txt");
+                File.WriteAllText(outFile, sw.ToString());
+                batchN++;
+            }
+            Console.WriteLine($"DUMP_BATCH_OK {batchN} files, {batchFail} errors -> {outDir}");
+        }
         else if (dumpMode)
         {
             var idx = Array.IndexOf(args, "--dump");
             var dumpPath = args.ElementAtOrDefault(idx + 1) ?? Path.Combine(RootDir, "Cargos.uasset");
             if (!Path.IsPathRooted(dumpPath)) dumpPath = Path.Combine(RootDir, dumpPath);
-            
-            var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
-            Console.WriteLine($"\n=== Dump: {Path.GetFileName(dumpPath)} ===");
-            Console.WriteLine($"  HasUnversioned={dumpAsset.HasUnversionedProperties}, FolderName: {dumpAsset.FolderName}");
-            Console.WriteLine($"  PackageFlags: {dumpAsset.PackageFlags} (0x{(uint)dumpAsset.PackageFlags:X8})");
-            Console.WriteLine($"  PackageGuid: {dumpAsset.PackageGuid}");
-            
-            Console.WriteLine($"\n  --- NameMap ({dumpAsset.GetNameMapIndexList().Count} entries) ---");
-            for (int i = 0; i < dumpAsset.GetNameMapIndexList().Count; i++)
-            {
-                Console.WriteLine($"  Name[{i}]: '{dumpAsset.GetNameReference(i)}'");
-            }
-            
-            Console.WriteLine($"\n  --- Imports ({dumpAsset.Imports.Count}) ---");
-            for (int i = 0; i < dumpAsset.Imports.Count; i++)
-            {
-                var imp = dumpAsset.Imports[i];
-                Console.WriteLine($"  Import[{i}]: ClassPkg={imp.ClassPackage}, Class={imp.ClassName}, Outer={imp.OuterIndex}, Name={imp.ObjectName}");
-            }
-            
-            Console.WriteLine($"\n  --- Exports ({dumpAsset.Exports.Count}) ---");
-            for (int i = 0; i < dumpAsset.Exports.Count; i++)
-            {
-                var exp = dumpAsset.Exports[i];
-                Console.WriteLine($"  Export[{i}]: Name={exp.ObjectName}, Class={exp.GetExportClassType()}, Outer={exp.OuterIndex}, C#Type={exp.GetType().Name}, SerialOffset=0x{exp.SerialOffset:X}, SerialSize={exp.SerialSize}");
-                
-                if (exp is StructExport sexp)
-                {
-                    var superName = sexp.SuperStruct.IsImport() ? sexp.SuperStruct.ToImport(dumpAsset).ObjectName.ToString() : (sexp.SuperStruct.IsExport() ? sexp.SuperStruct.ToExport(dumpAsset).ObjectName.ToString() : $"idx={sexp.SuperStruct.Index}");
-                    Console.WriteLine($"    StructExport: SuperStruct={superName}, LoadedProperties={sexp.LoadedProperties?.Length ?? 0}, Children={sexp.Children?.Length ?? 0}");
-                    if (sexp.LoadedProperties != null)
-                    {
-                        for (int pi = 0; pi < sexp.LoadedProperties.Length; pi++)
-                        {
-                            var fp = sexp.LoadedProperties[pi];
-                            Console.WriteLine($"      FProperty[{pi}]: Name={fp.Name}, SerializedType={fp.SerializedType}, ArrayDim={fp.ArrayDim}, ElementSize={fp.ElementSize}, Flags={fp.PropertyFlags}");
-                        }
-                    }
-                    if (exp is ClassExport cexp)
-                    {
-                        Console.WriteLine($"    ClassExport: ClassFlags={cexp.ClassFlags}, ClassGeneratedBy={cexp.ClassGeneratedBy.Index}, ClassDefaultObject={cexp.ClassDefaultObject.Index}, FuncMap.Count={cexp.FuncMap?.Count ?? 0}");
-                    }
-                }
-                
-                // Dump raw export data for CDO
-                if (exp.ObjectName?.Value?.Value?.StartsWith("Default__") == true)
-                {
-                    if (exp is UAssetAPI.ExportTypes.RawExport rawExp)
-                    {
-                        Console.WriteLine($"    RawExport CDO data ({rawExp.Data?.Length ?? 0} bytes):");
-                        if (rawExp.Data != null && rawExp.Data.Length > 0)
-                        {
-                            for (int di = 0; di < Math.Min(rawExp.Data.Length, 256); di += 16)
-                            {
-                                var hexLine = string.Join(" ", rawExp.Data.Skip(di).Take(16).Select(b => $"{b:X2}"));
-                                Console.WriteLine($"      0x{di:X4}: {hexLine}");
-                            }
-                        }
-                    }
-                    else if (exp is UAssetAPI.ExportTypes.NormalExport neCdo)
-                    {
-                        Console.WriteLine($"    NormalExport CDO: {neCdo.Data?.Count ?? 0} properties");
-                        foreach (var p in neCdo.Data ?? new List<PropertyData>())
-                        {
-                            Console.WriteLine($"      {p.Name?.Value?.Value} ({p.PropertyType}) IsZero={p.IsZero}");
-                            DumpProperty(p, "        ");
-                        }
-                    }
-                }
-                
-                // Dump export data (properties) - skip CDO since we already printed it
-                if (exp is UAssetAPI.ExportTypes.DataTableExport dte)
-                {
-                    Console.WriteLine($"    Rows ({dte.Table?.Data?.Count ?? 0}):");
-                    foreach (var row in dte.Table?.Data ?? new List<StructPropertyData>())
-                    {
-                        Console.WriteLine($"      Row '{row.Name?.Value?.Value}':");
-                        foreach (var p in row.Value ?? new List<PropertyData>())
-                        {
-                            DumpProperty(p, "        ");
-                        }
-                    }
-                }
-                else if (exp is UAssetAPI.ExportTypes.NormalExport normalExp && !exp.ObjectName?.Value?.Value?.StartsWith("Default__") == true)
-                {
-                    Console.WriteLine($"    Properties ({normalExp.Data.Count}):");
-                    foreach (var prop in normalExp.Data)
-                    {
-                        DumpProperty(prop, "      ");
-                    }
-                }
-            }
+            DumpAssetFile(dumpPath);
         }
         else
         {
@@ -4107,8 +4241,33 @@ class Program
             
             case "set_description":
             {
-                var prop = ResolveProperty(properties, path);
-                if (prop != null) SetDescriptionFallback(prop, patch.GetProperty("value").GetString()!);
+                // Replace, never mutate: append_struct_clone shares the template's child
+                // PropertyData objects, so mutating one writes through to the row it was
+                // cloned from (this renamed the stock DriveMaps[0] "Island" and
+                // TimeAttackMaps[0] "Town Circuit 1" once already).
+                var (cont, dp) = ResolvePropertyWithContainer(properties, path);
+                if (dp is TextPropertyData oldText)
+                {
+                    if (cont != null)
+                    {
+                        int ci = -1;
+                        for (int i = 0; i < cont.Count; i++) if (ReferenceEquals(cont[i], dp)) { ci = i; break; }
+                        if (ci >= 0)
+                        {
+                            var freshText = new TextPropertyData(oldText.Name)
+                            {
+                                Namespace = FString.FromString(""),
+                                Value = FString.FromString(Guid.NewGuid().ToString("N").ToUpper().Substring(0, 32)),
+                                CultureInvariantString = FString.FromString(patch.GetProperty("value").GetString()!),
+                                HistoryType = TextHistoryType.Base,
+                            };
+                            freshText.Flags |= ETextFlag.CultureInvariant;
+                            cont[ci] = freshText;
+                            break;
+                        }
+                    }
+                    SetDescriptionFallback(dp, patch.GetProperty("value").GetString()!);
+                }
                 break;
             }
             
@@ -4148,10 +4307,24 @@ class Program
                 var leafName = path.Split('.').Last();
 
                 SoftObjectPropertyData newSoft;
-                if (prop is SoftObjectPropertyData existing)
+                int selfIdx = -1;
+                if (container != null)
+                    for (int i = 0; i < container.Count; i++)
+                        if (ReferenceEquals(container[i], prop)) { selfIdx = i; break; }
+
+                if (prop is SoftObjectPropertyData existing && selfIdx >= 0)
                 {
-                    existing.Value = softPath;
-                    newSoft = existing;
+                    // Replace rather than mutate: this property may be shared with the row an
+                    // append_struct_clone copied from, and writing through would repoint the
+                    // template row at our package.
+                    newSoft = new SoftObjectPropertyData(existing.Name) { Value = softPath };
+                    newSoft.PropertyTypeName = existing.PropertyTypeName;
+                    container![selfIdx] = newSoft;
+                }
+                else if (prop is SoftObjectPropertyData existing2)
+                {
+                    existing2.Value = softPath;
+                    newSoft = existing2;
                 }
                 else
                 {
@@ -5649,6 +5822,112 @@ class Program
     // with a single set of overrides, which is how 1,653 instances ended up with TwoSided=true and
     // a uniform clip. Here the parent, the colour parameter NAME and the overrides all come from
     // the row, so an instance can never inherit another instance's decision.
+    // Point a static mesh material slot at a real material instance. The BeamNG->UE conversion left
+    // slots holding the correct slot NAME but bound to WorldGridMaterial, so those triangles render
+    // as the engine's flat gray while the rest of the mesh looks right.
+    static void RetargetMaterials(string inDir, string configPath, string outDir)
+    {
+        Directory.CreateDirectory(outDir);
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(configPath));
+        int changed = 0, missed = 0;
+        foreach (var rule in doc.RootElement.GetProperty("rules").EnumerateArray())
+        {
+            var mesh = rule.GetProperty("mesh").GetString();
+            var slot = rule.GetProperty("slot").GetString();
+            var miPkg = rule.GetProperty("mi_package").GetString();
+            var miName = rule.GetProperty("mi_name").GetString();
+            // Vanilla paint/lamp slots reference a plain Material, not an instance; the import's
+            // class tag must match the asset type or the engine can reject the reference.
+            var miClass = rule.TryGetProperty("mi_class", out var mc) ? mc.GetString() : "MaterialInstanceConstant";
+            // Optional: the GAME finds paint/lamp slots by MaterialSlotName, not by material path, so a
+            // slot must be renamed to the vanilla name ("Body", "HeadLight", "LeftTailLight", ...) for
+            // the paint and light systems to touch it. The import cannot do this itself: a glTF material
+            // named "Body" in the mesh's own folder collides with the mesh package.
+            var newSlot = rule.TryGetProperty("new_slot", out var ns) ? ns.GetString() : null;
+            var path = Path.Combine(inDir, mesh + ".uasset");
+            var uexp = Path.Combine(inDir, mesh + ".uexp");
+            if (!File.Exists(path)) { Console.WriteLine($"MISS {mesh}"); missed++; continue; }
+            var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+            // The StaticMesh export is not necessarily the first one (BodySetup and NavCollision
+            // often precede it), so search every export for the material slot array.
+            ArrayPropertyData mats = null;
+            foreach (var e in asset.Exports.OfType<NormalExport>())
+            {
+                mats = e.Data.OfType<ArrayPropertyData>().FirstOrDefault(a => a.Name?.Value?.Value == "StaticMaterials");
+                if (mats != null) break;
+            }
+            if (mats == null) { Console.WriteLine($"NOMAT {mesh}"); missed++; continue; }
+            var (_, idx) = AddImportChain(asset, "/Script/Engine", miClass, miPkg, miName);
+            int hit = 0;
+            foreach (var el in mats.Value.OfType<StructPropertyData>())
+            {
+                var nm = el.Value.OfType<NamePropertyData>().FirstOrDefault(n => n.Name?.Value?.Value == "MaterialSlotName");
+                if (nm == null || nm.Value.ToString() != slot) continue;
+                var iface = el.Value.OfType<ObjectPropertyData>().FirstOrDefault(o => o.Name?.Value?.Value == "MaterialInterface");
+                if (iface == null) continue;
+                iface.Value = FPackageIndex.FromImport(idx - 1);
+                if (newSlot != null) nm.Value = FName.FromString(asset, newSlot);
+                hit++;
+            }
+            if (hit == 0) { Console.WriteLine($"NOSLOT {mesh} {slot}"); missed++; continue; }
+            // asset.Write emits BOTH halves. Copying the original .uexp afterwards is the trap that
+            // silently reverted every material edit once: the payload lives in .uexp.
+            asset.Write(Path.Combine(outDir, mesh + ".uasset"));
+            Console.WriteLine($"RETARGET {mesh} {slot} -> {miName} x{hit}");
+            changed++;
+        }
+        Console.WriteLine($"retarget_materials changed={changed} problems={missed}");
+    }
+
+    // One row per material instance: what the shipped asset actually says, so an audit compares
+    // serialized reality against the plan instead of trusting the build counters.
+    static void AuditMaterials(string dir, string outTsv)
+    {
+        var lines = new List<string> { "mi\tparent\tblend\ttwo_sided\tclip\toverride_block\ttexture_params" };
+        int n = 0, bad = 0;
+        foreach (var path in Directory.GetFiles(dir, "*.uasset").OrderBy(p => p))
+        {
+            var mi = Path.GetFileNameWithoutExtension(path);
+            try
+            {
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { lines.Add($"{mi}\tNO_EXPORT\t-\t-\t-\t-"); bad++; continue; }
+                var props = exp.Data;
+                var parentProp = props.OfType<ObjectPropertyData>().FirstOrDefault(p => p.Name?.Value?.Value == "Parent");
+                var parent = ParentPath(asset, parentProp) ?? "-";
+                var ov = props.OfType<StructPropertyData>().FirstOrDefault(s => s.Name?.Value?.Value == "BasePropertyOverrides");
+                string blend = "-", two = "-", clip = "-";
+                // A texture bound to a parameter name the master does not expose is a dead binding:
+                // the engine ignores it and the master's default texture shows instead. That is the
+                // "material renders in a flat colour" family in one line.
+                var tparr = props.OfType<ArrayPropertyData>().FirstOrDefault(a => a.Name?.Value?.Value == "TextureParameterValues");
+                var pnames = new List<string>();
+                if (tparr != null)
+                    foreach (var el in tparr.Value.OfType<StructPropertyData>())
+                    {
+                        var info = el.Value.OfType<StructPropertyData>().FirstOrDefault(s => s.Name?.Value?.Value == "ParameterInfo");
+                        var nm = info?.Value.OfType<NamePropertyData>().FirstOrDefault();
+                        if (nm != null) pnames.Add(nm.Value.ToString());
+                    }
+                if (ov != null)
+                {
+                    var b = ov.Value.OfType<EnumPropertyData>().FirstOrDefault(x => x.Name?.Value?.Value == "BlendMode");
+                    if (b != null) blend = b.Value?.ToString() ?? "-";
+                    var t = ov.Value.OfType<BoolPropertyData>().FirstOrDefault(x => x.Name?.Value?.Value == "TwoSided");
+                    if (t != null) two = t.Value ? "1" : "0";
+                    var c = ov.Value.OfType<FloatPropertyData>().FirstOrDefault(x => x.Name?.Value?.Value == "OpacityMaskClipValue");
+                    if (c != null) clip = c.Value.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+                }
+                lines.Add($"{mi}\t{parent}\t{blend}\t{two}\t{clip}\t{(ov != null ? 1 : 0)}\t{string.Join(",", pnames)}");
+                n++;
+            }
+            catch (Exception e) { lines.Add($"{mi}\tERROR:{e.GetType().Name}\t-\t-\t-\t-"); bad++; }
+        }
+        File.WriteAllLines(outTsv, lines);
+        Console.WriteLine($"audit_materials rows={n} problems={bad} out={outTsv}");
+    }
+
     // Full object path of whatever an instance is currently parented to, e.g.
     // "/Game/Env/Materials/Master/M_PropMaster" (null when unresolved). The package import holds the
     // directory and the parent import holds only the asset name, so the two must be joined.
@@ -5848,6 +6127,65 @@ class Program
         Console.WriteLine($"set_mi_parent changed={changed} copied={copied} failed={failed} master={masterName}");
     }
 
+    // Repoint a material instance's parent WITHOUT appending imports: rewrite the existing
+    // parent import (and the package import that owns it) in place. Appending imports makes the
+    // cooked package fail to load in this game — the engine substitutes DefaultTextMaterialOpaque
+    // and the asset silently renders as the wrong material.
+    static void SetMiParentInPlace(string inDir, string outDir, string listFile, string masterPkg, string masterName)
+    {
+        Directory.CreateDirectory(outDir);
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (listFile != "-" && File.Exists(listFile))
+            foreach (var line in File.ReadAllLines(listFile))
+            {
+                var t = line.Trim();
+                if (t.Length != 0 && !t.StartsWith("#")) wanted.Add(t);
+            }
+
+        int changed = 0, copied = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            try
+            {
+                if (!wanted.Contains(stem))
+                {
+                    File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
+                    if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
+                    copied++;
+                    continue;
+                }
+
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                var parent = exp?.Data.OfType<ObjectPropertyData>()
+                    .FirstOrDefault(p => p.Name?.Value?.Value == "Parent");
+                if (parent == null) { Console.WriteLine($"SKIP {stem}: no Parent"); failed++; continue; }
+
+                int raw = parent.Value.Index;            // this tool writes imports as negative indices
+                if (raw == 0) { Console.WriteLine($"SKIP {stem}: parent is null"); failed++; continue; }
+                int pIdx = raw < 0 ? -raw : raw;         // 1-based into asset.Imports
+
+                var pImport = asset.Imports[pIdx - 1];
+                int outerRaw = pImport.OuterIndex.Index;
+                int oIdx = outerRaw < 0 ? -outerRaw : outerRaw;
+                var oldName = pImport.ObjectName.Value.Value;
+                pImport.ObjectName = FName.FromString(asset, masterName);
+                if (oIdx > 0)
+                {
+                    var pkgImport = asset.Imports[oIdx - 1];
+                    pkgImport.ObjectName = FName.FromString(asset, masterPkg);
+                }
+                Console.WriteLine($"  {stem}: {oldName} -> {masterName} (import {pIdx}, no append)");
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex) { Console.WriteLine($"FAIL {stem}: {ex.Message}"); failed++; }
+        }
+        Console.WriteLine($"set_mi_parent_inplace changed={changed} copied={copied} failed={failed} master={masterName}");
+    }
+
     // Point one texture parameter at a different texture. Needed when the fix is a *texture*
     // change (e.g. an author mask baked into BaseColor alpha) and the instance must reference
     // the new asset without touching parents or the other bindings.
@@ -5991,6 +6329,113 @@ class Program
             }
         }
         Console.WriteLine($"set_texparam changed={changed} copied={copied} failed={failed} param={param} tex={texName}");
+    }
+
+    // Creates a texture parameter override that the BeamNG->UE conversion never produced.
+    // Same shape as --set-texparam, but when the parameter (or the whole TextureParameterValues
+    // array) is missing it builds one, borrowing the ParameterInfo/ExpressionGUID layout from a
+    // sibling entry in the same asset so the unversioned struct keeps its exact cooked shape.
+    static void EnsureTexParam(string inDir, string outDir, string listFile, string param, string defaultPkg)
+    {
+        Directory.CreateDirectory(outDir);
+        // Lines: "MI" | "MI<TAB>textureName" | "MI<TAB>textureName<TAB>packagePath"
+        var wanted = new Dictionary<string, (string TexName, string Pkg)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in File.ReadAllLines(listFile))
+        {
+            var t = line.Trim();
+            if (t.Length == 0 || t.StartsWith("#")) continue;
+            var parts = t.Split('\t');
+            wanted[parts[0].Trim()] = (
+                parts.Length > 1 ? parts[1].Trim() : "",
+                parts.Length > 2 && parts[2].Trim().Length > 0 ? parts[2].Trim() : defaultPkg);
+        }
+
+        int changed = 0, created = 0, copied = 0, failed = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            try
+            {
+                if (!wanted.TryGetValue(stem, out var spec))
+                {
+                    CopyPair(path, uexp, outDir); copied++; continue;
+                }
+                if (spec.Pkg == null || spec.Pkg == "-")
+                {
+                    CopyPair(path, uexp, outDir);
+                    Console.WriteLine("SKIP " + stem + ": no package path"); failed++; continue;
+                }
+
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { CopyPair(path, uexp, outDir); Console.WriteLine("SKIP " + stem + ": no export"); failed++; continue; }
+
+                var texName = spec.TexName.Length > 0 ? spec.TexName : stem;
+                var (_, idx) = AddImportChain(asset, "/Script/Engine", "Texture2D", spec.Pkg, texName);
+                var target = FPackageIndex.FromImport(idx - 1);
+
+                ArrayPropertyData? arr = exp.Data.OfType<ArrayPropertyData>()
+                    .FirstOrDefault(p => p.Name?.Value?.Value == "TextureParameterValues");
+
+                bool hit = false;
+                if (arr != null)
+                    foreach (var el in arr.Value)
+                    {
+                        if (el is not StructPropertyData sp) continue;
+                        var info2 = sp.Value.OfType<StructPropertyData>().FirstOrDefault(s => s.Name?.Value?.Value == "ParameterInfo");
+                        var nm2 = info2?.Value.OfType<NamePropertyData>().FirstOrDefault(n => n.Name?.Value?.Value == "Name");
+                        if (nm2?.Value?.ToString() != param) continue;
+                        var pv2 = sp.Value.OfType<ObjectPropertyData>().FirstOrDefault(o => o.Name?.Value?.Value == "ParameterValue");
+                        if (pv2 == null) continue;
+                        pv2.Value = target; hit = true;
+                    }
+
+                if (!hit)
+                {
+                    // Any existing parameter struct in this asset is a valid shape donor: ParameterInfo
+                    // and ExpressionGUID are identical for texture/scalar/vector overrides.
+                    var donor = arr?.Value.OfType<StructPropertyData>().FirstOrDefault()
+                        ?? exp.Data.OfType<ArrayPropertyData>()
+                            .Where(p => p.Name?.Value?.Value == "ScalarParameterValues" || p.Name?.Value?.Value == "VectorParameterValues")
+                            .SelectMany(p => p.Value).OfType<StructPropertyData>().FirstOrDefault();
+                    if (donor == null)
+                    {
+                        CopyPair(path, uexp, outDir);
+                        Console.WriteLine("SKIP " + stem + ": no parameter template"); failed++; continue;
+                    }
+
+                    var sp = CloneMiParamEntry(donor, asset, param);
+                    sp.Name = FName.FromString(asset, "TextureParameterValues");
+                    sp.StructType = FName.FromString(asset, "TextureParameterValue");
+                    // Swap the value node: a scalar donor carries a FloatParameterValue.
+                    for (int j = 0; j < sp.Value.Count; j++)
+                        if (sp.Value[j].Name?.Value?.Value == "ParameterValue")
+                        {
+                            sp.Value[j] = new ObjectPropertyData(FName.FromString(asset, "ParameterValue")) { Value = target };
+                            break;
+                        }
+
+                    if (arr == null)
+                    {
+                        arr = new ArrayPropertyData(FName.FromString(asset, "TextureParameterValues"));
+                        arr.PropertyTypeName = MakeTypeName(asset, arr.PropertyType);
+                        exp.Data.Add(arr);
+                    }
+                    arr.Value = arr.Value.Concat(new PropertyData[] { sp }).ToArray();
+                    created++;
+                }
+
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex)
+            {
+                CopyPair(path, uexp, outDir);
+                Console.WriteLine("FAIL " + stem + ": " + ex.Message); failed++;
+            }
+        }
+        Console.WriteLine($"ensure_texparam changed={changed} created={created} copied={copied} failed={failed} param={param}");
     }
 
     static void RetargetMIs(string inDir, string outDir, string forceMaskedFile = null)
@@ -7079,6 +7524,163 @@ class Program
     // class is the BP and whose RootComponent points at a component export holding the
     // transform. The BP's SCS builds InteractionCube / MotorTownInteractable / Camera by
     // itself, so nothing else has to be authored here.
+    // ---- clone an actor's whole component subtree -------------------------------
+    // A Motor Town garage is not a bare actor: it is a BP_C1_Prop_C instance carrying
+    // DefaultSceneRoot + a "Child" ChildActorComponent whose ChildActorClass is
+    // GarageActorBP_C. Anything else fails at runtime, so copy the structure verbatim
+    // (same component classes, same names, same attach wiring) and move only the root.
+    // Cooked exports carry the async loader's scheduling metadata. UAssetAPI's Export copy
+    // constructor does NOT carry it, so a clone lands as tpl=0, RF_NoFlags, and empty
+    // CBS/SBC/CBC lists -- the engine then cannot create it and fatals with
+    // "Missing Dependency ... still waiting for creation/serialization".
+    static FPackageIndex RemapDepIdx(FPackageIndex p, Dictionary<int, int> m)
+        => (p != null && p.Index > 0 && m.TryGetValue(p.Index, out var ni)) ? new FPackageIndex(ni) : p;
+
+    static void CopyExportMeta(Export src, Export dst, Dictionary<int, int> m)
+    {
+        dst.TemplateIndex = src.TemplateIndex;
+        dst.ObjectFlags = src.ObjectFlags;
+        dst.SerializationBeforeSerializationDependencies = src.SerializationBeforeSerializationDependencies.Select(p => RemapDepIdx(p, m)).ToList();
+        dst.CreateBeforeSerializationDependencies = src.CreateBeforeSerializationDependencies.Select(p => RemapDepIdx(p, m)).ToList();
+        dst.SerializationBeforeCreateDependencies = src.SerializationBeforeCreateDependencies.Select(p => RemapDepIdx(p, m)).ToList();
+        dst.CreateBeforeCreateDependencies = src.CreateBeforeCreateDependencies.Select(p => RemapDepIdx(p, m)).ToList();
+    }
+
+    static void CloneActorSubtree(string inPath, string outPath, string templateName, string newName,
+                                  double x, double y, double z, double yaw)
+    {
+        UAsset.CaptureOriginalExportData = true;   // needed to patch the level actor table
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        var exports = asset.Exports;
+
+        int tmplIdx1 = -1;
+        for (int i = 0; i < exports.Count; i++)
+        {
+            // FName.ToString() is authoritative: .Value.Value is null for table-indexed names
+            var nm = exports[i].ObjectName?.ToString();
+            if (nm == templateName) { tmplIdx1 = i + 1; break; }
+        }
+        if (tmplIdx1 < 0) { Console.WriteLine($"CLONE_FAIL no export named {templateName}"); return; }
+        if (exports[tmplIdx1 - 1] is not NormalExport tmpl) { Console.WriteLine("CLONE_FAIL template is not a NormalExport"); return; }
+
+        // component set = every export referenced by the template's object-typed properties
+        var comps = new List<int>();
+        void Collect(PropertyData p)
+        {
+            if (p is ObjectPropertyData o && o.Value != null)
+            {
+                int i = o.Value.Index;
+                if (i > 0 && !comps.Contains(i)) comps.Add(i);
+            }
+            else if (p is ArrayPropertyData a)
+            {
+                foreach (var c in a.Value) Collect(c);
+            }
+        }
+        foreach (var p in tmpl.Data) Collect(p);
+        if (comps.Count == 0) { Console.WriteLine("CLONE_FAIL template references no components"); return; }
+
+        // Layout matters: in a cooked map the actor sits BEFORE its own components
+        // (BP_C1_Prop_C_0 = 1, Child = 4, DefaultSceneRoot = 13), so every component's Outer
+        // points backwards at an already-created object. Appending the components first makes
+        // their Outer point forward and the loader fails with "request for <actor> but it was
+        // still waiting for creation".
+        int actorIdx1 = exports.Count + 1;
+        var map = new Dictionary<int, int>();
+        for (int k = 0; k < comps.Count; k++) map[comps[k]] = actorIdx1 + 1 + k;
+        map[tmplIdx1] = actorIdx1;      // component CBC points at the actor: repoint it
+
+        static void RemapRefs(PropertyData p, Dictionary<int, int> m)
+        {
+            if (p is ObjectPropertyData o)
+            {
+                if (o.Value != null && o.Value.Index > 0 && m.TryGetValue(o.Value.Index, out var ni))
+                    o.Value = new FPackageIndex(ni);
+            }
+            else if (p is ArrayPropertyData a)
+            {
+                foreach (var c in a.Value) RemapRefs(c, m);
+            }
+            else if (p is StructPropertyData s)
+            {
+                foreach (var c in s.Value) RemapRefs(c, m);
+            }
+        }
+
+        int tmplRoot = -1;
+        foreach (var p in tmpl.Data)
+            if (p.Name?.Value?.Value == "RootComponent" && p is ObjectPropertyData ro && ro.Value != null)
+                tmplRoot = ro.Value.Index;
+
+        var newComps = new List<NormalExport>();
+        foreach (var idx in comps)
+        {
+            if (exports[idx - 1] is not NormalExport src) { Console.WriteLine($"CLONE_FAIL component {idx} unparsed"); return; }
+            var cl = new NormalExport(src);
+            cl.Data = src.Data.Select(CloneProp).ToList();
+            cl.ObjectName = FName.FromString(asset, src.ObjectName?.ToString() ?? "Comp");  // keep the name
+            cl.OuterIndex = new FPackageIndex(actorIdx1);
+            cl.ClassIndex = src.ClassIndex;
+            CopyExportMeta(src, cl, map);
+            foreach (var p in cl.Data) RemapRefs(p, map);
+            if (idx == tmplRoot)
+            {
+                foreach (var p in cl.Data)
+                {
+                    var n = p.Name?.Value?.Value;
+                    if (n == "RelativeLocation") SetVecDeep(p, x, y, z);
+                    else if (n == "RelativeRotation") SetRotDeep(p, yaw);
+                }
+            }
+            newComps.Add(cl);
+        }
+
+        var actor = new NormalExport(tmpl);
+        actor.Data = tmpl.Data.Select(CloneProp).ToList();
+        actor.ObjectName = FName.FromString(asset, newName);
+        actor.OuterIndex = tmpl.OuterIndex;   // same level as the template
+        actor.ClassIndex = tmpl.ClassIndex;   // same BP class: structure is the contract
+        CopyExportMeta(tmpl, actor, map);
+        foreach (var p in actor.Data) RemapRefs(p, map);
+
+        exports.Add(actor);              // actor first: lower index than its components
+        foreach (var c in newComps) exports.Add(c);
+
+        // Exports alone are not enough: the level carries an actor table (the same one
+        // --drop-actors rewrites). Appending the export without registering it there leaves
+        // the actor unspawned, which reads in game as "nothing was added".
+        var lvl = asset.Exports.OfType<LevelExport>().FirstOrDefault();
+        if (lvl?.Actors == null || lvl.OriginalData == null)
+        {
+            Console.WriteLine("CLONE_FAIL level actor table unavailable (load with CaptureOriginalExportData)");
+            return;
+        }
+        {
+            int expected = lvl.Actors.Count;
+            int off = FindActorCountOffset(lvl.OriginalData, expected,
+                maxIdx: Math.Max(expected, asset.Exports.Count) + 4096, minIdx: -65536);
+            if (off < 0) { Console.WriteLine($"CLONE_FAIL no actor table (count={expected})"); return; }
+            var raw = lvl.OriginalData;
+            int arrayStart = off + 4;
+            int arrayBytes = expected * 4;
+            var outB = new List<byte>(raw.Length + 4);
+            outB.AddRange(raw.Take(arrayStart + arrayBytes));
+            outB.AddRange(BitConverter.GetBytes(actorIdx1));
+            outB.AddRange(raw.Skip(arrayStart + arrayBytes));
+            var arr = outB.ToArray();
+            Array.Copy(BitConverter.GetBytes(expected + 1), 0, arr, off, 4);
+            lvl.OriginalData = arr;
+            lvl.DataDirty = false;          // write patched original bytes, never a re-serialisation
+            lvl.SerialSize = arr.Length;
+            lvl.Actors.Add(new FPackageIndex(actorIdx1));
+            Console.WriteLine($"CLONE_ACTORS {expected} -> {expected + 1} (+{actorIdx1})");
+        }
+
+        asset.Write(outPath);
+        Console.WriteLine($"CLONE_OK {newName} actor={actorIdx1} comps={string.Join(",", comps.Select(c => map[c]))} " +
+                          $"from={templateName} at ({x},{y},{z}) yaw={yaw} -> {outPath}");
+    }
+
     static void RunAddGarage(string inPath, string outPath, double x, double y, double z, double yaw)
     {
         var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
@@ -7801,5 +8403,189 @@ class Program
         {
             Console.WriteLine($"DEBUG Schema {schemaName}: NOT FOUND");
         }
+    }
+
+    // --set-mi-params <config.json>
+    // Reparent, bind textures, set scalars and static switches on cooked material instances in
+    // ONE pass, driven by a JSON config. Why one op instead of a chain of single-purpose ops: a
+    // roughness port only works when the parent, the roughness texture and Use_RoughnessTexture
+    // change together -- any one of them alone produces an instance that looks identical to the
+    // current build, so a partial application is indistinguishable from "no effect" in game.
+    //
+    // Config shape:
+    //   { "inDir": "...", "outDir": "...",
+    //     "parent": {"pkg": "/Game/Env/Materials/MI_GroundMaster", "name": "MI_GroundMaster"},
+    //     "instances": { "MI_C1_x": {
+    //        "textures": {"Roughness": {"pkg": "...", "name": "..."}},
+    //        "scalars":  {"RoughnessIntensity": 1.0},
+    //        "static":   {"Use_RoughnessTexture": true} } } }
+    static void SetMiParams(string configPath)
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(configPath));
+        var root = doc.RootElement;
+        string inDir = root.GetProperty("inDir").GetString();
+        string outDir = root.GetProperty("outDir").GetString();
+        Directory.CreateDirectory(outDir);
+
+        string? parentPkg = null, parentName = null;
+        string parentClass = "MaterialInstanceConstant";
+        if (root.TryGetProperty("parent", out var pe))
+        {
+            parentPkg = pe.GetProperty("pkg").GetString();
+            parentName = pe.GetProperty("name").GetString();
+            if (pe.TryGetProperty("class", out var pc) && pc.GetString() is string pcs && pcs.Length > 0) parentClass = pcs;
+        }
+        var insts = root.GetProperty("instances");
+
+        int changed = 0, copied = 0, failed = 0, texOk = 0, scalOk = 0, statOk = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            if (!insts.TryGetProperty(stem, out var spec)) { CopyPair(path, uexp, outDir); copied++; continue; }
+            try
+            {
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { CopyPair(path, uexp, outDir); failed++; Console.WriteLine($"SKIP {stem}: no export"); continue; }
+
+                if (parentPkg != null && parentName != null)
+                {
+                    var parentProp = exp.Data.OfType<ObjectPropertyData>().FirstOrDefault(p => p.Name?.Value?.Value == "Parent");
+                    if (parentProp == null) { CopyPair(path, uexp, outDir); failed++; Console.WriteLine($"SKIP {stem}: no Parent"); continue; }
+                    var (_, idx) = AddImportChain(asset, "/Script/Engine", parentClass, parentPkg, parentName);
+                    parentProp.Value = FPackageIndex.FromImport(idx - 1);
+                }
+
+                if (spec.TryGetProperty("textures", out var te))
+                    foreach (var kv in te.EnumerateObject())
+                    {
+                        if (BindTextureParam(asset, exp, kv.Name, kv.Value.GetProperty("pkg").GetString(), kv.Value.GetProperty("name").GetString())) texOk++;
+                        else Console.WriteLine($"SKIP {stem}: no texture entry to clone for {kv.Name}");
+                    }
+
+                if (spec.TryGetProperty("scalars", out var se))
+                    foreach (var kv in se.EnumerateObject())
+                    {
+                        if (BindScalarParam(asset, exp, kv.Name, kv.Value.GetDouble())) scalOk++;
+                        else Console.WriteLine($"SKIP {stem}: no scalar entry to clone for {kv.Name}");
+                    }
+
+                if (spec.TryGetProperty("static", out var st))
+                    foreach (var kv in st.EnumerateObject())
+                    {
+                        if (BindStaticParam(asset, exp, kv.Name, kv.Value.GetBoolean())) statOk++;
+                        else Console.WriteLine($"SKIP {stem}: no static entry to clone for {kv.Name}");
+                    }
+
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+            }
+            catch (Exception ex) { CopyPair(path, uexp, outDir); Console.WriteLine($"FAIL {stem}: {ex.Message}"); failed++; }
+        }
+        Console.WriteLine($"set_mi_params changed={changed} copied={copied} failed={failed} tex={texOk} scalars={scalOk} statics={statOk}");
+    }
+
+    static ArrayPropertyData? MiArray(NormalExport exp, string name) =>
+        exp.Data.OfType<ArrayPropertyData>().FirstOrDefault(a => a.Name?.Value?.Value == name);
+
+    static string? MiParamName(StructPropertyData el) =>
+        el.Value.OfType<StructPropertyData>()
+            .FirstOrDefault(s => s.Name?.Value?.Value == "ParameterInfo")?
+            .Value.OfType<NamePropertyData>()
+            .FirstOrDefault(n => n.Name?.Value?.Value == "Name")?.Value?.ToString();
+
+    // Copy one parameter entry with a FRESH ParameterInfo, so the copy's name is independent of
+    // the donor's (sharing the child struct writes the new name through to the donor entry).
+    static StructPropertyData CloneMiParamEntry(StructPropertyData src, UAsset asset, string newName)
+    {
+        // Deep copy, not a shallow list copy: a shared ParameterValue child means writing the
+        // copy's value also writes the donor's (first run turned Roughness 0.65 into 1.0 while
+        // adding RoughnessIntensity -- the donor's float was the same object).
+        var clone = (StructPropertyData)CloneProp(src);
+        foreach (var info in clone.Value.OfType<StructPropertyData>())
+        {
+            if (info.Name?.Value?.Value != "ParameterInfo") continue;
+            for (int j = 0; j < info.Value.Count; j++)
+                if (info.Value[j] is NamePropertyData np && np.Name?.Value?.Value == "Name")
+                    info.Value[j] = new NamePropertyData(np.Name) { Value = FName.FromString(asset, newName) };
+        }
+        return clone;
+    }
+
+    static bool BindTextureParam(UAsset asset, NormalExport exp, string param, string pkg, string name)
+    {
+        var arr = MiArray(exp, "TextureParameterValues");
+        if (arr == null) return false;
+        var (_, idx) = AddImportChain(asset, "/Script/Engine", "Texture2D", pkg, name);
+        var target = FPackageIndex.FromImport(idx - 1);
+        foreach (var el in arr.Value.OfType<StructPropertyData>())
+        {
+            if (MiParamName(el) != param) continue;
+            var pv = el.Value.OfType<ObjectPropertyData>().FirstOrDefault(o => o.Name?.Value?.Value == "ParameterValue");
+            if (pv == null) continue;
+            pv.Value = target;
+            return true;
+        }
+        var donor = arr.Value.OfType<StructPropertyData>().FirstOrDefault(e => MiParamName(e) == "BaseColor")
+                    ?? arr.Value.OfType<StructPropertyData>().FirstOrDefault();
+        if (donor == null) return false;
+        var clone = CloneMiParamEntry(donor, asset, param);
+        var cpv = clone.Value.OfType<ObjectPropertyData>().FirstOrDefault(o => o.Name?.Value?.Value == "ParameterValue");
+        if (cpv == null) return false;
+        cpv.Value = target;
+        arr.Value = arr.Value.Concat(new PropertyData[] { clone }).ToArray();
+        return true;
+    }
+
+    static bool BindScalarParam(UAsset asset, NormalExport exp, string param, double value)
+    {
+        var arr = MiArray(exp, "ScalarParameterValues");
+        if (arr == null) return false;
+        foreach (var el in arr.Value.OfType<StructPropertyData>())
+        {
+            if (MiParamName(el) != param) continue;
+            var pv = el.Value.OfType<FloatPropertyData>().FirstOrDefault(f => f.Name?.Value?.Value == "ParameterValue");
+            if (pv == null) continue;
+            pv.Value = (float)value;
+            return true;
+        }
+        var donor = arr.Value.OfType<StructPropertyData>().FirstOrDefault();
+        if (donor == null) return false;
+        var clone = CloneMiParamEntry(donor, asset, param);
+        var cf = clone.Value.OfType<FloatPropertyData>().FirstOrDefault(f => f.Name?.Value?.Value == "ParameterValue");
+        if (cf == null) return false;
+        cf.Value = (float)value;
+        arr.Value = arr.Value.Concat(new PropertyData[] { clone }).ToArray();
+        return true;
+    }
+
+    // Static switches live at StaticParametersRuntime.StaticSwitchParameters, one struct per
+    // switch with Value + ParameterInfo + bOverride. bOverride=True is what makes the instance's
+    // choice stick: the switch is a compiled state, and an un-overridden entry reads as inherited.
+    static bool BindStaticParam(UAsset asset, NormalExport exp, string param, bool value)
+    {
+        var rt = exp.Data.OfType<StructPropertyData>().FirstOrDefault(s => s.Name?.Value?.Value == "StaticParametersRuntime");
+        if (rt == null) return false;
+        var arr = rt.Value.OfType<ArrayPropertyData>().FirstOrDefault(a => a.Name?.Value?.Value == "StaticSwitchParameters");
+        if (arr == null) return false;
+        StructPropertyData? target = null;
+        foreach (var el in arr.Value.OfType<StructPropertyData>())
+            if (MiParamName(el) == param) { target = el; break; }
+        if (target == null)
+        {
+            var donor = arr.Value.OfType<StructPropertyData>().FirstOrDefault();
+            if (donor == null) return false;
+            target = CloneMiParamEntry(donor, asset, param);
+            arr.Value = arr.Value.Concat(new PropertyData[] { target }).ToArray();
+        }
+        bool sawValue = false;
+        foreach (var p in target.Value.OfType<BoolPropertyData>())
+        {
+            var nm = p.Name?.Value?.Value;
+            if (nm == "Value") { p.Value = value; sawValue = true; }
+            else if (nm == "bOverride") p.Value = true;
+        }
+        return sawValue;
     }
 }
