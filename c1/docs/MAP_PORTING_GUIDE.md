@@ -366,6 +366,49 @@ Stopping when the counts do not move is what prevents shipping a placebo build.
 
 ---
 
+## 4b. Artifacts vs canonicals: `Content\Paks` is a lab
+
+The game's `Content\Paks` directory is where builds are **tested**, not where they are **kept**.
+Expect it to be dirty: paks get installed over each other, renamed, rolled back, deleted between
+iterations, and an experiment that half-worked is often still sitting there when the next one starts.
+Treating it as the source of truth means the next rebuild is derived from whatever experiment was
+left behind.
+
+**Layout**
+
+- **Canonical** — one directory per built set, outside the game dir:
+  `/opt/data/releases/<mod>/<set>/` holding the paks, `pakset.py` manifests, `sha256.txt`, and ship
+  notes. Nothing is overwritten in place; a new build is a new directory (or at minimum a new
+  versioned pak name inside it).
+- **Lab** — the installed `MotorTown/Content/Paks/`. Stable, versionless filenames, overwritten on
+  every iteration. Files here are copies of canonicals and may be deleted freely.
+
+**Rules that follow**
+
+- **Provenance is the sha256, not the filename.** After an iteration the same installed name means a
+  different build. "What is installed" is only answerable by hashing the file and looking that hash
+  up in a canonical set. The filename is a mount-order decision (`zzz_` < `zzzzz_` < `zzzzzz_`), never
+  an identity.
+- **Never rebuild from the installed tree** — derive from the canonical set that shipped. Read
+  `Paks` to *diagnose* an in-game result, not to source a build. The exception is an explicit
+  "publish exactly what I have installed", and even then the files are copied byte-for-byte, not
+  rebuilt.
+- **Canonicalize a winning experiment immediately.** If an install on the client produced the result
+  you want, copy the bytes into the release dir with hashes and manifests before touching `Paks`
+  again — otherwise the only copy of the good build is a file the next iteration deletes.
+- **The ownership gate needs one set per manifest directory.** `pakset.py check <dir>` means "is this
+  set clean", so a retired pak's manifest must leave the directory with the pak. A stale manifest
+  makes the gate report duplicates for a pak that is not installed — indistinguishable, at a glance,
+  from a real ownership defect.
+- **Deleting from `Paks` is routine; deleting from `releases/` is not.** Before replacing an installed
+  pak, move it to a timestamped backup dir, and keep the canonical set forever.
+
+**Verification order for an install:** build → hash the built artifact → write the canonical set +
+manifests → `pakset.py check` green → copy into `Paks` → re-hash the **destination** and compare with
+the canonical sha. A size match alone proves nothing when a rebuild changed only a transform.
+
+---
+
 ## 5. Failure catalogue
 
 Symptom → cause → fix. Every entry here cost real time; they are ordered by how much
