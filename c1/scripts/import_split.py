@@ -63,6 +63,26 @@ def import_obj(path, dest, name):
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
 
+def empty_source(path):
+    """True when the OBJ carries no triangle at all.
+
+    Six sources are placeholders: three vertices and one face, and that face is the malformed
+    `f 0 1/1/1 2/2/2` line the split writes into every file. Strip that line and there is nothing
+    left to import, so the importer fails and the previous build's asset stays behind -- which is
+    how a sliver survived here long after the split stopped producing geometry for these cells.
+    """
+    try:
+        if os.path.getsize(path) > 8192:
+            return False
+        with open(path, "r", errors="ignore") as f:
+            for line in f:
+                if line.startswith("f ") and len(line.split()) >= 4:
+                    return False
+    except OSError:
+        return False
+    return True
+
+
 def drop(pkg):
     if unreal.EditorAssetLibrary.does_asset_exist(pkg):
         if not unreal.EditorAssetLibrary.delete_asset(pkg):
@@ -156,15 +176,24 @@ def apply_slots(sm, rec):
 
 
 def obj_material_names(path):
+    """Materials that actually carry a face, in file order.
+
+    Counting `usemtl` lines is wrong: the split ends every file with an extra `usemtl` block whose
+    only face is the malformed `f 0 ...` line, so once that line is stripped the material has no
+    geometry and the importer -- correctly -- creates no slot for it. The gate then reports a
+    mismatch that is only a count of a slot nobody can see.
+    """
     names = []
     seen = set()
-    with open(path, "r", errors="replace") as f:
+    current = None
+    with open(path, "r", errors="ignore") as f:
         for line in f:
             if line.startswith("usemtl "):
-                n = line.split(None, 1)[1].strip()
-                if n not in seen:
-                    seen.add(n)
-                    names.append(n)
+                current = line.split(None, 1)[1].strip()
+            elif line.startswith("f ") and current is not None:
+                if current not in seen:
+                    seen.add(current)
+                    names.append(current)
     return names
 
 
@@ -211,6 +240,11 @@ def main():
             # c0_-21 is foliage-only: the split produced no structural geometry for it, so there
             # is nothing to import here and its foliage is handled in the loop below
             report["cells"][cell] = {"foliage_only": True}
+            continue
+        if empty_source(obj):
+            deleted = drop(pkg)
+            report["cells"][cell] = {"empty_source": True, "deleted_first": deleted}
+            log("cell %s -> empty_source" % cell)
             continue
         deleted = drop(pkg)
         import_obj(obj, DEST_STRUCT, cell)
@@ -281,6 +315,10 @@ def main():
             report["foliage"][cell] = {"skipped": "no foliage"}
             continue
         pkg = "%s/%s" % (DEST_FOLIAGE, cell)
+        if empty_source(obj):
+            drop(pkg)
+            report["foliage"][cell] = {"skipped": "empty_source"}
+            continue
         drop(pkg)
         import_obj(obj, DEST_FOLIAGE, cell)
         sm = unreal.EditorAssetLibrary.load_asset(pkg)
@@ -298,7 +336,7 @@ def main():
         log("foliage %s -> %s" % (cell, report["foliage"][cell]))
 
     struct_ok = all(
-        isinstance(v, dict) and (v.get("foliage_only") or
+        isinstance(v, dict) and (v.get("foliage_only") or v.get("empty_source") or
                                  (v.get("lods") == 1
         and v.get("slot_names_match_obj") is True
         and v.get("slot_err") in (None, "skipped:non_cell")
