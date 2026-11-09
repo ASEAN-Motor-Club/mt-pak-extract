@@ -318,6 +318,127 @@ do
   print("[C1A7Check] " .. VER .. " loaded")
 end
 
+-- =====================================================================================
+-- Level travel + API discovery
+--
+-- There is no "start a Time Attack" function in the C++ SDK: EMotorTownGameType has
+-- TimeAttack, UMTGameResource.TimeAttackMaps is a TArray<FMTMap> of soft level pointers,
+-- and the actual start lives in blueprint (UStartOfflineTimeAttackWidget has LevelsSpinBox /
+-- VehiclesSpinBox, i.e. it picks from that array). So the generic engine route is the reliable
+-- one for LOADING a level, and the TA entry point has to be discovered at runtime with
+-- UStruct:ForEachFunction, then called through UFunction:__call.
+--
+-- F9  -> OpenLevel(/Game/Mods/C1Full/Maps/C1Full)
+-- F7  -> dump every function of the interesting objects to D:/c1_fns.json
+-- =====================================================================================
+
+local FNS = "D:/c1_fns.json"
+local LEVEL = "/Game/Mods/C1Full/Maps/C1Full"
+
+local function kismetLib()
+  return try(function() return StaticFindObject("/Script/Engine.Default__KismetSystemLibrary") end, nil)
+    or try(function() return FindFirstOf("KismetSystemLibrary") end, nil)
+end
+
+local function loadC1()
+  local pc = worldCtx()
+  if pc == nil then print("[C1A7Check] loadC1: no player controller"); return false end
+  local KSL = kismetLib()
+  if KSL == nil then print("[C1A7Check] loadC1: no KismetSystemLibrary"); return false end
+  local attempt = {
+    function() return KSL:OpenLevel(pc, LEVEL, true, "") end,
+    function() return KSL:OpenLevel(pc, FName(LEVEL), true, "") end,
+    function() return KSL:OpenLevel(pc, LEVEL, true) end,
+  }
+  for i, fn in ipairs(attempt) do
+    local ok, err = pcall(fn)
+    if ok then
+      print(string.format("[C1A7Check] OpenLevel v%d -> %s", i, LEVEL))
+      return true
+    end
+    print(string.format("[C1A7Check] OpenLevel v%d failed: %s", i, tostring(err):sub(1, 80)))
+  end
+  return false
+end
+
+local KEYWORDS = { "timeattack", "time_attack", "travel", "openlevel", "open_level",
+                   "loadlevel", "start", "session", "level", "map", "join", "host" }
+
+local function interesting(name)
+  local l = string.lower(tostring(name or ""))
+  for _, k in ipairs(KEYWORDS) do
+    if string.find(l, k, 1, true) then return true end
+  end
+  return false
+end
+
+local function dumpFunctions()
+  local targets = {}
+  local function add(tag, o)
+    if o ~= nil then targets[#targets + 1] = { tag = tag, o = o } end
+  end
+  add("GameInstance", try(function() return FindFirstOf("MotorTownGameInstance") end, nil)
+                   or try(function() return FindFirstOf("GameInstance") end, nil))
+  local pc = worldCtx(); add("PlayerController", pc)
+  add("GameState", try(function() return FindFirstOf("MotorTownGameState") end, nil)
+                or try(function() return FindFirstOf("GameStateBase") end, nil))
+  add("GameSession", try(function() return FindFirstOf("MTGameSession") end, nil)
+                   or try(function() return FindFirstOf("GameSession") end, nil))
+  add("GameResource", try(function()
+        local gi = FindFirstOf("MotorTownGameInstance")
+        if gi then return gi:GetPropertyValue("GameResource") end
+      end, nil))
+  -- widgets: the Time Attack UI is where the start logic lives
+  local ws = try(function() return FindAllOf("UserWidget") end, nil) or {}
+  local nw = 0
+  for _, w in ipairs(ws) do
+    local cn = try(function() return w:GetClass():GetName() end, "")
+    if interesting(cn) and nw < 40 then
+      nw = nw + 1
+      add("Widget:" .. tostring(cn), w)
+    end
+  end
+
+  local f = io.open(FNS, "w")
+  if not f then return false, "cannot write " .. FNS end
+  f:write('{"ver":"' .. VER .. '","time":"' .. os.date("!%Y-%m-%dT%H:%M:%SZ") .. '","objects":[')
+  local emitted = 0
+  for _, t in ipairs(targets) do
+    local ok, cls = pcall(function() return t.o:GetClass() end)
+    if ok and cls then
+      if emitted > 0 then f:write(',') end
+      emitted = emitted + 1
+      f:write('{"tag":"' .. esc(t.tag) .. '","object":"' .. esc(full(t.o)) ..
+              '","class":"' .. esc(try(function() return cls:GetName() end, "?")) .. '","fns":[')
+      local first, total, matched = true, 0, 0
+      local ok2 = pcall(function()
+        cls:ForEachFunction(function(fn)
+          total = total + 1
+          local name = try(function() return fn:GetName() end, "?")
+          if interesting(name) or total <= 40 then
+            matched = matched + 1
+            local flags = try(function() return fn:GetFunctionFlags() end, 0)
+            if not first then f:write(',') end
+            first = false
+            f:write('{"n":"' .. esc(name) .. '","f":' .. tostring(flags) .. '}')
+          end
+          return false
+        end)
+      end)
+      f:write('],"total":' .. total .. ',"matched":' .. matched .. ',"ok":' .. tostring(ok2) .. '}')
+    end
+  end
+  f:write(']}')
+  f:close()
+  return true, string.format("wrote %s objects=%d", FNS, emitted)
+end
+
+pcall(function() RegisterKeyBind(Key.F9, {}, function() pcall(loadC1) end) end)
+pcall(function() RegisterKeyBind(Key.F7, {}, function()
+  local ok, res, why = pcall(dumpFunctions)
+  print("[C1A7Check] fns: " .. tostring(ok and why or res))
+end) end)
+
 local done = false
 LoopAsync(3000, function()
   if done then return true end
