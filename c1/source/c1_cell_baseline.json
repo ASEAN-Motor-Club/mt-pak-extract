@@ -11037,7 +11037,7 @@
    "mat_wall_cha4_sh",
    "mat_zeb_b"
   ],
-  "nonnull": 83,
+  "nonnull": 82,
   "slots": 83,
   "tris": 50031
  },
@@ -15149,7 +15149,7 @@
    "mat_mat_window3_glass_sh",
    "mat_sitamiti00_sh"
   ],
-  "nonnull": 4,
+  "nonnull": 3,
   "slots": 4,
   "tris": 1148
  },

@@ -330,6 +330,31 @@ left over is reported, never silently dropped.
 Gates: 555 + 238 assets; per-mesh tri counts equal the split report; `slotmap` check green for all
 554; no asset carries LOD1+.
 
+**Result 2026-11-09 — passed** (`D:/a4_report.json`, `ok=true`, re-verified from the report rather
+than from the tool's own verdict):
+
+- **554 structural** meshes imported delete-first: every one at `lods=1`, slot names equal the split
+  OBJ's `usemtl` set, `CTF_USE_COMPLEX_AS_SIMPLE`, **12,962 slots / 12,962 bound**.
+- **paint**: 1 LOD, 219 slots all bound, **zero collision elements**.
+- **237 foliage**: 851 slots all bound, zero collision elements each.
+- `c0_-21` imported as foliage only (no structural geometry).
+- `uvquad` (the shipped 1-triangle helper) is imported but excluded from the slot map gate.
+
+Three defects the first two full passes exposed, all fixed at the source:
+
+1. **`WorldGridMaterial` was being written as an MI path.** Two slots (`c11_9`, `c3_17`) hold UE's
+   placeholder for an empty slot; `make_slotmap.py` treated the import name as a material and
+   invented `/Game/Mods/C1Full/Materials/WorldGridMaterial`. Both are now correctly `null` (the
+   A0 gate still reports exactly 2 empty slots). This is the same trap as the null-`BaseColor`
+   rule: a placeholder name is not a binding.
+2. **A structural-only cell list skips foliage-only cells.** `c0_-21` has 24 foliage tris and no
+   structural OBJ, so listing the structural directory missed its foliage. The "all" list is now
+   the union of the structural and foliage directories.
+3. **The delete-then-import run must survive the SSH session.** Launching the editor with
+   `Start-Process` from an SSH session kills it when the session closes (observed: pid 23500 gone
+   within 4 min, no log). The run is now started through WMI `Win32_Process.Create`, which is
+   outside the session's job object — the full pass takes about 9 minutes.
+
 ### A5 — Sublevel, actors, collision
 
 - Create `/Game/Mods/C1Full/Maps/C1Full_NoCollision`.

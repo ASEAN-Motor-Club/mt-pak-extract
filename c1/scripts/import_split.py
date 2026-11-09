@@ -28,7 +28,9 @@ REPORT = r"D:\a3_report.json"
 LOG = r"D:\a3.log"
 SCALE = 100.0
 FLAG = unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE
+NON_CELL = {"uvquad"}   # 1-triangle UV helper shipped next to the cells, not a cell
 ELEM_TYPES = ("sphere_elems", "box_elems", "convex_elems", "sphyl_elems", "tapered_capsule_elems")
+CFG = r"D:\import_split_cfg.json"
 CELLS = ["c-14_-31", "c-1_-3", "c0_-6"]
 
 
@@ -172,16 +174,40 @@ def slots_state(sm):
     return len(got), nonnull
 
 
+def load_cells():
+    """Cell list from the config file; "all" means every structural OBJ the split produced."""
+    global REPORT, LOG
+    if not os.path.exists(CFG):
+        return list(CELLS)
+    cfg = json.load(open(CFG))
+    for key in ("report", "log"):
+        if cfg.get(key):
+            globals()[key.upper()] = cfg[key]
+    cells = cfg.get("cells", list(CELLS))
+    if cells == "all":
+        # a union: c0_-21 is foliage-only, so listing structural OBJs alone would skip its foliage
+        names = set()
+        for d in (SRC_STRUCT, SRC_FOLIAGE):
+            names.update(os.path.splitext(f)[0] for f in os.listdir(d) if f.lower().endswith(".obj"))
+        cells = sorted(names)
+    return cells
+
+
 def main():
+    cells = load_cells()   # must run first: the config can redirect the report and log paths
     open(LOG, "w").close()
     sm_map = json.load(open(SLOTMAP))
-    report = {"cells": {}, "paint": {}, "foliage": {}, "ok": False}
+    log("cells=%d" % len(cells))
+    report = {"cells": {}, "paint": {}, "foliage": {}, "ok": False, "cell_count": len(cells)}
+    done = 0
 
-    for cell in CELLS:
+    for cell in cells:
         obj = os.path.join(SRC_STRUCT, cell + ".obj")
         pkg = "%s/%s" % (DEST_STRUCT, cell)
         if not os.path.exists(obj):
-            report["cells"][cell] = {"error": "no_obj"}
+            # c0_-21 is foliage-only: the split produced no structural geometry for it, so there
+            # is nothing to import here and its foliage is handled in the loop below
+            report["cells"][cell] = {"foliage_only": True}
             continue
         deleted = drop(pkg)
         import_obj(obj, DEST_STRUCT, cell)
@@ -193,7 +219,12 @@ def main():
         if body is not None:
             body.set_editor_property("collision_trace_flag", FLAG)
             unreal.EditorAssetLibrary.save_loaded_asset(sm, only_if_is_dirty=False)
-        slot_err = apply_slots(sm, sm_map[cell]) if cell in sm_map else "no_slotmap"
+        if cell in NON_CELL:
+            slot_err = "skipped:non_cell"
+        elif cell in sm_map:
+            slot_err = apply_slots(sm, sm_map[cell])
+        else:
+            slot_err = "no_slotmap"
         # read back from a freshly loaded asset
         sm = unreal.EditorAssetLibrary.load_asset(pkg)
         slots, nonnull = slots_state(sm)
@@ -210,12 +241,18 @@ def main():
             "slot_names_match_obj": sorted(names) == sorted(obj_mtls),
             "unbound": [n for n, e in zip(names, sm.get_editor_property("static_materials"))
                         if e.get_editor_property("material_interface") is None],
+            "expected_null": sorted({(s0.get("imported") or s0.get("slot"))
+                                     for s0 in (want.get("slots") or []) if not s0.get("mi")}),
             "nonnull": nonnull,
             "want_slots": want.get("want_slots"),
             "want_nonnull": want.get("want_nonnull"),
             "slot_err": slot_err,
         }
-        log("cell %s -> %s" % (cell, report["cells"][cell]))
+        done += 1
+        if done % 25 == 0:
+            log("progress %d/%d last=%s" % (done, len(cells), cell))
+        elif done <= 3:
+            log("cell %s -> %s" % (cell, report["cells"][cell]))
 
     # paint: one mesh, no collision
     pkg = "%s/C1_NoCollision_Paint" % DEST_PAINT
@@ -234,8 +271,8 @@ def main():
                            "slot_err": slot_err}
         log("paint -> %s" % report["paint"])
 
-    # foliage for the same three cells, only where the cell has foliage
-    for cell in CELLS:
+    # foliage for the same cells, only where the cell has foliage
+    for cell in cells:
         obj = os.path.join(SRC_FOLIAGE, cell + ".obj")
         if not os.path.exists(obj):
             report["foliage"][cell] = {"skipped": "no foliage"}
@@ -258,10 +295,12 @@ def main():
         log("foliage %s -> %s" % (cell, report["foliage"][cell]))
 
     struct_ok = all(
-        isinstance(v, dict) and v.get("lods") == 1
+        isinstance(v, dict) and (v.get("foliage_only") or
+                                 (v.get("lods") == 1
         and v.get("slot_names_match_obj") is True
-        and v.get("slot_err") in (None,)
-        and v.get("collision", {}).get("flag") == str(FLAG)
+        and v.get("slot_err") in (None, "skipped:non_cell")
+        and set(v.get("unbound") or []) <= set(v.get("expected_null") or [])
+        and v.get("collision", {}).get("flag") == str(FLAG)))
         for v in report["cells"].values())
     def nc(r):
         return (isinstance(r, dict) and "lods" in r and r.get("lods") == 1
@@ -275,7 +314,10 @@ def main():
         isinstance(v, dict) and "error" in v for v in report["foliage"].values())
     report["ok"] = bool(struct_ok and nc(report["paint"]) and foliage_ok)
     json.dump(report, open(REPORT, "w"), indent=1)
-    log("A3_GATE_%s" % ("OK" if report["ok"] else "FAIL"))
+    log("A4_GATE_%s cells=%d paint_slots=%d foliage=%d"
+        % ("OK" if report["ok"] else "FAIL", len(report["cells"]),
+           report["paint"].get("slots"), len([v for v in report["foliage"].values()
+                                              if isinstance(v, dict) and "lods" in v])))
 
 
 main()
