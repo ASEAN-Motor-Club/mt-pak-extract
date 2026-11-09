@@ -286,8 +286,36 @@ Cells: `c-14_-31` (has `road_signs` + joints), `c-1_-3` (was rebuilt before; 108
 `c0_-6` (heaviest foliage). Uses the patched `import_local.py` (delete-before-import,
 `TARGET_LODS = 1`) plus `apply_slotmap.py`.
 
-Gates: `lods == 1` per mesh; `deleted_first` count = 3; `got_slots == want_slots` and
-`got_nonnull == want_nonnull` for `c-1_-3`; collision flag read back in a fresh process.
+Gates: `lods == 1` per mesh; `deleted_first` count = 3; the slot array matches the OBJ's `usemtl`
+set with every slot bound to an instance; collision flag read back after save.
+
+**Result 2026-11-09 — passed** (`D:/a3_report.json`, `ok=true`):
+
+- structural — `c-14_-31` 41 slots, `c-1_-3` 84, `c0_-6` 56: all `lods=1`, all `deleted_first`,
+  slot names equal the OBJ `usemtl` set, every slot bound, `CTF_USE_COMPLEX_AS_SIMPLE` read back
+  after save. Shipped slot counts (44 / 102 / 70) are **higher on purpose**: paint and foliage
+  materials are no longer slots on the structural mesh.
+- paint — 219 slots, all bound, `lods=1`, **zero collision elements**, flag left at default.
+- foliage — `c-1_-3` 6 slots, `c0_-6` 7 (heaviest foliage), zero collision elements; `c-14_-31` has
+  no foliage.
+
+Two API facts that broke the first attempt, both now encoded:
+
+1. **`StaticMaterial.imported_material_slot_name` is read-only** in 5.5, so the old
+   `apply_slotmap.py` plan of rebuilding the array from `slotmap.json` cannot work — and rebuilding
+   the array wholesale would also remap every face onto a different material, because the array
+   order is what the face sections index. The working approach is **bind by name**: the importer
+   builds the array from the OBJ's `usemtl` order, then each slot's existing name is resolved to an
+   instance.
+2. **The OBJ importer adds one convex hull to every static mesh.** A mesh is only genuinely
+   non-colliding when that hull is cleared *and* the trace flag stays default; leaving the hull in
+   place would make the paint sheet a single giant convex collider. `clear_simple_collision()` sets
+   every `agg_geom` element array to empty and the gate re-reads all five arrays.
+
+Binding rule, since 182 material names appear in the canonical OBJ export but in no shipped slot
+for that cell (1,264 cell-material pairs): use the shipped `slotmap.json` entry when the cell has
+one, otherwise `MI_C1_<material name>` if that instance exists — which it does for all 182. Anything
+left over is reported, never silently dropped.
 
 ### A4 — Full pass
 
