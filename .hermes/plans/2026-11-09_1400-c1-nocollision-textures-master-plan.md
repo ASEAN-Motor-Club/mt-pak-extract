@@ -421,6 +421,43 @@ Gates (all on shipped bytes, not project state):
   with two owners and no two versions of one pak installed
 - install mesh+map as a **pair** in one closed-game step
 
+**Result 2026-11-09 — cooked, patched, packaged, ownership gate green.**
+
+Cook `Done!` (rc=1 is the known Water Body warning). Outputs `C1Full.umap` 210,502 +
+`C1Full_NoCollision.umap` 95,424 (the new sublevel cooks because the persistent level references
+it) + `C1Full_Roads` 57,027,114. `06_postcook_patch.sh` -> `SETCLASSREF_OK` x3 + `REPAIR_OK`;
+`apply_map_edits_p22.sh` -> `MAP_EDITS_OK` + `CLONE_OK ... (593234,-466784,87449)`.
+
+**Defect the cook caught that the editor hid:** every material slot was still
+`WorldGridMaterial`. The A4 "bound" readback counted the importer's default material as a binding,
+so the gate passed on a placeholder — the first cooked `c-1_-3.uasset` was 5,137 B with **0 MI
+references** against 21,681 B / 102 refs in the shipped pak, and the cook emitted only 2 material
+packages instead of 1,608. Cause: mutating the structs returned by
+`get_editor_property("static_materials")` and setting the array back is a silent no-op. Fixed with
+`UStaticMesh.set_material()` — **14,030 slots** rebound over 554 cells + paint + 237 foliage,
+re-verified in a fresh process, recooked: 18,363 B, 84 refs, 1,608 material packages.
+
+**P23 is not a clean overlay — it is the live copy.** Measured against the base tree: 1,115 shared
+paths, **167 identical, 948 different**, and the differences are texture payloads (`.ubulk`), not
+metadata. P23 sorts last, so the game reads P23's bytes today; the copies inside the Shuto-derived
+base are the older unbaked ones. Consequence: the base pak must carry those payloads before P23 can
+be retired. `build_basepak.sh` gained `OVERLAY=<dir>` (every overlay path must already exist in the
+base, so an overlay can never widen ownership) and now carries `DataAsset` (dropping it would remove
+C1Full from the menus) and `Materials` (the mats pak only ever had 445 of 1,653 instances).
+
+Built set, `KEEP_MATERIALS=1`, `OVERLAY=p23x`:
+
+- `zzz_AMC_C1Base_v3_P.pak` 103,020,350 B / 9,759 assets — 6,445 textures, 3,306 materials,
+  2 BPs, 4 `DataAsset` files; **all 1,115 overlaid paths byte-identical to P23** on re-extraction.
+- `zzzzz_AMC_C1Mesh_v8_P.pak` 480,700,069 B / 1,584 files — 555 `Meshes` + 237
+  `Meshes_NoCollision`, no `.umap`.
+- `zzzzzz_AMC_C1Map_v9_P.pak` 134,323 B — `C1Full` + `C1Full_NoCollision` only.
+- `zzzzzzzzz_AMC_Shuto_Lights_v13_P.pak` 897,202 B — the shipped lights bytes, extracted verbatim.
+- `zzzz_AMC_C1Full_Roads_P.pak` unchanged (4,750,185 B).
+
+`pakset.py check`: **OK: every asset has exactly one owner** — 5 paks, 11,351 assets, 589.5 MB.
+Superseded: `zzz_AMC_Shuto_P.pak` and `zzzzz_AMC_C1Mats_P23_P.pak` retire in the install window.
+
 ### A7 — In-game acceptance
 
 Drive the southern band: `/tp` to `-19_-33`, `-14_-31`, one bridge joint, one tunnel mouth.

@@ -26,6 +26,8 @@ trap 'rm -rf "$WORK"' EXIT
 # most of it away costs minutes and disk; `-i` takes exactly what survives the strip.
 RAYON_NUM_THREADS=1 "$REPAK" unpack -q -f -o "$WORK/x" \
     -i "MotorTown/Content/Mods/C1" \
+    -i "MotorTown/Content/DataAsset" \
+    -i "MotorTown/Content/Mods/C1Full/Materials" \
     -i "MotorTown/Content/Mods/C1Full/BP_C1_Prop.uasset" \
     -i "MotorTown/Content/Mods/C1Full/BP_C1_Prop.uexp" \
     -i "MotorTown/Content/Mods/C1Full/BP_C1_Sky.uasset" \
@@ -36,7 +38,12 @@ ROOT="$WORK/x/MotorTown/Content/Mods/C1Full"
 [ -d "$ROOT" ] || { echo "FAIL: unexpected pak layout, no $ROOT" >&2; exit 2; }
 
 # Strip the trees other paks own. Each of these was a live override before the split.
-for owned in Meshes Materials Maps; do
+# Materials stay in the base until Track C ships an all-instance materials pak: the current Mats
+# pak carries only 445 of the 1,653 instances, so stripping the tree here would orphan 1,208
+# instances and every mesh would fall back to the default material. KEEP_MATERIALS=0 once P24 exists.
+OWNED="Meshes Maps"
+[ "${KEEP_MATERIALS:-1}" = "1" ] || OWNED="Meshes Materials Maps"
+for owned in $OWNED; do
     if [ -d "$ROOT/$owned" ]; then
         n=$(find "$ROOT/$owned" -type f | wc -l)
         rm -rf "$ROOT/$owned"
@@ -45,9 +52,26 @@ for owned in Meshes Materials Maps; do
 done
 
 # Gate: nothing the other paks own may survive the strip.
-for bad in Meshes Materials Maps; do
+for bad in $OWNED; do
     if [ -d "$ROOT/$bad" ]; then echo "FAIL: $bad still present" >&2; exit 3; fi
 done
+# Optional overlay: replace individual files with newer bytes that must ship in the base pak.
+# Used for the P23 bake — those textures are the live ones (the mats pak sorts later and wins),
+# so the base must carry them before the mats pak can be retired. Every overlay path must already
+# exist in the base: an overlay that adds a path would silently widen this pak's ownership.
+if [ -n "${OVERLAY:-}" ]; then
+    [ -d "$OVERLAY" ] || { echo "FAIL: overlay dir missing: $OVERLAY" >&2; exit 7; }
+    n_over=0
+    while IFS= read -r f; do
+        rel="${f#"$OVERLAY"/}"
+        [ -f "$WORK/x/$rel" ] || { echo "FAIL: overlay path not owned by base: $rel" >&2; exit 8; }
+        cp -f "$f" "$WORK/x/$rel"
+        n_over=$((n_over + 1))
+    done < <(find "$OVERLAY" -type f)
+    [ "$n_over" -gt 0 ] || { echo "FAIL: overlay contained no files" >&2; exit 9; }
+    echo "overlaid $n_over files from $OVERLAY"
+fi
+
 if find "$WORK/x" -name '*.umap' | grep -q .; then
     echo "FAIL: a level asset leaked into the base pak" >&2; exit 4
 fi
