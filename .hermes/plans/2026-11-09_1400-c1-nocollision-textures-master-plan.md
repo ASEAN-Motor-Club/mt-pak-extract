@@ -366,6 +366,30 @@ Three defects the first two full passes exposed, all fixed at the source:
 Gates: read back location, rotation **and** collision profile in the same process (rev-3 §31);
 `StaticMeshActor` count = 555 + 238; `PlayerStart` and both garages unchanged at Shibaura/Tatsumi.
 
+**Result 2026-11-09 — passed** (`D:/a5_verify.json`, `A5V_OK`):
+
+- `C1Full_NoCollision` created and attached to `C1Full` as a `LevelStreamingAlwaysLoaded`
+  sublevel. After a fresh load the map has **792 `StaticMeshActor`s** = 554 cells + 238
+  no-collision actors, and the previous count is reproduced exactly (11,191 − the decal actor +
+  238).
+- 554 cell actors: **transform drift 0** against `(origin_x*100, -origin_y*100, 0)`, collision
+  profile histogram **`{'BlockAll': 554}`** — their preset is untouched, only their meshes changed.
+- 238 new actors: paint at `(0,0,0)`, 237 foliage on their cell origins, **all `NoCollision`**,
+  mobility Static, **0 bad profiles**.
+- `PlayerStart` 1, `MotorTownRoad` 156, nav 1, spawn system 1, `BP_C1_Prop_C` 1, lights 10,474 —
+  unchanged.
+
+Two decisions this step had to make, both recorded here:
+
+1. **The old `C1_Decals` actor is deleted.** It was the joint/marking sheet lifted **3 cm** above
+   the road (`loc = (0,0,3)`); those same faces now live in `C1_NoCollision_Paint` at their true
+   height. Keeping it would draw every marking twice, 3 cm apart, and retain a colliding copy of
+   exactly what this pass exists to un-collide. The mesh asset stays; only the actor is gone.
+2. **Saving needs `EditorAssetLibrary.save_asset`, not `save_current_level`.** A first attempt
+   reported `save_current_level() == True` and then reloaded with the deleted actor still present
+   and the sublevel missing. Saving the package explicitly is what actually persists a map edit
+   made by a commandlet.
+
 ### A6 — Cook and package
 
 **A6.0 — settle the roads-sublevel ownership before building.** `C1Full_Roads.umap` currently has
