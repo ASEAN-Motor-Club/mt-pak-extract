@@ -61,6 +61,18 @@ def rewrite(path, out, ox, oy):
 
 
 def main():
+    global SRC, DST, ORIGINS
+    argv = sys.argv[1:]
+    while argv:
+        flag = argv.pop(0)
+        if flag == "--src":
+            SRC = argv.pop(0)
+        elif flag == "--dst":
+            DST = argv.pop(0)
+        elif flag == "--origins":
+            ORIGINS = argv.pop(0)
+        else:
+            raise SystemExit("unknown argument %r (use --src/--dst/--origins)" % flag)
     os.makedirs(DST, exist_ok=True)
     files = sorted(f for f in os.listdir(SRC) if f.lower().endswith(".obj"))
     origins = {}
