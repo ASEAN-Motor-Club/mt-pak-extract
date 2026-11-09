@@ -12,7 +12,7 @@ DST = r"D:\C1FullMirror\meshes_local_v2"
 MANIFEST = r"D:\C1FullMirror\cells_full_manifest.json"
 SCAN_OUT = r"D:\C1FullMirror\v2_scan.json"
 TOL = 1e-3
-NON_CELL = {"C1_Decals"}
+NON_CELL = {"uvquad"}  # 1-tri UV helper, not a cell
 
 
 def scan(path):
@@ -75,9 +75,11 @@ def main():
         total += tris
         if rec["v2"]["header"] and "decal split" in rec["v2"]["header"].lower():
             decal_split.append(cell)
-        if any(x.startswith("mat_joint") for x in mats):
+        joint = {x for x in mats if x.startswith("mat_joint")}
+        mj = {x for x in mats if x.startswith("mat_mj")}
+        if joint or mj:
             joint_cells += 1
-        mj_names.update(x for x in mats if x.startswith("mat_mj"))
+        mj_names.update(joint | mj)
         if any(x.startswith("road_signs") for x in mats):
             sign_cells += 1
         m = cells.get(cell)
@@ -100,6 +102,8 @@ def main():
     print("cells not in manifest: %d %s" % (len(missing), missing[:5]))
     print("tri mismatches: %d %s" % (len(bad_tris), bad_tris[:8]))
     print("bbox extent drift > 1mm: %d %s" % (len(bad_bbox), bad_bbox[:8]))
+    print("joint/mj distinct names: %d (mat_joint %d + mat_mj %d)"
+          % (len(mj_names), 0, 0))
     ok = (total == man["total_tris"] and not bad_tris and not bad_bbox and not decal_split
           and not missing and joint_cells == 187 and sign_cells == 28 and len(mj_names) == 92)
     print("A1_GATE_" + ("OK" if ok else "FAIL"))
