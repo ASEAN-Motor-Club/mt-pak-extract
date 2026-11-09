@@ -43,6 +43,10 @@ local function try(fn, default)
   return default
 end
 
+local function logn(msg)
+  if _G.A7LOG then _G.A7LOG(msg) else print("[C1A7Check] " .. tostring(msg)) end
+end
+
 local function full(o)
   if o == nil then return "nil" end
   local s = try(function() return o:GetFullName() end, nil)
@@ -134,6 +138,10 @@ local function worldCtx()
     end
   end
   traceAPI.ctx = pc
+  if pc ~= nil and not traceAPI.ctxLogged then
+    traceAPI.ctxLogged = true
+    logn("player controller resolved: " .. tostring(try(function() return pc:GetFullName() end, "?")))
+  end
   return pc
 end
 
@@ -340,24 +348,56 @@ local function kismetLib()
     or try(function() return FindFirstOf("KismetSystemLibrary") end, nil)
 end
 
-local function loadC1()
+local function loadC1(lvl)
   local pc = worldCtx()
-  if pc == nil then print("[C1A7Check] loadC1: no player controller"); return false end
-  local KSL = kismetLib()
-  if KSL == nil then print("[C1A7Check] loadC1: no KismetSystemLibrary"); return false end
-  local attempt = {
-    function() return KSL:OpenLevel(pc, LEVEL, true, "") end,
-    function() return KSL:OpenLevel(pc, FName(LEVEL), true, "") end,
-    function() return KSL:OpenLevel(pc, LEVEL, true) end,
-  }
-  for i, fn in ipairs(attempt) do
-    local ok, err = pcall(fn)
-    if ok then
-      print(string.format("[C1A7Check] OpenLevel v%d -> %s", i, LEVEL))
-      return true
+  if pc == nil then logn("[C1A7Check] loadC1: no player controller"); return false end
+  lvl = lvl or LEVEL
+
+  -- ON THIS BUILD an unknown member does not return nil, it returns a TrivialObject, and calling
+  -- one raises "attempt to call a TrivialObject value". So each attempt is named in the log and a
+  -- TrivialObject means "that function does not exist here", not "it failed at runtime".
+  --
+  -- Order is by how much reflection each one needs:
+  --   1. UGameplayStatics:OpenLevel  -- the documented travel API (this is the one that owns it;
+  --                                     KismetSystemLibrary does NOT have OpenLevel)
+  --   2. KismetSystemLibrary:ExecuteConsoleCommand -- 'open <package>' through the console verb
+  --   3. APlayerController:ClientTravel -- signature is (URL, TravelType, bSeamless, FGuid)
+  local GPS = try(function() return StaticFindObject("/Script/Engine.Default__GameplayStatics") end, nil)
+  if GPS ~= nil then
+    for i, fn in ipairs({
+      function() return GPS:OpenLevel(pc, FName(lvl), true, "") end,
+      function() return GPS:OpenLevel(pc, FName(lvl), true) end,
+      function() return GPS:OpenLevel(pc, lvl, true, "") end,
+    }) do
+      local ok, err = pcall(fn)
+      if ok then logn("[C1A7Check] GameplayStatics:OpenLevel v" .. i .. " -> " .. lvl); return true end
+      logn("[C1A7Check] GameplayStatics:OpenLevel v" .. i .. " failed: " .. tostring(err):sub(-90))
     end
-    print(string.format("[C1A7Check] OpenLevel v%d failed: %s", i, tostring(err):sub(1, 80)))
+  else
+    logn("[C1A7Check] no GameplayStatics CDO")
   end
+
+  local KSL = kismetLib()
+  if KSL ~= nil then
+    for i, fn in ipairs({
+      function() return KSL:ExecuteConsoleCommand(pc, "open " .. lvl, nil) end,
+      function() return KSL:ExecuteConsoleCommand(pc, "open " .. lvl) end,
+    }) do
+      local ok, err = pcall(fn)
+      if ok then logn("[C1A7Check] ExecuteConsoleCommand v" .. i .. " -> open " .. lvl); return true end
+      logn("[C1A7Check] ExecuteConsoleCommand v" .. i .. " failed: " .. tostring(err):sub(-90))
+    end
+  end
+
+  for i, fn in ipairs({
+    function() return pc:ClientTravel(lvl, 0, false) end,
+    function() return pc:ClientTravel(lvl, 0, false, FGuid and FGuid(0,0,0,0) or nil) end,
+  }) do
+    local ok, err = pcall(fn)
+    if ok then logn("[C1A7Check] ClientTravel v" .. i .. " -> " .. lvl); return true end
+    logn("[C1A7Check] ClientTravel v" .. i .. " failed: " .. tostring(err):sub(-90))
+  end
+
   return false
 end
 
@@ -438,6 +478,80 @@ pcall(function() RegisterKeyBind(Key.F7, {}, function()
   local ok, res, why = pcall(dumpFunctions)
   print("[C1A7Check] fns: " .. tostring(ok and why or res))
 end) end)
+
+-- ---------------------------------------------------------------------------------------------
+-- Autoload: if D:/c1_autoload.txt exists, walk into that level without touching the menu.
+-- The file holds the package path (empty file -> the C1 default). Deleting it returns the mod to
+-- purely manual behaviour, which is the point: the agent can drive a run, and so can you, with no
+-- edit either way.
+--
+-- Why the bespoke waiting instead of one delay: OpenLevel before the game instance and a local
+-- player controller exist is a crash, and the main menu takes a variable amount of time to appear.
+-- So the gate is "a local PC exists AND some seconds have passed", retried, and it fires once.
+-- ---------------------------------------------------------------------------------------------
+local AUTOLOAD = "D:/c1_autoload.txt"
+local AUTOLOG  = "D:/c1_autoload.log"
+
+local function autolog(msg)
+  _G.A7LOG = autolog
+  pcall(function()
+    local f = io.open(AUTOLOG, "a")
+    if f then f:write(os.date("!%H:%M:%S ") .. tostring(msg) .. "\n"); f:close() end
+  end)
+  print("[C1A7Check] autoload: " .. tostring(msg))
+end
+
+local function autoloadTarget()
+  local f = io.open(AUTOLOAD, "r")
+  if not f then return nil end
+  local line = f:read("*l")
+  f:close()
+  if line == nil or line == "" or line == "default" then return LEVEL end
+  return line
+end
+
+local target = autoloadTarget()
+if target then
+  autolog("marker found, target=" .. target .. " (waiting for a player controller)")
+  local fired = false
+  local startedAt = os.clock()
+  LoopAsync(4000, function()
+    if fired then return true end
+    local pc = worldCtx()
+    local elapsed = os.clock() - startedAt
+    if pc == nil or elapsed < 25 then return false end
+    -- already there? then there is nothing to do
+    local already = false
+    local acts = try(function() return FindAllOf("StaticMeshActor") end, nil) or {}
+    local ours = 0
+    for _, a in ipairs(acts) do
+      local mp = try(function() return a:GetStaticMeshComponent():GetPropertyValue("StaticMesh"):GetFullName() end, nil)
+      if mp and string.find(string.lower(mp), "/mods/c1full/", 1, true) then ours = ours + 1; if ours > 5 then break end end
+    end
+    already = ours > 5
+    if already then
+      fired = true
+      autolog("already in the C1 level, no travel needed")
+      return true
+    end
+    local attempts = 0
+    local ok = false
+    while attempts < 3 and not ok do
+      attempts = attempts + 1
+      autolog(string.format("travel attempt %d to %s at %.0fs", attempts, target, elapsed))
+      ok = loadC1(target)
+    end
+    if ok then
+      fired = true
+      autolog("travel issued, waiting for the level to load")
+      return true
+    end
+    autolog("all travel methods failed; will retry on the next tick")
+    return false
+  end)
+else
+  autolog("no marker, manual mode (F9 loads, F10 collects)")
+end
 
 local done = false
 LoopAsync(3000, function()
