@@ -180,7 +180,10 @@ def load_cells():
     if not os.path.exists(CFG):
         return list(CELLS)
     cfg = json.load(open(CFG))
-    for key in ("report", "log"):
+    # Every path in this script is overridable from the config. That matters: a rebuild from a
+    # corrected source tree is only honest if the import really reads that tree, and a config key
+    # that is silently ignored looks exactly like a successful rebuild.
+    for key in ("report", "log", "src_struct", "src_foliage", "src_paint", "slotmap"):
         if cfg.get(key):
             globals()[key.upper()] = cfg[key]
     cells = cfg.get("cells", list(CELLS))
