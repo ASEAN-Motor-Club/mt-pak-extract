@@ -43,6 +43,19 @@ fallback name. Every step below has a gate that must pass before the next.
 
 Gate: source counts match the facts block.
 
+**Gate the OBJ source before importing anything:**
+
+```
+python3 c1/scripts/validate_objs.py D:/C1FullMirror/nc_out_fixed/cells \
+        D:/C1FullMirror/nc_out_fixed/foliage D:/C1FullMirror/nc_out_fixed/paint
+-> checked=792 failed=0
+```
+
+A single `f 0 ...` line per file (vertex index 0 is not a vertex — the importer resolves it to the
+mesh origin) gave 554 cells and 238 other meshes one sliver each, running from their pivots out to
+their geometry. The map loaded and looked exploded; file sizes, triangle counts and slot binding were
+all fine. Never import an OBJ set without this check passing.
+
 ## 1. Level state
 
 - 554 `C1_cell_` actors, each with a static mesh, each at
