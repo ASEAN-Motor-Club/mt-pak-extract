@@ -466,6 +466,17 @@ lights_v13 897,202. Installed set is 8 paks. Superseded `zzz_AMC_Shuto_P.pak` (6
 `D:\c1full_paks\retired_20261109\` (660,346,377 B total). The install is the canonical set copied;
 `Content\Paks` is only the lab copy.
 
+**c0_-21 stale-mesh fix (2026-11-09, after install).** Review found `Meshes/c0_-21` shipping from the
+previous build: the split produced no structural OBJ for the foliage-only cell, the import loop
+skipped it, and the persistent level's actor still pointed at the old asset, so that cell's foliage
+shipped collidable and duplicated against `C1Full_NoCollision`. Rebuilt the geometry pak as
+`zzzzz_AMC_C1Mesh_v9_P.pak` 480,694,850 B sha `8497e6c4…` (791 meshes): v8 -> v9 removes exactly
+`Meshes/c0_-21.uasset`/`.uexp`, adds nothing, 1,584 -> 1,582 entries. Installed; v8 moved to
+`D:\c1full_paks\retired_20261109\`. Gate re-run on `releases/c1/pakset_v9/`: one owner per asset,
+5 paks / 11,349 assets. The actor's mesh reference is now null (no collision, no draw) - deleting the
+actor itself is a map cleanup, deferred. **Lesson: "no source OBJ for this cell" must delete the
+previously built asset, or the cook ships the stale one.**
+
 ### A7 — In-game acceptance
 
 Drive the southern band: `/tp` to `-19_-33`, `-14_-31`, one bridge joint, one tunnel mouth.
