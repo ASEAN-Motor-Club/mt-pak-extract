@@ -251,10 +251,34 @@ Gates:
 
 - per cell `structural_tris + paint_tris + foliage_tris == v2_tris` (exact; the degenerate drop
   happens at import, not here)
-- totals: paint `374,571 + 15,080 = 389,651`; foliage `444,068`
-- every rewritten cell's referenced-vertex bbox **unchanged** on X/Y/Z vs the v2 OBJ
-- `solid_keep` tris still inside the structural meshes (43,709)
+- totals: paint **410,312**; foliage `444,068`; structural `8,287,149`; `solid_keep` `43,709`
+- every cell's referenced-vertex bbox is covered exactly by the union of its three buckets
 - no OBJ carries an empty vertex array or an unreferenced `usemtl` group
+
+**Result 2026-11-09 — passed** (`nc_out/split_report.json`, `ok=true`): paint 410,312,
+foliage 444,068, structural 8,287,149, solid_keep 43,709, excluded faces 95/95, per-cell
+triangle mismatch 0, bbox drift 0. Outputs on the guest: `paint/C1_NoCollision_Paint.obj`
+(129.8 MB, 219 material groups), `cells_v2/` 554 files (2,463 MB), `foliage/` 237 files (129 MB).
+
+Three things the run taught, all now pinned:
+
+1. **Paint is 410,312, not 389,651.** The plan's 389,651 was measured on `meshes_local` — the
+   half-split tree — so it undercounts by **20,661 tris spread over exactly the 187 joint/mj
+   cells**, i.e. the tris the earlier `split_decals.py` pass had already removed. `meshes_local_v2`
+   is canonical and still has them. Foliage (444,068) and `solid_keep` (43,709) were unaffected and
+   match exactly.
+2. **The curated material list was truncated, the patterns were not.** The split emits 219
+   material groups: 141 from the reviewed list plus 78 `mat_mj_*` names the list had missed
+   (2,424 tris). Total distinct joint/mj names is 91 + `mat_joint_a` = 92, which reconciles with
+   the A1 count. `c1/source/nocollision_materials.json` now carries all 217 `road_paint` names and
+   a note saying the patterns are authoritative.
+3. **`c0_-21` is foliage-only** (24 tris, no structural geometry), so there are 554 structural OBJs,
+   not 555. The tool reports it under `foliage_only` instead of writing an empty OBJ.
+
+The exclusion list is keyed on the face centroid in **centimetres relative to the cell pivot**
+(`round(centroid_m * 100, 1)`); that frame was confirmed against `c-11_-27`, where both listed
+`mat_mj_futou` faces match a face centroid to 0.07 cm. A face is excluded when the measured drop is
+**≥30 cm or unmeasurable**: 95 faces = 89 null + 6 numeric ≥30.
 
 ### A3 — Dry-run import on three cells (no full pass)
 
