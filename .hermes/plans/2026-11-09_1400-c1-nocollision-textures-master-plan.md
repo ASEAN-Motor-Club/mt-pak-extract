@@ -626,3 +626,23 @@ identical/differing/only-in-old, rewrite refs by folder rename, delete in its ow
 
 Remaining open, non-blocking: pruning `Mods/C1/Materials`, `Mods/C1/Meshes`, `Mods/C1Full/Textures`
 (superset rule, own commit); texture-resolver `colorMap` variant work.
+
+## Frame calibration (2026-11-10, measured, not assumed)
+
+The OBJ import convention was an assumption in `rebase_obj.py` and `set_transforms.py`. It is now
+measured: an imported box of x 0..100, y 0..200, z 0..300 metres at uniform scale 100 comes back as
+bounds min (0, -20000, 0) max (10000, 0, 30000) cm.
+
+- X -> X * 100, **Y -> -Y * 100**, Z -> Z * 100. No axis swap, no rotation, no extra unit factor.
+- Actor transforms measured on the shipped level: 554 cell actors, all 500 m grid aligned, Y negated,
+  scale 1 — e.g. c-12_-27 at (-650000, 1400000, 0).
+- Mesh local coords verified for 4 cells: local = (source absolute - cell origin) * 100 with Y negated.
+  c-12_-27 local x 460..1024 m, y -750..-421 m, z 822..894 m against a source of x 460..1024,
+  y 421..750, z 822..894.
+- Union of all 554 world boxes: 19.5 km x 27.7 km, z 0..1212 m — the source extent.
+
+So the metres->centimetres and -Y handling is correct and is NOT the cause of the jumbled map.
+Open leads instead: every cell mesh carries vertices at its local origin (the `uvquad` helper, so
+bounds start at 0,0,0), per-cell triangle counts are 13-32% below the source face counts, the roads
+sublevel reports `roads=0` on every RoadLoader tick, and a single isolated cell photographed as a
+bare slab with no buildings.
