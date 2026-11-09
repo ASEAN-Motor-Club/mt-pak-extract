@@ -458,6 +458,14 @@ Built set, `KEEP_MATERIALS=1`, `OVERLAY=p23x`:
 `pakset.py check`: **OK: every asset has exactly one owner** — 5 paks, 11,351 assets, 589.5 MB.
 Superseded: `zzz_AMC_Shuto_P.pak` and `zzzzz_AMC_C1Mats_P23_P.pak` retire in the install window.
 
+**Installed 2026-11-09** (closed game, one window). Every destination re-hashed on the client and
+matched `releases/c1/pakset_v8/sha256.txt`: base_v3 103,020,350 / mesh_v8 480,700,069 (4x150 MB
+chunked push, joined with .NET streams, hash checked before any move) / map_v9 134,323 /
+lights_v13 897,202. Installed set is 8 paks. Superseded `zzz_AMC_Shuto_P.pak` (657,989,391) and
+`zzzzz_AMC_C1Mats_P23_P.pak` (2,356,986) moved, not deleted, to
+`D:\c1full_paks\retired_20261109\` (660,346,377 B total). The install is the canonical set copied;
+`Content\Paks` is only the lab copy.
+
 ### A7 — In-game acceptance
 
 Drive the southern band: `/tp` to `-19_-33`, `-14_-31`, one bridge joint, one tunnel mouth.
