@@ -243,8 +243,14 @@ shows the template's — the "Town Circuit" fallback.
 - Retire superseded builds into the backup dir
 - Confirm **no other pak mounts `Mods/C1/` or `Mods/C1Full/`** — a later-sorting pak
   overrides silently and makes every subsequent result non-reproducible
+- **Whitelist every installed pak path** with `c1/tools/approve_paks.ps1` before launching. The
+  client prompts at boot for any pak path it has not seen, keyed by full path in
+  `%LOCALAPPDATA%\MotorTown\Saved\Config\Windows\CustomPak.ini` `[CustomPakAccepted]`; a rebuild
+  under a new versioned filename always prompts again. The install is not finished until the
+  script reports `APPROVE_OK`.
 
-Gate: installed files `SHA_MATCH`; active pak list contains exactly one pak per namespace.
+Gate: installed files `SHA_MATCH`; active pak list contains exactly one pak per namespace;
+`APPROVE_OK` for the installed set.
 
 ## 9. In-game
 
