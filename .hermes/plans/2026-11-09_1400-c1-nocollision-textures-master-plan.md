@@ -646,3 +646,35 @@ Open leads instead: every cell mesh carries vertices at its local origin (the `u
 bounds start at 0,0,0), per-cell triangle counts are 13-32% below the source face counts, the roads
 sublevel reports `roads=0` on every RoadLoader tick, and a single isolated cell photographed as a
 bare slab with no buildings.
+
+## ROOT CAUSE of the "wild triangles" (2026-11-10, measured)
+
+Every split OBJ ends with a malformed face line:
+
+    f 0 1/1/1 2/2/2
+
+Index 0 is not a valid OBJ vertex, so the importer resolves it to the mesh origin. Result: each mesh
+carries exactly one extra triangle running from its pivot out to two real points — a sliver up to a
+kilometre long, in a mesh whose real geometry sits 400-1000 m away from that pivot. 554 cells + 237
+foliage + 1 paint mesh = 792 of them, all fanning out of their actors, which is what reads as
+"geometry completely jumbled".
+
+Proof, by importing the same cell with that one line removed:
+
+- cleaned: 2963 triangles, bounds min (46024, -75050, 82263) max (102429, -42110, 89400) — exactly the
+  source OBJ
+- shipped: 2964 triangles, bounds min (0, -75050, 0) max (102429, 0, 89400) — the pivot is inside the
+  bounds and the Y maximum is 0 instead of -42110, i.e. the stray triangle reaches the origin plane
+
+Everything else is clean and was checked, so the rebuild is only about this line:
+
+- frame conversion measured: X*100, -Y*100, Z*100, no swap or rotation (calibration box)
+- actor transforms measured: 554 actors, 500 m grid, zero rotation, unit scale
+- shipped assets reproduce a fresh import of the same OBJ exactly (same triangle count, same bounds)
+- previous-vs-new asset sizes differ because of this stray triangle plus LODs, not because geometry was lost
+
+Fix: strip `^f 0 ` from all 792 OBJs, re-import, re-bind slots, re-cook, rebuild the mesh pak.
+
+Lesson for the pipeline: validate face indices on every generated OBJ (`0 < i <= vertex_count`, no
+negative indices) before import. One malformed line is invisible in file size and triangle counts but
+wrecks every mesh it touches.
