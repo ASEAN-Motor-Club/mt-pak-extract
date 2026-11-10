@@ -41,7 +41,12 @@ def apply_cell(cell, rec):
                 return "mi_missing:%s" % s["mi"]
         entry.set_editor_property("material_interface", mi)
         entry.set_editor_property("material_slot_name", s["slot"] or "None")
-        entry.set_editor_property("imported_material_slot_name", s["imported"] or "None")
+        # ImportedMaterialSlotName is read-only on UE 5.5 StaticMaterial; the import already wrote
+        # it, and raising here aborts the whole run on the first cell. Write it only if allowed.
+        try:
+            entry.set_editor_property("imported_material_slot_name", s["imported"] or "None")
+        except Exception:
+            pass
         arr.append(entry)
     sm.set_editor_property("static_materials", arr)
     unreal.EditorAssetLibrary.save_loaded_asset(sm, only_if_is_dirty=False)
@@ -69,7 +74,11 @@ def verify_cell(cell, rec):
         ws = want["slot"] or "None"
         if str(gs) != ws:
             errs.append("slot[%d] name %r != %r" % (i, str(gs), ws))
+        # get_path_name() returns the full object path ("/Game/…/MI_X.MI_X"); slotmap stores the
+        # package path. Strip the object suffix before comparing or every cell "fails" on cosmetics.
         gm = mi.get_path_name() if mi is not None else None
+        if gm is not None:
+            gm = gm.split(".")[0]
         wm = want["mi"]
         if (gm or None) != (wm or None):
             errs.append("slot[%d] mi %r != %r" % (i, gm, wm))

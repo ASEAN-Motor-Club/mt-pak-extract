@@ -19,7 +19,11 @@ import unreal
 DEST_STRUCT = "/Game/Mods/C1Full/Meshes"
 DEST_PAINT = "/Game/Mods/C1Full/Meshes"
 DEST_FOLIAGE = "/Game/Mods/C1Full/Meshes_NoCollision"
-SRC_STRUCT = r"D:\C1FullMirror\nc_out\cells_v2"
+# The structural cells come from meshes_local, the tile set the working port was built from.
+# nc_out/cells_v2 is the no-collision RE-EXPORT and is lossy: c2_9 alone drops 113 -> 100 material
+# sections and 72,465 -> 67,613 faces, and the importer then keeps only 76% of what is left. Feeding
+# that set in is what shredded the map in game while the editor still reported sane bounds.
+SRC_STRUCT = r"D:\C1FullMirror\meshes_local"
 SRC_FOLIAGE = r"D:\C1FullMirror\nc_out\foliage"
 SRC_PAINT = r"D:\C1FullMirror\nc_out\paint\C1_NoCollision_Paint.obj"
 SLOTMAP = r"D:\slotmap.json"
