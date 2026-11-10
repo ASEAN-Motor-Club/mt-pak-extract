@@ -94,6 +94,9 @@ def read_obj(path):
                 for tok in line.split()[1:]:
                     parts = tok.split("/")
                     v = int(parts[0])
+                    if v < 0:
+                        # OBJ allows negative (relative) indices; -1 is the last vertex.
+                        v = len(verts) + 1 + v
                     vt = int(parts[1]) if len(parts) > 1 and parts[1] else 0
                     vn = int(parts[2]) if len(parts) > 2 and parts[2] else 0
                     idx.append((v, vt, vn))
@@ -129,12 +132,17 @@ class Sink:
         for mtl, idx in self.faces:
             new = []
             for a, b, c in idx:
+                # OBJ face indices are 1-based. These counters must start at 1 too: emitting
+                # 0-based indices makes every file carry an index 0, which the importer resolves
+                # against the wrong vertex and renders as a stray triangle stretched across the
+                # tile (seen as slivers hanging over the sea). Verified: every file this writer
+                # produced had max index == nverts-1 and exactly one 0.
                 if a not in vused:
-                    vused[a] = len(vused)
+                    vused[a] = len(vused) + 1
                 if b and b not in tused:
-                    tused[b] = len(tused)
+                    tused[b] = len(tused) + 1
                 if c and c not in nused:
-                    nused[c] = len(nused)
+                    nused[c] = len(nused) + 1
                 new.append((vused[a], tused[b] if b else 0, nused[c] if c else 0))
             out_faces.append((mtl, new))
 
