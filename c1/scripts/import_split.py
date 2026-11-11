@@ -35,6 +35,7 @@ FLAG = unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE
 NON_CELL = {"uvquad"}   # 1-triangle UV helper shipped next to the cells, not a cell
 ELEM_TYPES = ("sphere_elems", "box_elems", "convex_elems", "sphyl_elems", "tapered_capsule_elems")
 CFG = r"D:\import_split_cfg.json"
+CFG_DATA = {}
 CELLS = ["c-14_-31", "c-1_-3", "c0_-6"]
 
 
@@ -42,6 +43,136 @@ def log(m):
     unreal.log("A3 " + str(m))
     with open(LOG, "a") as f:
         f.write(str(m) + "\n")
+
+
+LEDGER = r"D:\c1_deleted_ledger.json"
+
+
+class Abort(RuntimeError):
+    """Stop the run. A half-built asset tree is worse than a failed build: the old cells are
+    deleted and their replacements may not exist, so continuing cell by cell hides the damage."""
+
+
+def ledger_reset():
+    json.dump({"deleted": []}, open(LEDGER, "w"), indent=1)
+
+
+def ledger_append(entry):
+    try:
+        data = json.load(open(LEDGER))
+    except Exception:
+        data = {"deleted": []}
+    data.setdefault("deleted", []).append(entry)
+    json.dump(data, open(LEDGER, "w"), indent=1)
+
+
+def obj_bbox(path):
+    lo = [1e18, 1e18, 1e18]
+    hi = [-1e18, -1e18, -1e18]
+    with open(path, "r", errors="ignore") as f:
+        for line in f:
+            if line.startswith("v "):
+                p = line.split()
+                for i in range(3):
+                    v = float(p[i + 1])
+                    if v < lo[i]:
+                        lo[i] = v
+                    if v > hi[i]:
+                        hi[i] = v
+    return [hi[i] - lo[i] for i in range(3)]
+
+
+def check_bounds(sm, path):
+    """The importer's scale is applied by whichever holder exposes it; if that silently stops
+    happening the mesh arrives 100x small and every other check still passes. Compare extents."""
+    try:
+        want = obj_bbox(path)
+        box = sm.get_bounding_box()
+        got = [abs(box.max.x - box.min.x), abs(box.max.y - box.min.y), abs(box.max.z - box.min.z)]
+    except Exception as e:
+        return "bounds_err:%s" % e
+    bad = []
+    for i, axis in enumerate("xyz"):
+        exp = want[i] * SCALE
+        if exp < 1.0:
+            continue          # a flat axis says nothing about scale
+        ratio = got[i] / exp if exp else 0.0
+        if abs(ratio - 1.0) > 0.05:
+            bad.append("%s %.1f want %.1f (%.0f%%)" % (axis, got[i], exp, (ratio - 1.0) * 100))
+    return None if not bad else "bounds:" + ";".join(bad)
+
+
+def _objs(d):
+    if not os.path.isdir(d):
+        return []
+    return sorted(f for f in os.listdir(d) if f.lower().endswith(".obj"))
+
+
+def fingerprint():
+    """What the run expects to read. Config values are only worth anything if they are
+    checked against the tree that is actually about to be imported -- the nc_out_fixed trap
+    was a config pointing at a directory that still existed, just not the right one."""
+    objs = _objs(SRC_STRUCT)
+    fp = {
+        "expect_struct_objs": len(objs),
+        "expect_struct_bytes": sum(os.path.getsize(os.path.join(SRC_STRUCT, f)) for f in objs),
+        "expect_nc_sources": len(_objs(SRC_FOLIAGE)) + (1 if os.path.exists(SRC_PAINT) else 0),
+        "expect_total_tris": sum(source_stats(os.path.join(SRC_STRUCT, f), full=True)["faces"]
+                                 for f in objs),
+        "src_struct": SRC_STRUCT,
+        "src_foliage": SRC_FOLIAGE,
+        "src_paint": SRC_PAINT,
+    }
+    return fp
+
+
+def validate_config(cfg):
+    keys = ("expect_struct_objs", "expect_struct_bytes", "expect_nc_sources")
+    missing = [k for k in keys if cfg.get(k) is None]
+    if missing:
+        raise Abort("config %s lacks %s: run once with C1_FINGERPRINT=1 and paste the JSON it "
+                    "prints into the config" % (CFG, missing))
+    objs = _objs(SRC_STRUCT)
+    size = sum(os.path.getsize(os.path.join(SRC_STRUCT, f)) for f in objs)
+    nc = len(_objs(SRC_FOLIAGE)) + (1 if os.path.exists(SRC_PAINT) else 0)
+    if len(objs) != cfg["expect_struct_objs"]:
+        raise Abort("struct sources: %d files under %s, expected %d"
+                    % (len(objs), SRC_STRUCT, cfg["expect_struct_objs"]))
+    if size != cfg["expect_struct_bytes"]:
+        raise Abort("struct sources: %d bytes, expected %d (tree differs from the config)"
+                    % (size, cfg["expect_struct_bytes"]))
+    if nc != cfg["expect_nc_sources"]:
+        raise Abort("nc sources: %d, expected %d" % (nc, cfg["expect_nc_sources"]))
+    out = {"struct_objs": len(objs), "struct_bytes": size, "nc_sources": nc}
+    if cfg.get("expect_total_tris") is not None:
+        total = sum(source_stats(os.path.join(SRC_STRUCT, f), full=True)["faces"] for f in objs)
+        if total != cfg["expect_total_tris"]:
+            raise Abort("struct faces: %d, expected %d" % (total, cfg["expect_total_tris"]))
+        out["total_faces"] = total
+    return out
+
+
+def restore_from_ledger():
+    """Re-import exactly what this run deleted, from the sources recorded with each delete."""
+    try:
+        data = json.load(open(LEDGER))
+    except Exception as e:
+        log("restore: no ledger (%s)" % e)
+        return
+    done = skipped = 0
+    for e in data.get("deleted", []):
+        pkg, src = e.get("pkg"), e.get("src")
+        if not src or not os.path.exists(src):
+            log("restore skip (source gone) %s" % pkg)
+            skipped += 1
+            continue
+        if unreal.EditorAssetLibrary.does_asset_exist(pkg):
+            skipped += 1
+            continue
+        dest, name = pkg.rsplit("/", 1)
+        import_obj(src, dest, name)
+        done += 1
+    log("restore done=%d skipped=%d" % (done, skipped))
 
 
 def import_obj(path, dest, name):
@@ -67,7 +198,7 @@ def import_obj(path, dest, name):
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
 
-def source_stats(path, probe_bytes=262144, probe_faces=8):
+def source_stats(path, probe_bytes=262144, probe_faces=8, full=False):
     """Count renderable geometry in an OBJ the split produced.
 
     The split writes `f 0 1/1/1 2/2/2` into every file it has no geometry for: three corners
@@ -96,7 +227,7 @@ def source_stats(path, probe_bytes=262144, probe_faces=8):
                         faces += 1
                     else:
                         bad += 1
-                    if faces >= probe_faces and read >= probe_bytes:
+                    if (not full) and faces >= probe_faces and read >= probe_bytes:
                         sampled = True
                         break
     except OSError as e:
@@ -109,10 +240,13 @@ def empty_source(path):
     return source_stats(path)["faces"] == 0
 
 
-def drop(pkg):
+def drop(pkg, src=None):
+    """Delete before import, so the LOD chain is rebuilt rather than patched -- and record what
+    was deleted, with the source that can rebuild it, so a failed run is recoverable."""
     if unreal.EditorAssetLibrary.does_asset_exist(pkg):
         if not unreal.EditorAssetLibrary.delete_asset(pkg):
-            raise RuntimeError("could not delete %s" % pkg)
+            raise Abort("could not delete %s" % pkg)
+        ledger_append({"pkg": pkg, "src": src})
         return True
     return False
 
@@ -158,33 +292,38 @@ def clear_simple_collision(sm):
     return None
 
 
-def apply_slots(sm, rec):
+def apply_slots(sm, rec, allow_guess=False):
     """Attach the shipped material instances to the slots the importer created.
 
     The array itself is left alone: the importer built it from the OBJ's `usemtl` groups, and its
     order is what the face sections reference. Rewriting the array wholesale would shift every
     face onto a different material. `imported_material_slot_name` is read-only in 5.5, so the
     mapping is name -> shipped instance.
+
+    For a structural cell the slotmap is authoritative, so a name it does not know stays unbound
+    and is reported -- guessing there is how a slot silently gets a plausible-but-wrong
+    material. The no-collision passes may guess, because apply_nc_materials.py rebinds them
+    authoritatively afterwards; the guesses are still recorded in the report.
     """
     name_to_mi = {}
-    null_names = set()
     for slot in rec["slots"]:
         key = slot.get("imported") or slot.get("slot")
         if key:
             name_to_mi[key] = slot["mi"]
-            if not slot["mi"]:
-                null_names.add(key)
     got = sm.get_editor_property("static_materials")
-    unmatched, bound = [], 0
+    unmatched, guessed, bound = [], [], 0
     for entry in got:
         name = str(entry.get_editor_property("imported_material_slot_name"))
         if name not in name_to_mi:
-            # the shipped mesh has no slot for this name (its source export predates the material
-            # or the face came from paint/foliage), but the packaged instance set covers it: the
-            # build names every instance MI_C1_<material>
+            if not allow_guess:
+                unmatched.append(name)
+                continue
+            # no slot for this name (its source export predates the material, or the face came
+            # from paint/foliage), but the packaged instance set covers it: MI_C1_<material>
             guess = "%s/MI_C1_%s" % (MAT_DIR, name)
             if unreal.EditorAssetLibrary.does_asset_exist(guess):
                 name_to_mi[name] = guess
+                guessed.append(name)
             else:
                 unmatched.append(name)
                 continue
@@ -193,12 +332,14 @@ def apply_slots(sm, rec):
         if mi_path:
             mi = unreal.EditorAssetLibrary.load_asset(mi_path)
             if mi is None:
-                return "mi_missing:%s" % mi_path
+                return {"err": "mi_missing:%s" % mi_path, "guessed": guessed,
+                        "unmatched": unmatched, "bound": bound}
             bound += 1
         entry.set_editor_property("material_interface", mi)
     sm.set_editor_property("static_materials", got)
     unreal.EditorAssetLibrary.save_loaded_asset(sm, only_if_is_dirty=False)
-    return None if not unmatched else "unmatched:%s" % unmatched[:5]
+    err = None if not unmatched else "unmatched:%s" % unmatched[:5]
+    return {"err": err, "guessed": guessed, "unmatched": unmatched, "bound": bound}
 
 
 def obj_material_names(path):
@@ -231,10 +372,12 @@ def slots_state(sm):
 
 def load_cells():
     """Cell list from the config file; "all" means every structural OBJ the split produced."""
-    global REPORT, LOG
+    global REPORT, LOG, CFG_DATA
+    CFG_DATA = {}
     if not os.path.exists(CFG):
         return list(CELLS)
     cfg = json.load(open(CFG))
+    CFG_DATA = cfg
     # Every path in this script is overridable from the config. That matters: a rebuild from a
     # corrected source tree is only honest if the import really reads that tree, and a config key
     # that is silently ignored looks exactly like a successful rebuild.
@@ -254,9 +397,22 @@ def load_cells():
 def main():
     cells = load_cells()   # must run first: the config can redirect the report and log paths
     open(LOG, "w").close()
+    if os.environ.get("C1_FINGERPRINT") == "1":
+        log("FINGERPRINT " + json.dumps(fingerprint()))
+        return
+    if os.environ.get("C1_RESTORE") == "1":
+        restore_from_ledger()
+        return
+    cfg_ok = validate_config(CFG_DATA)
+    log("config_ok %s" % cfg_ok)
+    ledger_reset()
+    if os.path.exists(REPORT):
+        # a report left over from the last run must not be read as this run's result
+        os.remove(REPORT)
     sm_map = json.load(open(SLOTMAP))
     log("cells=%d" % len(cells))
-    report = {"cells": {}, "paint": {}, "foliage": {}, "ok": False, "cell_count": len(cells)}
+    report = {"cells": {}, "paint": {}, "foliage": {}, "ok": False, "cell_count": len(cells),
+              "config_ok": cfg_ok}
     done = 0
 
     for cell in cells:
@@ -269,28 +425,28 @@ def main():
             continue
         stats = source_stats(obj)
         if stats["faces"] == 0:
-            deleted = drop(pkg)
+            deleted = drop(pkg, obj)
             report["cells"][cell] = {"empty_source": True, "deleted_first": deleted,
                                      "placeholder_faces": stats["bad_faces"]}
             log("cell %s -> empty_source placeholder_faces=%d deleted=%s"
                 % (cell, stats["bad_faces"], deleted))
             continue
-        deleted = drop(pkg)
+        deleted = drop(pkg, obj)
         import_obj(obj, DEST_STRUCT, cell)
         sm = unreal.EditorAssetLibrary.load_asset(pkg)
         if sm is None:
-            report["cells"][cell] = {"error": "import_failed"}
-            continue
+            raise Abort("import failed for cell %s (%s)" % (cell, obj))
+        bounds_err = None if cell in NON_CELL else check_bounds(sm, obj)
         body = sm.get_editor_property("body_setup")
         if body is not None:
             body.set_editor_property("collision_trace_flag", FLAG)
             unreal.EditorAssetLibrary.save_loaded_asset(sm, only_if_is_dirty=False)
         if cell in NON_CELL:
-            slot_err = "skipped:non_cell"
+            slot = {"err": "skipped:non_cell", "guessed": [], "unmatched": []}
         elif cell in sm_map:
-            slot_err = apply_slots(sm, sm_map[cell])
+            slot = apply_slots(sm, sm_map[cell], allow_guess=False)
         else:
-            slot_err = "no_slotmap"
+            slot = {"err": "no_slotmap", "guessed": [], "unmatched": []}
         # read back from a freshly loaded asset
         sm = unreal.EditorAssetLibrary.load_asset(pkg)
         slots, nonnull = slots_state(sm)
@@ -314,7 +470,9 @@ def main():
             "nonnull": nonnull,
             "want_slots": want.get("want_slots"),
             "want_nonnull": want.get("want_nonnull"),
-            "slot_err": slot_err,
+            "slot_err": slot["err"],
+            "slot_guessed": slot["guessed"],
+            "bounds_err": bounds_err,
         }
         done += 1
         if done % 25 == 0:
@@ -324,22 +482,23 @@ def main():
 
     # paint: one mesh, no collision
     pkg = "%s/C1_NoCollision_Paint" % DEST_PAINT
-    drop(pkg)
+    drop(pkg, SRC_PAINT)
     import_obj(SRC_PAINT, DEST_PAINT, "C1_NoCollision_Paint")
     sm = unreal.EditorAssetLibrary.load_asset(pkg)
     if sm is None:
-        report["paint"] = {"error": "import_failed"}
+        raise Abort("import failed for paint (%s)" % SRC_PAINT)
     else:
         clear_err = clear_simple_collision(sm)
         # NOTE: this pass binds nothing on purpose. apply_nc_materials.py is authoritative for NC
         # assets -- apply_slotmap.py only walks the cell names in slotmap.json, so skipping it
         # leaves every slot on WorldGridMaterial and the markings/foliage invisible in game.
-        slot_err = apply_slots(sm, {"slots": []})
+        slot = apply_slots(sm, {"slots": []}, allow_guess=True)
         sm = unreal.EditorAssetLibrary.load_asset(pkg)
         slots, nonnull = slots_state(sm)
         report["paint"] = {"lods": int(sm.get_num_lods()), "collision": collision_state(sm),
                            "slots": slots, "bound": nonnull, "clear_err": clear_err,
-                           "slot_err": slot_err}
+                           "slot_err": slot["err"], "slot_guessed": slot["guessed"],
+                           "bounds_err": check_bounds(sm, SRC_PAINT)}
         log("paint -> %s" % report["paint"])
 
     # foliage for the same cells, only where the cell has foliage
@@ -351,25 +510,28 @@ def main():
         pkg = "%s/%s" % (DEST_FOLIAGE, cell)
         stats = source_stats(obj)
         if stats["faces"] == 0:
-            drop(pkg)
+            drop(pkg, obj)
             report["foliage"][cell] = {"skipped": "empty_source",
                                        "placeholder_faces": stats["bad_faces"]}
             continue
-        drop(pkg)
+        drop(pkg, obj)
         import_obj(obj, DEST_FOLIAGE, cell)
         sm = unreal.EditorAssetLibrary.load_asset(pkg)
         if sm is None:
-            report["foliage"][cell] = {"error": "import_failed"}
+            raise Abort("import failed for foliage %s (%s)" % (cell, obj))
         else:
             clear_err = clear_simple_collision(sm)
             # see the paint note above: apply_nc_materials.py binds these slots, not this pass
-            slot_err = apply_slots(sm, {"slots": []})
+            slot = apply_slots(sm, {"slots": []}, allow_guess=True)
             sm = unreal.EditorAssetLibrary.load_asset(pkg)
             slots, nonnull = slots_state(sm)
             report["foliage"][cell] = {"lods": int(sm.get_num_lods()),
                                        "collision": collision_state(sm),
                                        "slots": slots, "bound": nonnull,
-                                       "clear_err": clear_err, "slot_err": slot_err}
+                                       "clear_err": clear_err,
+                                       "slot_err": slot["err"],
+                                       "slot_guessed": slot["guessed"],
+                                       "bounds_err": check_bounds(sm, obj)}
         log("foliage %s -> %s" % (cell, report["foliage"][cell]))
 
     # Degenerate-source check: a cell that imports, but with a handful of triangles, is what
@@ -390,6 +552,7 @@ def main():
                                  (v.get("lods") == 1
         and v.get("slot_names_match_obj") is True
         and v.get("slot_err") in (None, "skipped:non_cell")
+        and v.get("bounds_err") is None
         and set(v.get("unbound") or []) <= set(v.get("expected_null") or [])
         and v.get("collision", {}).get("flag") == str(FLAG)))
         for v in report["cells"].values())
@@ -398,17 +561,35 @@ def main():
                 and r.get("collision", {}).get("flag") != str(FLAG)
                 and r.get("collision", {}).get("simple_total") == 0
                 and r.get("clear_err") is None and r.get("slot_err") is None
+                and r.get("bounds_err") is None
                 and r.get("bound") == r.get("slots"))
+
+    # Calls to the MI-name guess, for the no-collision passes only. Recorded, never silent: a
+    # guess that is wrong ships a plausible material on the wrong faces.
+    guesses = sum(len(v.get("slot_guessed") or [])
+                  for v in list(report["cells"].values()) + list(report["foliage"].values())
+                  + [report["paint"]] if isinstance(v, dict))
+    report["slot_guesses"] = guesses
 
     foliage_checked = [v for v in report["foliage"].values() if isinstance(v, dict) and "lods" in v]
     foliage_ok = all(nc(v) for v in foliage_checked) and not any(
         isinstance(v, dict) and "error" in v for v in report["foliage"].values())
     report["ok"] = bool(struct_ok and nc(report["paint"]) and foliage_ok)
     json.dump(report, open(REPORT, "w"), indent=1)
-    log("A4_GATE_%s cells=%d paint_slots=%d foliage=%d"
+    log("A4_GATE_%s cells=%d paint_slots=%d foliage=%d slot_guesses=%d ledger=%d"
         % ("OK" if report["ok"] else "FAIL", len(report["cells"]),
            report["paint"].get("slots"), len([v for v in report["foliage"].values()
-                                              if isinstance(v, dict) and "lods" in v])))
+                                              if isinstance(v, dict) and "lods" in v]),
+           guesses, len(json.load(open(LEDGER)).get("deleted", []))))
 
 
-main()
+try:
+    main()
+except Abort as e:
+    # No half-built tree left unannounced: name the failure, leave the ledger for a restore,
+    # and let the editor see a real error rather than a log line someone has to notice.
+    log("A4_ABORT %s" % e)
+    raise
+except Exception as e:
+    log("A4_ABORT unexpected %s: %s" % (type(e).__name__, e))
+    raise
