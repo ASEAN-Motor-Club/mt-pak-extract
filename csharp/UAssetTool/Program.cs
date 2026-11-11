@@ -46,6 +46,7 @@ class Program
         bool patchCdoMode = args.Contains("--patch-cdo-arrays");
         bool patchRowsMode = args.Contains("--patch-rows");
         bool patchExportMode = args.Contains("--patch-export-props");
+        bool verifyMeshPakMode = args.Contains("--verify-mesh-pak");
         bool patchNamedExportsMode = args.Contains("--patch-named-exports");
         bool alignImportsMode = args.Contains("--align-imports");
         bool dumpMode = args.Contains("--dump");
@@ -185,6 +186,14 @@ class Program
             var templatePath = args.ElementAtOrDefault(idx + 2) ?? Path.Combine(RootDir, "template.uasset");
             var outputDir = args.ElementAtOrDefault(idx + 3) ?? RootDir;
             PatchExportProps(configPath, templatePath, outputDir);
+        }
+        else if (verifyMeshPakMode)
+        {
+            var idx = Array.IndexOf(args, "--verify-mesh-pak");
+            var cookedRoot = args.ElementAtOrDefault(idx + 1) ?? throw new ArgumentException("--verify-mesh-pak <cookedRoot> [slotmap.json] [report.json]");
+            var slotmapPath = args.ElementAtOrDefault(idx + 2);
+            var reportPath = args.ElementAtOrDefault(idx + 3);
+            Environment.ExitCode = VerifyMeshPak(cookedRoot, slotmapPath, reportPath);
         }
         else if (patchNamedExportsMode)
         {
@@ -2716,6 +2725,178 @@ class Program
     // Shared helpers
     // ========================================================================
     
+    // ========================================================================
+    // --verify-mesh-pak <cookedRoot> [slotmap.json] [report.json]
+    //
+    // Verifies the COOKED files, i.e. what actually ships, because every
+    // in-editor readback shares one flaw: EditorAssetLibrary.load_asset returns
+    // the cached package, so a "read back after save" proves only what is in
+    // memory. That is how v13 shipped with no materials at all and v14/v15
+    // shipped an invisible NoCollision layer while the A4 gate printed OK.
+    //
+    // Exit code 1 on any failure; build_meshpak.sh refuses to pack on non-zero.
+    // ========================================================================
+    static string? ExportClassName(UAsset asset, Export e)
+    {
+        if (e.ClassIndex.Index < 0 && -e.ClassIndex.Index - 1 < asset.Imports.Count)
+            return asset.Imports[-e.ClassIndex.Index - 1].ObjectName?.Value?.Value;
+        return null;
+    }
+
+    static string? ImportNameAt(UAsset asset, int idx)
+    {
+        if (idx >= 0 || -idx - 1 >= asset.Imports.Count) return null;
+        return asset.Imports[-idx - 1].ObjectName?.Value?.Value;
+    }
+
+    static int VerifyMeshPak(string cookedRoot, string? slotmapPath, string? reportPath)
+    {
+        var slotmap = new Dictionary<string, JsonElement>();
+        if (!string.IsNullOrEmpty(slotmapPath) && File.Exists(slotmapPath))
+        {
+            using var smDoc = JsonDocument.Parse(File.ReadAllText(slotmapPath));
+            foreach (var kv in smDoc.RootElement.EnumerateObject()) slotmap[kv.Name] = kv.Value.Clone();
+        }
+
+        var rows = new List<Dictionary<string, object?>>();
+        var failures = new List<string>();
+        int total = 0, ncCount = 0;
+
+        foreach (var (dirName, family) in new[] { ("Meshes", "cell"), ("Meshes_NoCollision", "nc") })
+        {
+            var dir = Path.Combine(cookedRoot, dirName);
+            if (!Directory.Exists(dir))
+            {
+                failures.Add($"missing directory: {dir}");
+                continue;
+            }
+
+            foreach (var file in Directory.GetFiles(dir, "*.uasset").OrderBy(f => f, StringComparer.Ordinal))
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                total++;
+                if (family == "nc") ncCount++;
+                var row = new Dictionary<string, object?> { ["asset"] = name, ["family"] = family };
+                var problems = new List<string>();
+
+                try
+                {
+                    var asset = new UAsset(file, EngineVersion.VER_UE5_5, Mappings);
+                    var smExport = asset.Exports.OfType<NormalExport>()
+                        .FirstOrDefault(e => ExportClassName(asset, e) == "StaticMesh");
+                    if (smExport == null)
+                    {
+                        problems.Add("no StaticMesh export");
+                    }
+                    else
+                    {
+                        int slots = 0, nonnull = 0, worldGrid = 0;
+                        var missing = new List<string>();
+                        var arr = smExport.Data.FirstOrDefault(p => p.Name?.Value?.Value == "StaticMaterials")
+                                  as ArrayPropertyData;
+                        if (arr != null)
+                        {
+                            foreach (var el in arr.Value)
+                            {
+                                slots++;
+                                var st = el as StructPropertyData;
+                                var mi = st?.Value.FirstOrDefault(p => p.Name?.Value?.Value == "MaterialInterface")
+                                         as ObjectPropertyData;
+                                var slotNameProp = st?.Value.FirstOrDefault(p => p.Name?.Value?.Value == "MaterialSlotName")
+                                                   as NamePropertyData;
+                                var slotName = slotNameProp?.Value?.Value != null
+                                    ? slotNameProp.Value.Value.Value : "?";
+                                var idx = mi?.Value?.Index ?? 0;
+                                var imp = ImportNameAt(asset, idx);
+                                if (idx != 0 && imp != null && imp != "WorldGridMaterial") nonnull++;
+                                else
+                                {
+                                    if (imp == "WorldGridMaterial") worldGrid++;
+                                    missing.Add(slotName);
+                                }
+                            }
+                        }
+                        row["slots"] = slots;
+                        row["nonnull"] = nonnull;
+                        row["worldgrid"] = worldGrid;
+
+                        if (slots == 0) problems.Add("no material slots");
+                        if (worldGrid > 0)
+                            problems.Add($"{worldGrid}/{slots} slots on WorldGridMaterial (unbound): " +
+                                         string.Join(",", missing.Take(6)));
+
+                        if (family == "nc")
+                        {
+                            if (nonnull != slots)
+                                problems.Add($"nc slots bound {nonnull}/{slots}");
+                        }
+                        else if (slotmap.TryGetValue(name, out var want))
+                        {
+                            var ws = want.GetProperty("want_slots").GetInt32();
+                            var wn = want.GetProperty("want_nonnull").GetInt32();
+                            row["want_slots"] = ws;
+                            row["want_nonnull"] = wn;
+                            if (slots != ws)
+                                problems.Add($"slots {slots} != slotmap {ws}");
+                            if (nonnull != wn)
+                                problems.Add($"nonnull {nonnull} != slotmap {wn}");
+                        }
+                        else if (nonnull == 0)
+                        {
+                            problems.Add("no slotmap entry and no bound slots");
+                        }
+                    }
+
+                    var body = asset.Exports.OfType<NormalExport>()
+                        .FirstOrDefault(e => ExportClassName(asset, e) == "BodySetup");
+                    if (body != null)
+                    {
+                        int aggElems = 0;
+                        var agg = body.Data.FirstOrDefault(p => p.Name?.Value?.Value == "AggGeom")
+                                  as StructPropertyData;
+                        if (agg != null)
+                            foreach (var child in agg.Value)
+                                if (child is ArrayPropertyData ap &&
+                                    (child.Name?.Value?.Value?.EndsWith("Elems") ?? false))
+                                    aggElems += ap.Value.Length;
+                        var cf = body.Data.FirstOrDefault(p => p.Name?.Value?.Value == "CollisionTraceFlag")
+                                 as BytePropertyData;
+                        row["collision_flag"] = (int)(cf?.Value ?? 0);
+                        row["agg_elems"] = aggElems;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    problems.Add("parse error: " + ex.Message);
+                }
+
+                row["problems"] = problems;
+                rows.Add(row);
+                if (problems.Count > 0)
+                    failures.Add($"{family}/{name}: " + string.Join("; ", problems));
+            }
+        }
+
+        if (reportPath != null)
+        {
+            var report = new Dictionary<string, object?>
+            {
+                ["cooked_root"] = cookedRoot,
+                ["checked"] = total,
+                ["nc_assets"] = ncCount,
+                ["failed"] = failures.Count,
+                ["failures"] = failures,
+                ["assets"] = rows,
+            };
+            File.WriteAllText(reportPath, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
+        }
+
+        Console.WriteLine($"VERIFY_MESH_PAK {(failures.Count == 0 ? "OK" : "FAIL")} checked={total} nc={ncCount} failed={failures.Count}");
+        foreach (var f in failures.Take(12)) Console.WriteLine("  FAIL " + f);
+        if (failures.Count > 12) Console.WriteLine($"  ... {failures.Count - 12} more");
+        return failures.Count == 0 ? 0 : 1;
+    }
+
     static void SetNumericProperty(PropertyData prop, float value)
     {
         switch (prop)

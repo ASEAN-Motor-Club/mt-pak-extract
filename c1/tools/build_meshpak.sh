@@ -46,6 +46,21 @@ done
 
 [ "$n" -eq "$EXPECT" ] || { echo "FAIL: $n meshes staged, expected $EXPECT" >&2; exit 3; }
 
+# Material gate: verify the COOKED assets, not the editor's memory. Runs on the staged
+# tree so what is checked is exactly what gets packed. The editor readback in
+# import_split.py cannot be trusted for this (it re-reads the cached UObject, which is
+# how v13 shipped with no materials and v14/v15 shipped an invisible NoCollision layer).
+# Skip only for a deliberate forensics build: ALLOW_UNBOUND_MATERIALS=1.
+if [ "${ALLOW_UNBOUND_MATERIALS:-0}" != "1" ]; then
+    VERIFY_SLOTMAP="${VERIFY_SLOTMAP:-/opt/data/cache/scratch/slotmap.json}"
+    if ! bash "$(dirname "${BASH_SOURCE[0]}")/verify_cooked.sh" "$MODS" "$VERIFY_SLOTMAP"; then
+        echo "FAIL: cooked asset verification failed -- refusing to pack" >&2
+        exit 7
+    fi
+else
+    echo "WARNING: ALLOW_UNBOUND_MATERIALS=1 -- skipping the material gate"
+fi
+
 # Single-owner gate: level assets and materials belong to their own paks.
 if find "$WORK" -name '*.umap' | grep -q .; then
     echo "FAIL: a .umap leaked into the mesh pak" >&2; exit 4
