@@ -30,6 +30,25 @@ def log(m):
         f.write(str(m) + "\n")
 
 
+def purge_actors(where):
+    """Destroy every actor standing in the current level.
+
+    Re-running the build must not inherit anything: new_level() on an existing path reuses the
+    level, so actors spawned by a previous import survive into the new one and then sit in the
+    world with no matching mesh (or a deleted one). Clearing explicitly makes the run idempotent
+    and the actor count in the report meaningful.
+    """
+    removed = 0
+    for actor in unreal.EditorLevelLibrary.get_all_level_actors():
+        try:
+            unreal.EditorLevelLibrary.destroy_actor(actor)
+            removed += 1
+        except Exception as e:
+            log("purge: could not destroy %s (%s)" % (actor.get_actor_label(), e))
+    log("purged %d actors from %s" % (removed, where))
+    return removed
+
+
 def spawn(label, mesh_path, loc):
     mesh = unreal.EditorAssetLibrary.load_asset(mesh_path)
     if mesh is None:
@@ -56,14 +75,20 @@ def main():
     open(LOG, "w").close()
     report = {"actors": {}, "errors": [], "paint": None, "counts": {}}
 
-    # start from the shipped level so the editor has a world, then make the new level current
+    # start from the shipped level so the editor has a world, then make the new level current.
+    # Delete the previous sublevel asset first: new_level() on an existing path REUSES it, and
+    # anything a previous import spawned would otherwise survive into this build.
     unreal.EditorLevelLibrary.load_level("/Game/Mods/C1Full/Maps/C1Full")
+    if unreal.EditorAssetLibrary.does_asset_exist(SUBLEVEL):
+        unreal.EditorAssetLibrary.delete_asset(SUBLEVEL)
+        log("deleted previous sublevel %s" % SUBLEVEL)
     log("loaded C1Full, creating %s" % SUBLEVEL)
     if not unreal.EditorLevelLibrary.new_level(SUBLEVEL):
         log("NEW_LEVEL_FAILED")
         json.dump(report, open(REPORT, "w"), indent=1)
         return
     log("new level created: %s" % SUBLEVEL)
+    report["purged"] = purge_actors(SUBLEVEL)
 
     origins = json.load(open(ORIGINS))
 

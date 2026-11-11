@@ -12,7 +12,14 @@ centroid is on the `joint_depth` exclusion list (no support within 30 cm) also s
 a marking spanning a void is still collidable.
 
 World placement matches the decal mesh that already ships: a merged vertex in metres is
-(v.x + origin_x, v.y - origin_y, v.z), imported at uniform scale 100 with its actor at the origin.
+(v.x + origin_x, v.y + origin_y, v.z), imported at uniform scale 100 with its actor at the origin.
+
+The Y term ADDS the origin. meshes_local_v2 is rebased by rebase_obj.py as (x - ox, y - oy), so
+the origin must be added back to recover world metres. Subtracting it a second time (the original
+`y - oy`) placed every merged marking 2*oy from where it belongs -- cells whose origin_y is 0
+still landed correctly, which is why only some tiles showed stray markings over water and inside
+buildings instead of the whole layer being visibly displaced. Verified on c3_7: meshes_local_v2
+y is 479..948 for origin_y 3000 (absolute 3479..3948), so `y + oy` reproduces 3479..3948.
 
 Every emitted OBJ is compacted to referenced vertices: the port's orphan-vertex bbox bug (a 409 m
 false bbox on c-1_-3 and c1_-8) comes from writing vertices no face references.
@@ -273,7 +280,7 @@ def main():
         # merged paint, world metres
         if buckets["paint"]:
             voff, toff, noff = len(paint.verts), len(paint.uvs), len(paint.norms)
-            paint.add([(x + ox, y - oy, z) for (x, y, z) in verts], uvs, norms,
+            paint.add([(x + ox, y + oy, z) for (x, y, z) in verts], uvs, norms,
                       [(m, [(a + voff, (b + toff) if b else 0, (c + noff) if c else 0)
                            for a, b, c in i]) for m, i in buckets["paint"]], None, None, None)
 
