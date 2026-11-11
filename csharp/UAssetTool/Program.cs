@@ -76,6 +76,14 @@ class Program
             return;
         }
 
+        if (args.Contains("--set-object-class-ref"))
+        {
+            int ci = Array.IndexOf(args, "--set-object-class-ref");
+            if (ci + 6 >= args.Length) { Console.WriteLine("usage: --set-object-class-ref <in.uasset> <out.uasset> <exportName> <propName> <packagePath> <className>"); return; }
+            SetObjectClassRef(args[ci + 1], args[ci + 2], args[ci + 3], args[ci + 4], args[ci + 5], args[ci + 6]);
+            return;
+        }
+
         if (args.Contains("--set-array-bool"))
         {
             int bi = Array.IndexOf(args, "--set-array-bool");
@@ -2716,6 +2724,13 @@ class Program
             case IntPropertyData ip: ip.Value = (int)value; break;
             case Int64PropertyData i64p: i64p.Value = (long)value; break;
             case DoublePropertyData dp: dp.Value = value; break;
+            // ByteProperty backs every TEnumAsByte field (CollisionTraceFlag, ECollisionEnabled,
+            // ECollisionChannel, ...). Without this case a "set" on those properties was a silent
+            // no-op that still reported "Applied export property patches" and wrote a byte-identical
+            // file -- which is how a collision-flag fix passed review without changing anything.
+            case BytePropertyData bpd:
+                bpd.Value = (byte)value;
+                break;
         }
     }
     
@@ -2973,6 +2988,54 @@ class Program
         asset.ResolveAncestries();
         asset.Write(outPath);
         Console.WriteLine($"SETARRAYCLASS_OK {hits} elements -> {outPath}");
+    }
+
+    // --set-object-class-ref: point a plain ObjectProperty at a class in another package.
+    //
+    // Same job the --set-class-ref mode does for the P22 map rebuild (DefaultGameMode, SunSky,
+    // Garage), which lived only in an unbuildable branch: a cooked mod map must CARRY these three
+    // references as property imports. Missing them is not cosmetic — the level has no game mode,
+    // no sun, and a garage that never becomes an interactive actor.
+    static void SetObjectClassRef(string inPath, string outPath, string exportName,
+        string propName, string packagePath, string className)
+    {
+        var asset = new UAsset(inPath, EngineVersion.VER_UE5_5, Mappings);
+        NormalExport? target = null;
+        foreach (var e in asset.Exports)
+        {
+            if (e is not NormalExport ne) continue;
+            var nm = ne.ObjectName?.Value?.Value ?? "";
+            var num = ne.ObjectName?.Number ?? 0;
+            var full = num > 0 ? $"{nm}_{num - 1}" : nm;
+            if (string.Equals(nm, exportName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(full, exportName, StringComparison.OrdinalIgnoreCase)) { target = ne; break; }
+        }
+        if (target == null) { Console.WriteLine($"SETOBJCLASS_FAIL no export named {exportName}"); return; }
+
+        var (_, classIdx) = AddImportChain(asset, "/Script/Engine", "BlueprintGeneratedClass", packagePath, className);
+        bool set = false;
+        foreach (var p in target.Data)
+        {
+            if (p is ObjectPropertyData op && string.Equals(op.Name?.Value?.Value, propName, StringComparison.OrdinalIgnoreCase))
+            {
+                op.Value = FPackageIndex.FromImport(classIdx - 1);
+                set = true;
+            }
+        }
+        if (!set)
+        {
+            // A level whose WorldSettings never had a game mode carries no property at all, so
+            // "missing" is the normal case for DefaultGameMode, not an error: append it.
+            var created = new ObjectPropertyData(new FName(asset, propName));
+            created.Value = FPackageIndex.FromImport(classIdx - 1);
+            target.Data.Add(created);
+            Console.WriteLine($"  added missing property {exportName}.{propName}");
+            set = true;
+        }
+
+        asset.ResolveAncestries();
+        asset.Write(outPath);
+        Console.WriteLine($"SETOBJCLASS_OK {exportName}.{propName} -> {packagePath}.{className} (import {classIdx}) -> {outPath}");
     }
 
     // --set-array-bool: flip a BoolProperty inside TArray<FStruct> elements selected by a key
