@@ -67,24 +67,46 @@ def import_obj(path, dest, name):
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
 
-def empty_source(path):
-    """True when the OBJ carries no triangle at all.
+def source_stats(path, probe_bytes=262144, probe_faces=8):
+    """Count renderable geometry in an OBJ the split produced.
 
-    Six sources are placeholders: three vertices and one face, and that face is the malformed
-    `f 0 1/1/1 2/2/2` line the split writes into every file. Strip that line and there is nothing
-    left to import, so the importer fails and the previous build's asset stays behind -- which is
-    how a sliver survived here long after the split stopped producing geometry for these cells.
+    The split writes `f 0 1/1/1 2/2/2` into every file it has no geometry for: three corners
+    with 0-based indices, which OBJ does not allow (indices are 1-based). The old guard here
+    accepted any `f ` line with four or more tokens -- and the placeholder has exactly four --
+    so the guard certified its own placeholder as real geometry. The importer was then handed
+    a file with no triangles, failed quietly, and the previous build's asset stayed on disk:
+    that is how an empty cell kept a stale sliver long after the split stopped producing it.
+
+    A face counts only if it has three or more corners and no corner index starts at 0.
+    Large files are sampled (a real cell shows many faces in the first 256 KB); small files
+    are scanned in full, which is where the placeholder trap lives.
     """
+    faces = verts = bad = 0
+    sampled = False
+    read = 0
     try:
-        if os.path.getsize(path) > 8192:
-            return False
         with open(path, "r", errors="ignore") as f:
             for line in f:
-                if line.startswith("f ") and len(line.split()) >= 4:
-                    return False
-    except OSError:
-        return False
-    return True
+                read += len(line)
+                if line.startswith("v "):
+                    verts += 1
+                elif line.startswith("f "):
+                    parts = line.split()
+                    if len(parts) >= 4 and not any(p[0] == "0" for p in parts[1:]):
+                        faces += 1
+                    else:
+                        bad += 1
+                    if faces >= probe_faces and read >= probe_bytes:
+                        sampled = True
+                        break
+    except OSError as e:
+        return {"error": str(e), "faces": 0, "verts": 0, "bad_faces": 0, "sampled": False}
+    return {"faces": faces, "verts": verts, "bad_faces": bad, "sampled": sampled}
+
+
+def empty_source(path):
+    """True when the source carries no renderable triangle."""
+    return source_stats(path)["faces"] == 0
 
 
 def drop(pkg):
@@ -245,10 +267,13 @@ def main():
             # is nothing to import here and its foliage is handled in the loop below
             report["cells"][cell] = {"foliage_only": True}
             continue
-        if empty_source(obj):
+        stats = source_stats(obj)
+        if stats["faces"] == 0:
             deleted = drop(pkg)
-            report["cells"][cell] = {"empty_source": True, "deleted_first": deleted}
-            log("cell %s -> empty_source" % cell)
+            report["cells"][cell] = {"empty_source": True, "deleted_first": deleted,
+                                     "placeholder_faces": stats["bad_faces"]}
+            log("cell %s -> empty_source placeholder_faces=%d deleted=%s"
+                % (cell, stats["bad_faces"], deleted))
             continue
         deleted = drop(pkg)
         import_obj(obj, DEST_STRUCT, cell)
@@ -275,6 +300,8 @@ def main():
                  for e in sm.get_editor_property("static_materials")]
         report["cells"][cell] = {
             "deleted_first": deleted,
+            "faces": stats["faces"],
+            "faces_sampled": stats["sampled"],
             "lods": int(sm.get_num_lods()),
             "collision": collision_state(sm),
             "slots": slots,
@@ -322,9 +349,11 @@ def main():
             report["foliage"][cell] = {"skipped": "no foliage"}
             continue
         pkg = "%s/%s" % (DEST_FOLIAGE, cell)
-        if empty_source(obj):
+        stats = source_stats(obj)
+        if stats["faces"] == 0:
             drop(pkg)
-            report["foliage"][cell] = {"skipped": "empty_source"}
+            report["foliage"][cell] = {"skipped": "empty_source",
+                                       "placeholder_faces": stats["bad_faces"]}
             continue
         drop(pkg)
         import_obj(obj, DEST_FOLIAGE, cell)
@@ -342,6 +371,19 @@ def main():
                                        "slots": slots, "bound": nonnull,
                                        "clear_err": clear_err, "slot_err": slot_err}
         log("foliage %s -> %s" % (cell, report["foliage"][cell]))
+
+    # Degenerate-source check: a cell that imports, but with a handful of triangles, is what
+    # the empty placeholder hides -- it looks like a successful import and ships a sliver.
+    # Sampled sources are real by construction, so only fully-scanned ones are judged.
+    low_faces = sorted(
+        (cell, v["faces"]) for cell, v in report["cells"].items()
+        if isinstance(v, dict) and isinstance(v.get("faces"), int)
+        and not v.get("faces_sampled") and 0 < v["faces"] < 16)
+    report["low_face_cells"] = [{"cell": c, "faces": f} for c, f in low_faces]
+    report["empty_cells"] = sorted(cell for cell, v in report["cells"].items()
+                                   if isinstance(v, dict) and v.get("empty_source"))
+    if low_faces:
+        log("WARN low_face_cells %d %s" % (len(low_faces), low_faces[:10]))
 
     struct_ok = all(
         isinstance(v, dict) and (v.get("foliage_only") or v.get("empty_source") or
