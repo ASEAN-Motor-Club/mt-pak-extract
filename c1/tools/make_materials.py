@@ -1,28 +1,63 @@
-"""Create the C1 master materials and 568 material instances from the manifest.
+"""Create the C1 master materials and 1,609 material instances from the manifest.
 
 Three masters, because one cannot be both opaque and masked and scalar-roughness and
 texture-roughness at the same time without branch nodes that make the graph unreadable:
   M_C1_Surface         opaque, scalar roughness/metallic
   M_C1_Surface_Tex     opaque, roughness/metallic/AO maps
   M_C1_Surface_Masked  masked (glass, fence mesh), opacity map
-All three expose: BaseColor, Normal, EmissiveStrength.
+All three expose: BaseColor, Normal, EmissiveStrength, Specular, AmbientOcclusion.
+
+Run:  UnrealEditor-Cmd <uproject> -run=pythonscript -script=.../make_materials.py
+      with C1_REBUILD_MASTERS=1 to rebuild the master graphs (the only way to add parameters).
+
+Everything is logged to LOG_PATH. unreal.log() alone is not enough: a PythonScriptCommandlet
+prints "Python script executed successfully" even when the script dies at import time, and its
+unreal.log output never reaches the commandlet log. The first version of this script ran 19
+seconds, created nothing, and reported success -- twice.
 """
 import json
 import os
+import traceback
 
 import unreal
 
 MAT_PATH = '/Game/Mods/C1/Materials'
-_PROJ = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
-# materials_ue_v2.json is the manifest produced by c1/tools/mat_values.py: per-material
-# roughness/metallic from the source where the source has a factor, else the class table, plus a
-# Specular value. The v1 manifest's hardcoded 0.65/0.0 is what made 17 real-metal materials
-# render as plastic.
-_V2 = os.path.join(_PROJ, 'materials_ue_v2.json')
-MANIFEST = _V2 if os.path.exists(_V2) else os.path.join(_PROJ, 'materials_ue.json')
-REBUILD_MASTERS = os.environ.get('C1_REBUILD_MASTERS') == '1'
-tools = unreal.AssetToolsHelpers.get_asset_tools()
-mel = unreal.MaterialEditingLibrary
+LOG_PATH = r'D:\make_materials.log'
+
+tools = None
+mel = None
+MANIFEST = None
+REBUILD_MASTERS = False
+
+
+def log(m):
+    line = str(m)
+    try:
+        with open(LOG_PATH, 'a') as f:
+            f.write(line + '\n')
+    except Exception:
+        pass
+    try:
+        unreal.log('C1MAT ' + line)
+    except Exception:
+        pass
+
+
+def init():
+    """Resolve paths and library handles. Deliberately not at import time: anything that raises
+    here has to be reported, and an import-time failure is swallowed by the commandlet."""
+    global tools, mel, MANIFEST, REBUILD_MASTERS
+    proj = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
+    v2 = os.path.join(proj, 'materials_ue_v2.json')
+    # materials_ue_v2.json comes from c1/tools/mat_values.py: per-material roughness/metallic
+    # from the source where the source has a factor, else the class table, plus Specular. The v1
+    # manifest's hardcoded 0.65/0.0 is what made real-metal materials render as plastic.
+    MANIFEST = v2 if os.path.exists(v2) else os.path.join(proj, 'materials_ue.json')
+    REBUILD_MASTERS = os.environ.get('C1_REBUILD_MASTERS') == '1'
+    tools = unreal.AssetToolsHelpers.get_asset_tools()
+    mel = unreal.MaterialEditingLibrary
+    log('init manifest=%s exists=%s rebuild_masters=%s'
+        % (MANIFEST, os.path.exists(MANIFEST), REBUILD_MASTERS))
 
 
 def existing(path, name):
@@ -49,8 +84,8 @@ def build_master(name, textured, masked):
     if mat and not REBUILD_MASTERS:
         return mat
     if mat:
-        # Params can only be added by rebuilding the graph; MIs parented to it keep their
-        # bindings and are reparented to the new asset below.
+        # Parameters cannot be added to an existing graph; MIs parented to the old asset are
+        # reparented to the rebuilt one below.
         unreal.EditorAssetLibrary.delete_asset('%s/%s' % (MAT_PATH, name))
     mat = tools.create_asset(name, MAT_PATH, unreal.Material, unreal.MaterialFactoryNew())
 
@@ -58,8 +93,9 @@ def build_master(name, textured, masked):
     nrm = tex_param(mat, 'Normal', -800, 100, unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
     emis_t = tex_param(mat, 'EmissiveTex', -800, 500, unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
     emis_s = scalar_param(mat, 'EmissiveStrength', 0.0, -800, 700)
-    # Specular control: the source has no specular data at all (0 of 1,609 definitions), so this
-    # is the only way to stop painted metal, concrete and markings sharing F0 0.04.
+    # The source carries no specular data at all (0 of 1,609 definitions have a specular field),
+    # so a per-class Specular is the only way to stop painted metal, concrete and markings all
+    # sharing the dielectric default F0.
     spec = scalar_param(mat, 'Specular', 0.5, -800, 900)
 
     mel.connect_material_property(base, 'RGB', unreal.MaterialProperty.MP_BASE_COLOR)
@@ -93,21 +129,23 @@ def build_master(name, textured, masked):
         mat.set_editor_property('blend_mode', unreal.BlendMode.BLEND_MASKED)
         mat.set_editor_property('two_sided', True)
 
-    # AO is a contrast lever, not a brightness one, and it was never wired: 160 MIs carry an AO
+    # AO is a contrast lever, not a brightness one - and it was never wired: 160 MIs carry an AO
     # slot in the manifest and the old slot_param had no 'ao' entry, so those maps were dropped
-    # silently before the master was even considered.
+    # before the master was even considered.
     ao = tex_param(mat, 'AmbientOcclusion', -1100, 100,
                    unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     mel.connect_material_property(ao, 'R', unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
 
     mel.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat, False)
-    unreal.log('C1MAT master %s textured=%s masked=%s' % (name, textured, masked))
+    log('master %s textured=%s masked=%s' % (name, textured, masked))
     return mat
 
 
 def main():
+    init()
     data = json.load(open(MANIFEST))
+    log('entries=%d' % len(data['materials']))
 
     masters = {
         'M_C1_Surface': build_master('M_C1_Surface', False, False),
@@ -117,8 +155,8 @@ def main():
 
     ok = fail = 0
     failed = []
-    # manifest slot key -> master material parameter name. Binding by raw slot key silently
-    # does nothing, which looks like "material created but grey".
+    # manifest slot key -> master material parameter name. Binding by raw slot key silently does
+    # nothing, which looks like "material created but grey".
     slot_param = {
         'basecolor': 'BaseColor',
         'normal': 'Normal',
@@ -127,9 +165,9 @@ def main():
         'opacity': 'OpacityTex',
         'emissive': 'EmissiveTex',
         'ao': 'AmbientOcclusion',
-        # NOTE: no 'detail' binding yet. The masters have no DetailTex parameter, and binding to a
-        # parameter that does not exist silently does nothing -- it would look done and change
-        # nothing. 4 materials ship a detailMap; that is a deliberate omission, not an oversight.
+        # NOTE: no 'detail' binding. The masters have no DetailTex parameter, and binding to a
+        # parameter that does not exist silently does nothing. 4 materials ship a detailMap;
+        # that is a deliberate omission, not an oversight.
     }
 
     for i, e in enumerate(data['materials']):
@@ -142,7 +180,7 @@ def main():
             for slot, tex_path in e['slots'].items():
                 param = slot_param.get(slot)
                 if not param:
-                    continue  # ao/detail not exposed by v1 masters
+                    continue
                 tex = unreal.load_asset(tex_path)
                 if tex:
                     mel.set_material_instance_texture_parameter_value(mi, param, tex)
@@ -160,12 +198,19 @@ def main():
         except Exception as exc:  # noqa: BLE001
             fail += 1
             failed.append('%s: %s' % (e['mi'], exc))
-        if i % 50 == 0:
-            unreal.log('C1MAT progress %d/%d ok=%d fail=%d' % (i + 1, len(data['materials']), ok, fail))
+        if i % 100 == 0:
+            log('progress %d/%d ok=%d fail=%d' % (i + 1, len(data['materials']), ok, fail))
 
-    unreal.log('C1MAT_DONE ok=%d fail=%d' % (ok, fail))
+    log('DONE ok=%d fail=%d' % (ok, fail))
     if failed:
-        unreal.log('C1MAT_FAILED %s' % ' | '.join(failed[:10]))
+        log('FAILED %s' % ' | '.join(failed[:10]))
+    return ok, fail, failed
 
 
-main()
+try:
+    open(LOG_PATH, 'w').close()
+    main()
+    log('exit ok')
+except Exception:
+    log('SCRIPT_FAILED >>> ' + traceback.format_exc().replace('\n', ' | '))
+    raise
