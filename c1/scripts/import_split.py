@@ -304,6 +304,9 @@ def main():
         report["paint"] = {"error": "import_failed"}
     else:
         clear_err = clear_simple_collision(sm)
+        # NOTE: this pass binds nothing on purpose. apply_nc_materials.py is authoritative for NC
+        # assets -- apply_slotmap.py only walks the cell names in slotmap.json, so skipping it
+        # leaves every slot on WorldGridMaterial and the markings/foliage invisible in game.
         slot_err = apply_slots(sm, {"slots": []})
         sm = unreal.EditorAssetLibrary.load_asset(pkg)
         slots, nonnull = slots_state(sm)
@@ -330,6 +333,7 @@ def main():
             report["foliage"][cell] = {"error": "import_failed"}
         else:
             clear_err = clear_simple_collision(sm)
+            # see the paint note above: apply_nc_materials.py binds these slots, not this pass
             slot_err = apply_slots(sm, {"slots": []})
             sm = unreal.EditorAssetLibrary.load_asset(pkg)
             slots, nonnull = slots_state(sm)
