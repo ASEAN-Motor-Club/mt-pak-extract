@@ -33,8 +33,8 @@ SRC = r"D:\C1FullMirror\meshes_local_v2"
 ORIGINS = r"D:\C1FullMirror\cell_origins_v2.json"
 CLASSIFY = r"D:\C1FullMirror\nocollision_materials.json"
 JOINT_DEPTH = r"D:\C1FullMirror\Scripts\joint_depth.json"
-OUT = r"D:\C1FullMirror\nc_out"
-REPORT = r"D:\C1FullMirror\nc_out\split_report.json"
+OUT = os.environ.get("C1_NC_OUT", r"D:\C1FullMirror\nc_out")
+REPORT = os.path.join(OUT, "split_report.json")
 
 # a joint face over a drop shallower than this is a ridge, not a void: split it
 VOID_DEPTH_CM = 30.0
@@ -251,7 +251,9 @@ def main():
             g = classify(mtl, groups, solid)
             if g in ("road_paint", "road_signs"):
                 g = "paint"
-            elif g == "foliage":
+            elif g in ("foliage", "props"):
+                # both land in the per-cell no-collision layer; the group names only describe
+                # why a surface is non-drivable (canopy vs furniture/fencing)
                 g = "foliage"
             else:
                 g = "structural"

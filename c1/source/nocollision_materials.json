@@ -297,6 +297,22 @@
     "mat_tree_2a",
     "mat_tree_2b"
    ]
+  },
+  "props": {
+   "materials": [
+    "mat_saku_08_02"
+   ],
+   "patterns": [
+    "^mat_saku_08_02$"
+   ],
+   "output": "per_cell",
+   "measured": {
+    "cells": 68,
+    "tris": 18716,
+    "obj_faces": 37432
+   },
+   "source": "explicit name list; measured on meshes_local_v2 (2026-11-13): 18,716 unique tris = 37,432 obj faces (double-sided source)",
+   "reason": "Street fencing on footpaths and shoulders. Collision on these fences turns a graze into a stop and catches cars on the pavement edge."
   }
  },
  "solid_keep": {
