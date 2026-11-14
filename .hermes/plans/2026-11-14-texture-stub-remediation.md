@@ -1,6 +1,6 @@
 # C1 texture stub remediation — 2026-11-14
 
-Status: investigating (re-import route blocked, source-of-truth route found)
+Status: route A selected (source-of-truth fix), quantified, awaiting cook window
 Owner: Yumemi (for freeman)
 Repo: `mt-pak-wt-c1commit` (branch `feat/c1-nav-guards`)
 
@@ -98,3 +98,32 @@ the symptom; fixing the source path fixes the class.
 3. Cook Windows for the C1 project, then assemble `Base_v4` from the cooked tree.
 4. Gates unchanged: `verify_textures.py` on tree + pak, `check_texture_coverage.py`
    rc=0, entry count parity with v3, then publish.
+
+
+## Route A quantified (2026-11-14)
+
+The 220 stubs split into three disjoint groups, measured, not assumed:
+
+- **143 — already real in the editor project.** `D:\UEProjects\C1\Content\Mods\C1\Textures\other\`
+  holds them with pixel data (`mat_kbd02_001_5_file0.uasset` 63,646 B vs 834 B in the pak).
+  Nothing to author; they never reach the pak because the release is assembled from a stale
+  texture tree instead of the project's cooked output.
+- **10 — importable.** Visible maps whose DDS source exists but which were never imported:
+  `building_window28/29/32/33/39/44/57/65`, `building_internal_lights2`, `lamp7`.
+  A texture-only `AssetImportTask` pass into `/Game/Mods/C1/Textures/other` fixes them.
+- **67 — orphans, delete them.** 66 `*_ao_data` masks + `T_UVTest`. No DDS source exists on
+  disk, and **zero** of them appear anywhere in `merged.materials.json` (0 matches for
+  `_ao_data`): nothing references them. Shipping them empty is the bug; removing them from
+  the pak is the fix.
+
+Outcome: 220 stubs → 0, with 210 carrying real pixel data and 67 removed as dead weight.
+
+## Route A execution order
+
+1. Import the 10 DDS into the editor project; confirm each lands with pixel data.
+2. Cook Windows for `D:\UEProjects\C1` (client cook; the project is the source of truth).
+3. Assemble `Base_v4` from that cooked output — not from `texcook_v2314/` — and drop the 67
+   orphans from the pack list.
+4. Gates: `verify_textures.py` 0 stubs on tree and pak, `check_texture_coverage.py` rc=0,
+   entry count parity with v3 minus 67, publish, then in-game spot check of
+   `mat_kbd02_001_5` and one `building_concrete*`.
