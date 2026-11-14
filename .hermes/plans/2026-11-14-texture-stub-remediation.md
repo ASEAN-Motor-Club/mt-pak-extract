@@ -152,3 +152,33 @@ Consequences:
   project is not left with duplicates outside its folder convention.
 - Real fix to land: `build_basepak.sh`/`07b` must take textures from the project's cooked
   output, and the gate then proves it (0 stubs) before any pak is published.
+
+
+## Pipeline review — BeamNG source to pak (2026-11-14)
+
+Hops, and what was measured at each for the 220 stubbed assets:
+
+1. **BeamNG archive** (`art/textures/`, `art/ck_art/` DDS + `*.materials.json`) — original mod.
+2. **Extraction into `c1/mod_full/textures/<folder>/`** — measured over all 220 names:
+   - **160 absent entirely** (no DDS extracted): the whole `*_ao_data` family plus `T_UVTest`.
+   - **52 present but degenerate** (<2 KB: 8×8, 16×16, 8×16, 32×8 masks).
+   - **8 present and real** (>=2 KB, 648,504 B total) — `mat_kbd02_001_5_file0` 87,560 B,
+     `mat_kbd02_001_file0`, `mat_kbf01_016/017_file0`, `mat_ikegaki_2_sh_file0`.
+3. **Editor import into `Content\Mods\C1\Textures\<folder>/`** — all 220 exist as editor
+   packages (220/220, 18,712,481 B total), so the import produced *something* for every name
+   the tree knows about, including the ones with no source DDS.
+4. **Windows cook** — `glass/building_window28` cooked to 1,071 B `.uasset` + 491 B `.uexp`,
+   classified as empty by `verify_textures.classify()` (no `SizeX`, no `PlatformData`).
+   Note: window28's source DDS is one of the 52 degenerate ones, so this proves the *degenerate*
+   case fails, **not** yet the real-source case.
+5. **Pak assembly** — ships whatever hop 4 produced; matches Base_v3 exactly.
+
+Consequences, in priority order:
+
+- The 160 with no source can never carry pixels: they are AO bake data and a debug asset. They
+  should be dropped from the pak (or generated), not "fixed".
+- The real question still open is hop 4 for the **8 real-source** textures. `mat_kbd02_001_5` —
+  the one the user actually sees as checkerboard — has an 87 KB DDS and a 63 KB editor package.
+  If its cooked package is also empty, the defect is in cook/import settings and is fixable
+  centrally. If it cooks fine, then the paks are being assembled from a stale cook and the fix
+  is packaging only. **This single measurement decides the shape of the fix.**
