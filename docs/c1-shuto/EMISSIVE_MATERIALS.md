@@ -176,6 +176,21 @@ brightest channel is below 8 are dropped as effectively black.
 
 Published at `map_tiles/shuto/v8emis/emis.bin` and `shuto-map/emis.json`.
 
+### Two defects found by review (2026-11-14, second pass)
+
+**Animated materials showed every frame at once.** Four of the 57 are BeamNG
+flipbooks — `animFlags 16` plus `sequenceSegmentSize` (0.25–0.5) — so the sheet holds
+2–4 frames side by side and the game scrolls the UV to show one. Sampling the whole
+sheet paints all animation states simultaneously (ferris wheel, crossing signal,
+traffic signal). `mkemis.py` now clamps the UV rect to the first segment.
+
+**128 px cells destroyed detail on the big pages.** Measured with a bottleneck test
+(source → cell → back up, high-pass correlation): median 0.90 retained at 128 px, but
+`mat_tate_kanban00_sh` 0.41, `mat_honsen_daisi01` 0.55, `mat_kan_p1_00_sh` 0.56 and
+`mat_mat_window3_glass_sh` 0.60 — i.e. 40–60% of the glow pattern lost on the
+materials that cover the most geometry. Cells are now 256 px (16.8 MB, 4.19 MB served
+brotli), which lifts the median to 0.98 and the worst case to 0.70.
+
 ### Per-vertex mapping (no re-cook)
 
 SVT4 tiles already carry a per-tile material name table plus a per-vertex material index
@@ -288,6 +303,12 @@ What the sampling chain actually does, and where it can go wrong:
 - **Tiles are fetched as `<tile>.bin`, not `.svt`.** The publish step renames the
   extractor's `.svt` (and its `.br` twin) to `.bin`; renaming is also what makes
   `brotli_static` serve the compressed copy.
+- **The atlas URL must be versioned, not just query-busted.** `/map_tiles/shuto/` is
+  served `immutable, max-age=31536000` and sits behind Cloudflare, which pins the bare
+  URL (`cf-cache-status: HIT`, age 2000 s) — a republish at the same path is invisible.
+  The atlas now lives at `map_tiles/shuto/v9emis/emis.bin`; bump that directory and the
+  `?v=` query together whenever the atlas content changes. This was hit for real while
+  verifying: `curl` kept reporting the old 4.19 MB file while the origin had 16.8 MB.
 - **Do not mean-normalise emissive cells.** The `2.0 * texel` multiplier in the albedo
   path only works because those cells were divided by their own mean; copying that here
   would shift every colour.
