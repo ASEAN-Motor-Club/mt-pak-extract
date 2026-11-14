@@ -111,7 +111,7 @@ sentinel and is never assigned to a material.
 
 ## Why nothing rendered before
 
-Two independent gaps; either one alone was enough to make the map look dead:
+Three gaps, any one of which was enough to make the map look dead or wrong:
 
 1. **The glow textures were never in any atlas.** `mktextures2.py` builds the three
    albedo tiers from the `basecolor` slot only. 51 of the 57 emissive textures had no
@@ -120,10 +120,34 @@ Two independent gaps; either one alone was enough to make the map look dead:
 2. **The shader had no emissive term.** The only thing writing to
    `totalEmissiveRadiance` was the baked-lamp line
    (`diffuseColor * vIllum * uLightGain`, driven by `lights.json`). Nothing sampled a
-   glow texture, and `EmissiveStrength` was published in `matslots.json` but never read.
+   glow texture.
+3. **The intensity data was the wrong data.** `scalars.EmissiveStrength` is 1.0 on all
+   57 — it is not where the brightness lives. See the next section.
 
-So lit windows drew as plain lit geometry: correct albedo, no glow, indistinguishable
-from unlit panels at night.
+## The intensity and colour live in the BeamNG source, not in `EmissiveStrength`
+
+Every material in the source archive (`/opt/data/inbox/c1src/c1_src.zip`, definitions
+keyed by definition name and resolved through `mapTo`) carries
+**`Stages[0].emissiveFactor`**: an HDR colour multiplier. It is per material, it is
+tinted, and it spans **1.0 to 16.06**:
+
+| material | emissiveFactor | reads as |
+|---|---|---|
+| `mat_obj_dkk_a_00` | `[16.06, 0, 0]` | saturated red beacon |
+| `mat_lamp311`, `mat_lamp201_head` | `[10, 3, 0]` | sodium street lamp |
+| `mat_singou_c` | `[6, 10, 10]` | cyan signal head |
+| `building_window23` | `[6.36, 7.16, 8.30]` | cool white windows |
+| `building_window1` | `[7.06, 4.48, 3.16]` | warm interior light |
+| `mat_tokyotower_sh_glow` | `[2.35, 0.37, 0]` | red/orange tower flood |
+| `mat_mat_window3_glass_sh` | `[1.20, 1.20, 1.20]` | barely-lifted glass |
+| 15 more materials | `[3.92, 3.92, 3.92]` | neutral |
+
+BeamNG adds `emissiveMap * emissiveFactor` in linear space and tone-maps the result.
+The first viewer pass used a single white multiplier instead, which is why it read as
+white walls rather than lit windows: the brightest window page in the map was pushed
+2× white while the tower and the signals — which the source tints hard — came out
+white as well. `mkemis.py` now reads the factors out of the archive and the shader
+applies them per material.
 
 ## How it renders now
 
@@ -133,7 +157,7 @@ from unlit panels at night.
 site/emis.bin   TXA1 | u16 cells | u16 size | u8 rgba[cells][size][size][4]
                 64 cells @ 128 px, 4.2 MB, cell 0 = black
 site/emis.json  {"cell":128,"cols":8,"rows":8,
-                 "mats":{material:[cell, strength, u0, v0, u1, v1]}}
+                 "mats":{material:[cell, strength, u0, v0, u1, v1, fr, fg, fb]}}
 ```
 
 **Each cell stores only the CONTENT rect of its source page, not the whole page.**
@@ -183,7 +207,11 @@ if (uEmisOn > 0.5 && vEmis > 0.5) {{
   float eIn = step(0.0, eRel.x) * step(eRel.x, 1.0)
             * step(0.0, eRel.y) * step(eRel.y, 1.0);
   vec3 eCol = texture2D(uEmis, (ec + clamp(eRel, 0.0, 1.0)) / vec2(8.0, 8.0)).rgb * eIn;
-  totalEmissiveRadiance += pow(eCol, vec3(2.2)) * vEs * uEmisGain;
+  // vEmisTint = BeamNG emissiveFactor (HDR, 1.0..16.06); Reinhard maps that range
+  // into display range monotonically, so hue and relative intensity survive and
+  // nothing flat-lines the building behind it.
+  vec3 em = pow(eCol, vec3(2.2)) * vEmisTint * vEs * uEmisGain;
+  totalEmissiveRadiance += em / (vec3(1.0) + em);
 }}
 ```
 
@@ -266,6 +294,15 @@ What the sampling chain actually does, and where it can go wrong:
 - **`manifest.json` `override` tiles come from `v6f/`.** If an emissive tile is patched,
   publish it into `v6f/` and list it in `override` — never overwrite a `v6/` tile that
   carries a one-year immutable cache header.
+- **Do not ship a flat emissive multiplier.** A uniform white 2.0 gain with no tone
+  mapping blew the map out: the emissive region sat 3× above a ~20/255 night frame and
+  every lit surface read as a light panel. Measured on `mat_shock_shingou`: 16.9% of
+  emissive pixels above luminance 200. `emissiveFactor` + Reinhard fixes both the hue
+  and the ceiling; `?emis=<gain>` (default 0.45) tunes the overall level without a
+  rebuild.
+- **`scalars.EmissiveStrength` is a decoy.** It is 1.0 for all 57 materials in the UE
+  side of the pipeline; the real per-material data never made it out of the BeamNG
+  archive. If a future port re-imports materials, import `emissiveFactor` as a vector.
 - **Re-run `mkemis.py`, then bump the `?v=` query** on `app.js` and on the `emis.json` /
   `emis.bin` fetches when the atlas changes, or browsers keep the old copy. `emis.json`
   and the shader are a matched pair: the shader assumes the 6-field
