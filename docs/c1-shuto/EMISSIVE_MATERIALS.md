@@ -132,8 +132,19 @@ from unlit panels at night.
 ```
 site/emis.bin   TXA1 | u16 cells | u16 size | u8 rgba[cells][size][size][4]
                 64 cells @ 128 px, 4.2 MB, cell 0 = black
-site/emis.json  {"cell":128,"cols":8,"rows":8,"mats":{material:[cell,strength]}}
+site/emis.json  {"cell":128,"cols":8,"rows":8,
+                 "mats":{material:[cell, strength, u0, v0, u1, v1]}}
 ```
+
+**Each cell stores only the CONTENT rect of its source page, not the whole page.**
+39 of the 57 glow maps are sprites on a mostly-black sheet — content coverage runs
+from 0.1% (`mat_PA_tatsumi_parts`: a dot at x 0.55–0.58, y 0.16–0.18 of a 256×512
+page) to 100%. Packing the whole page into 128 px spent almost all of it on black
+and left the glow as mush; cropping to the content rect and shipping its normalised
+corners gives the same cell 2–8× more effective resolution.
+
+Everything outside that rect is black in the source (verified: max channel value
+outside the content box is <= 8 across all 57), which is what makes the crop lossless.
 
 Unlike the albedo tiers, emissive cells are **not** mean-normalised: emission is an
 absolute colour that gets *added*, not a multiplier on vertex colour. Textures whose
@@ -160,17 +171,28 @@ Tiles published before this change keep working: a missing `aEmis` reads as 0, w
 
 ```glsl
 // vertex
-attribute float aEmis; attribute float aEs;
-varying float vEmis; varying float vEs;
-vEmis = aEmis; vEs = aEs;
+attribute float aEmis; attribute float aEs; attribute vec4 aEmisUv;
+varying float vEmis; varying float vEs; varying vec4 vEmisUv;
+vEmis = aEmis; vEs = aEs; vEmisUv = aEmisUv;
 
 // fragment, next to the lamp term
-if (uEmisOn > 0.5 && vEmis > 0.5) {
+if (uEmisOn > 0.5 && vEmis > 0.5) {{
   vec2 ec = vec2(mod(vEmis, 8.0), floor(vEmis / 8.0));
-  vec3 eCol = texture2D(uEmis, (ec + cellUv) / vec2(8.0, 8.0)).rgb;
+  // cellUv -> position inside the cell's content rect; outside it, emit nothing
+  vec2 eRel = (cellUv - vEmisUv.xy) / (vEmisUv.zw - vEmisUv.xy);
+  float eIn = step(0.0, eRel.x) * step(eRel.x, 1.0)
+            * step(0.0, eRel.y) * step(eRel.y, 1.0);
+  vec3 eCol = texture2D(uEmis, (ec + clamp(eRel, 0.0, 1.0)) / vec2(8.0, 8.0)).rgb * eIn;
   totalEmissiveRadiance += pow(eCol, vec3(2.2)) * vEs * uEmisGain;
-}
+}}
 ```
+
+The `eIn` mask is not optional: `cellUv` is the *whole-page* UV, `eRel` is the
+same point expressed inside the content rect. Skipping the mask stretches the
+sprite over the entire surface — measured on `mat_shock_shingou`: mean frame
+luminance 27 → 39 and bright pixels 80k → 152k, i.e. every facade lit. With the
+mask the pass adds light only where the authored page has glow, so the UV
+mapping is bit-identical to sampling the full page, just sharper.
 
 Deliberate choices:
 
@@ -198,6 +220,38 @@ chromium --headless=new --use-gl=angle --use-angle=swiftshader --enable-unsafe-s
 # then again with &emis=0 and diff the two PNGs
 ```
 
+## UV review (2026-11-14)
+
+What the sampling chain actually does, and where it can go wrong:
+
+- **Same UV space as albedo.** `cellUv = clamp(fract(vec2(vUvT.x, -vUvT.y)), 0.002, 0.998)`
+  is shared by every atlas lookup, so the emissive lands exactly where the basecolour
+  does: tiling comes from `fract`, the Y flip is the decoder's negation undone, and
+  filtering matches (`ClampToEdgeWrapping`, `LinearFilter`, `generateMipmaps = false`).
+  Verified cell-by-cell: all 57 cells byte-match their downscaled source PNGs (max
+  mean absolute error 0.0), so no material is sampling the wrong texture.
+- **9 materials draw their glow from a different page than their basecolour**
+  (`building_window1/8/12/20/23` → `lamp/building_internal_lights1` over a 32×16 glass
+  tile; `mat_kan_p1_00_sh` → `ferris_glow_color` with no basecolour at all;
+  `mat_botom_u_09`, `mat_lamp701_head`, `mat_shock_shingou` → the `em`/`e`/`g` variant of
+  their own page). For the `_em`/`_e`/`_g` variants the layout matches the `_d` page and
+  the UVs line up. For the five window families the glow sheet is authored for a
+  different UV layout than the glass tile, so its lit rectangles cannot coincide with
+  the window frames — that is an authored-material property, not a viewer bug, and it is
+  what to check first if a facade looks lit in the wrong pattern.
+- **Cell aspect is square, sources are not** (8:1 for `mat_denko_r_00`, 1:2 for
+  `mat_mat_window3_glass_sh`, everything in between). Squashing is applied identically
+  in the albedo tiers, so alignment holds, but the long axis loses resolution. Aspect-
+  preserving cells would need a matching change in `mktextures2.py`, otherwise the glow
+  would drift relative to the basecolour.
+- **No UV transform is available.** The extractor records slots, scalars and masters,
+  not TexCoord scale/offset or a second UV channel. If a material instance samples its
+  emissive with a different tiling than its basecolour, the viewer cannot reproduce it
+  without extending the MI dump. Nothing in the current content proves that it does, but
+  this is the one known blind spot.
+- **Emissive textures carry no meaningful alpha** (max 1.7% transparent pixels across all
+  57), so storing cells opaque loses nothing.
+
 ## Gotchas
 
 - **A `DataTexture` needs a full `cols*rows` grid.** `emis.bin` holds exactly 64 cells
@@ -212,13 +266,17 @@ chromium --headless=new --use-gl=angle --use-angle=swiftshader --enable-unsafe-s
 - **`manifest.json` `override` tiles come from `v6f/`.** If an emissive tile is patched,
   publish it into `v6f/` and list it in `override` — never overwrite a `v6/` tile that
   carries a one-year immutable cache header.
-- **Re-run `mkemis.py`, then bump the `?v=` query** on `app.js` (and `emis.json?v=`) when
-  the atlas changes, or browsers keep the old copy.
+- **Re-run `mkemis.py`, then bump the `?v=` query** on `app.js` and on the `emis.json` /
+  `emis.bin` fetches when the atlas changes, or browsers keep the old copy. `emis.json`
+  and the shader are a matched pair: the shader assumes the 6-field
+  `[cell, strength, u0, v0, u1, v1]` entry and will read garbage from a 2-field file.
 
 ## Limits / next steps
 
-- Cells are 128 px: fine for window bands and glow pools, soft up close on lit signage.
-  256 px is a one-line change in `mkemis.py` (~16.7 MB instead of 4.2 MB).
+- Cells are 128 px over the *content rect*: adequate for window bands and glow pools,
+  soft up close on lit signage. 256 px is a one-line change in `mkemis.py` (~16.7 MB
+  instead of 4.2 MB). The `mat_PA_tatsumi_parts` class of materials cannot improve —
+  their content is 8×10 px in the source.
 - Emissive and baked lamp irradiance are independent and can double-count where a lamp
   material also sits inside a light's radius. It reads as "bright lamp housing", not as
   an error, but a per-material weight (0.5 for lamp housings) is the knob if it looks hot.
