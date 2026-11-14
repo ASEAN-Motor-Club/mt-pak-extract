@@ -41,8 +41,18 @@ sys.path.insert(0, HERE)
 # AssetsvilleTown2, not AssetsvilleTown: the first path exists as a directory name in the pak but
 # holds different masters. A wrong package path does not error at load — the instance silently
 # fails to compile and the mesh draws with the engine default (grey checkerboard).
-MASKED_MASTER_PKG = "/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTest"
-MASKED_MASTER_NAME = "M_AlphaTest"
+# Masked master is chosen from the SOURCE's doubleSided flag, not hardcoded. M_AlphaTest has
+# `TwoSided: True`, so every instance parented to it renders both faces — on single-sided
+# guardrail geometry (source declares no doubleSided) that produces z-fighting between front and
+# back faces. M_AlphaTestOneSided is the same material with TwoSided off: identical NameMap,
+# `Texture` = base colour map, `Color` = vector tint (docs/MASTER_CONTRACTS.md:46-56).
+MASKED_MASTERS = {
+    False: ("/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTestOneSided",
+            "M_AlphaTestOneSided"),
+    True: ("/Game/AssetsvilleTown2/Materials/MasterMaterials/M_AlphaTest",
+           "M_AlphaTest"),
+}
+MASKED_MASTER_PKG, MASKED_MASTER_NAME = MASKED_MASTERS[False]
 # Names an instance may use for its base-colour texture parameter before the reparent. `BaseColor`
 # is the modern convention; `Texture` is what the older M_C1_Surface-derived instances carry, and
 # missing that one silently orphans the override (see finish()).
@@ -197,6 +207,20 @@ def mi_parent_name(out: str) -> str | None:
     return imports.get(idx)
 
 
+def source_key(mi: str) -> str:
+    """Material key for an instance name.
+
+    Two prefixes exist in this port: `MI_C1_` and the older `MI_C1X_` variant set. Stripping only
+    `MI_C1_` leaves `MI_C1X_mat_tree_02` unmatched, which classifies it `unknown` and leaves it on
+    whatever master it shipped with — 49 instances, including masked foliage and fences, were
+    silently skipped that way.
+    """
+    for pre in ("MI_C1X_", "MI_C1_"):
+        if mi.startswith(pre):
+            return mi[len(pre):]
+    return mi
+
+
 def classify(src: dict, key: str) -> tuple[str, float | None, str | None]:
     entry = src.get(key)
     if not entry:
@@ -249,9 +273,10 @@ def main() -> int:
     # and the mesh draws with the engine default (grey checkerboard). Verify against the real pak.
     if a.game_pak:
         listing = run(["bash", "/opt/data/scripts/pak.sh", "listpak", a.game_pak])
-        want = "MotorTown/Content" + MASKED_MASTER_PKG.replace("/Game", "") + ".uasset"
-        if want not in listing:
-            raise SystemExit(f"master package not in {a.game_pak}: {want}")
+        for pkg in (MASKED_MASTERS[False][0], MASKED_MASTERS[True][0]):
+            want = "MotorTown/Content" + pkg.replace("/Game", "") + ".uasset"
+            if want not in listing:
+                raise SystemExit(f"master package not in {a.game_pak}: {want}")
 
     src = json.load(open(a.source))
     work = os.path.abspath(a.work)
@@ -261,15 +286,17 @@ def main() -> int:
 
     groups: dict[str, list[tuple[str, float, str | None]]] = {
         "masked": [], "ownalpha": [], "bake": [], "opaque": [], "unknown": []}
+    two_sided: dict[str, bool] = {}
     for f in sorted(os.listdir(a.materials)):
         if not f.endswith(".uasset"):
             continue
         mi = f[: -len(".uasset")]
-        key = mi.replace("MI_C1_", "", 1)
+        key = source_key(mi)
         if a.family and not key.startswith(a.family):
             continue
         kind, clip, opmap = classify(src, key)
         groups[kind].append((mi, clip or 0.0, opmap))
+        two_sided[key] = bool((src.get(key) or {}).get("doubleSided"))
 
     print(f"family={a.family or '*'} masked={len(groups['masked'])} ownalpha={len(groups['ownalpha'])} "
           f"bake={len(groups['bake'])} opaque={len(groups['opaque'])} unknown={len(groups['unknown'])}")
@@ -291,8 +318,10 @@ def main() -> int:
                     shutil.copy(s, out)
         return out
 
-    def finish(group_dir: str, names: list[str], tag: str, clips: dict[str, float]) -> str:
-        """rename the texture param to Color, reparent to the masked master, clear overrides, set clip."""
+    def finish(group_dir: str, names: list[str], tag: str, clips: dict[str, float],
+               master_pkg: str = MASKED_MASTER_PKG,
+               master_name: str = MASKED_MASTER_NAME) -> str:
+        """rename the texture param to Texture, reparent to the masked master, clear overrides, set clip."""
         cur = group_dir
         if not names:
             return cur
@@ -337,7 +366,7 @@ def main() -> int:
         for pn in param_names:
             steps.append(("r", ["--rename-texture-param", "@cur", "@out", pn, COLOUR_TARGET]))
         steps += [
-            ("p", ["--set-mi-parent", "@cur", "@out", lst, MASKED_MASTER_PKG, MASKED_MASTER_NAME]),
+            ("p", ["--set-mi-parent", "@cur", "@out", lst, master_pkg, master_name]),
             ("o", ["--clear-overrides", "@cur", "@out", lst]),
             ("c", ["--set-clip", "@cur", "@out", clip_tsv]),
         ]
@@ -362,7 +391,7 @@ def main() -> int:
             out = post[os.path.join(cur, n + ".uasset")]
             parent = mi_parent_name(out)
             pn = mi_texture_param_name(out)
-            if parent != MASKED_MASTER_NAME:
+            if parent != master_name:
                 bad.append(f"{n}: parent={parent}")
             elif pn not in (None, COLOUR_TARGET):
                 bad.append(f"{n}: texture param={pn}")
@@ -372,10 +401,34 @@ def main() -> int:
         return cur
 
     # --- masked group -------------------------------------------------------
-    masked_names = [mi for mi, _c, _o in groups["masked"]]
-    masked_dir = stage(a.materials, masked_names, "masked")
-    masked_final = finish(masked_dir, masked_names, "masked",
-                          {mi: c for mi, c, _o in groups["masked"]})
+    # Split by the source's doubleSided flag: one-sided geometry goes to the one-sided master so
+    # front and back faces stop fighting; only a genuinely two-sided sheet keeps M_AlphaTest.
+    masked_clips = {mi: c for mi, c, _o in groups["masked"]}
+    masked_two = sorted(mi for mi, _c, _o in groups["masked"]
+                        if two_sided.get(source_key(mi), False))
+    masked_two_set = set(masked_two)
+    masked_one = [mi for mi, _c, _o in groups["masked"] if mi not in masked_two_set]
+    # Each subset gets its OWN staging dir. `--set-mi-parent` copies every instance in the input
+    # directory, not just the ones on its list, so sharing one dir let the two-sided pass emit a
+    # copy of the whole set — and merging that after the one-sided pass reverted 350 instances to
+    # the two-sided master while every gate still said OK.
+    masked_finals = []
+    for tag, subset, twos in (("masked1", masked_one, False), ("masked2", masked_two, True)):
+        if not subset:
+            continue
+        pkg, name = MASKED_MASTERS[twos]
+        src_dir = stage(a.materials, subset, tag + "_src")
+        out_dir = finish(src_dir, subset, tag, {mi: masked_clips[mi] for mi in subset}, pkg, name)
+        masked_finals.append(out_dir)
+        # The pass must emit exactly its own subset: an extra file here means a later merge step
+        # will overwrite a correctly-parented instance with a stale copy.
+        want_files = {mi + ext for mi in subset for ext in (".uasset", ".uexp")}
+        got_files = set(os.listdir(out_dir))
+        if got_files != want_files:
+            extra = sorted(got_files - want_files)[:5]
+            missing = sorted(want_files - got_files)[:5]
+            raise RuntimeError(f"{tag}: output set mismatch extra={extra} missing={missing}")
+    print(f"  masked: one_sided={len(masked_one)} two_sided={len(masked_two)}")
 
     # --- own-alpha group (translucent with no external mask) -----------------
     ownalpha_dir = stage(a.materials, [mi for mi, _c, _o in groups["ownalpha"]], "ownalpha")
@@ -415,8 +468,12 @@ def main() -> int:
                     dstdir = os.path.join(work, "content", "Mods/C1/Textures", tex[0])
                     os.makedirs(dstdir, exist_ok=True)
                     shutil.copy(srcf, dstdir)
+    # Road paint (joint / mj sheets) stays on the two-sided master: these are flat quads lying on
+    # the surface, two-sidedness costs nothing visible and one-sided would make an inverted quad
+    # vanish. Only structure moves to the one-sided master.
     ownalpha_final = (finish(ownalpha_dir, ownalpha_names, "ownalpha",
-                             {mi: BAKE_CLIP for mi in ownalpha_names})
+                             {mi: BAKE_CLIP for mi in ownalpha_names},
+                             *MASKED_MASTERS[True])
                       if ownalpha_names else None)
 
     # --- bake group ---------------------------------------------------------
@@ -449,11 +506,12 @@ def main() -> int:
                 report["baked"].append(stats)
             except Exception as exc:  # keep going, report per material
                 report["baked"].append({"mi": mi, "texture": base, "error": str(exc)})
-    bake_final = finish(bake_dir, bake_names, "bake", bake_clips) if bake_names else None
+    bake_final = (finish(bake_dir, bake_names, "bake", bake_clips, *MASKED_MASTERS[True])
+                  if bake_names else None)
 
     # --- merge --------------------------------------------------------------
     final = os.path.join(work, "final")
-    for d in (masked_final, ownalpha_final, bake_final):
+    for d in (*masked_finals, ownalpha_final, bake_final):
         if not d:
             continue
         for f in os.listdir(d):

@@ -1,8 +1,10 @@
 {
-"pak": "zzzzz_AMC_C1Mesh_v3_P.pak",
-"bytes": 554611827,
-"sha256": "3f2c18f7c5ef11c00be2705f5db6136ee1caaf54c857095cacb34aa0a8195b3b",
+"pak": "zzzzz_AMC_C1Mesh_v4_P.pak",
+"bytes": 548731545,
+"sha256": "333357cdc2f12781def2931a522b31b08ee270b6b88977994655e55595d513e5",
 "assets": [
+"MotorTown/Content/Mods/C1Full/Meshes/C1_Decals.uasset",
+"MotorTown/Content/Mods/C1Full/Meshes/C1_Decals.uexp",
 "MotorTown/Content/Mods/C1Full/Meshes/c-10_-20.uasset",
 "MotorTown/Content/Mods/C1Full/Meshes/c-10_-20.uexp",
 "MotorTown/Content/Mods/C1Full/Meshes/c-10_-21.uasset",

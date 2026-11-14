@@ -127,6 +127,10 @@ def texture_map(entry: dict, field: str) -> str:
     b = re.sub(r"\([^)]*\)", "", b).strip("_")
     # BeamNG separates suffixes with dots ("x.gtf_tex_131.o" + ".png"); the port uses underscores.
     b = b.replace(".", "_").strip("_")
+    # ...and the author's UE import turned hyphens into underscores too ("tex_273-a" is the asset
+    # "tex_273_a", "105-removebg-preview" is "105_removebg_preview_color"). Without this the
+    # resolver reports a texture as missing while it is sitting right there in the tree.
+    b = b.replace("-", "_").strip("_")
     return b
 
 

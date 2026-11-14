@@ -66,6 +66,13 @@ assemble "$BASE_CLIENT_PAK" cli client
 # Texture2D in it must carry pixel data. Base_v3 shipped 220 empty stubs (68 of
 # them visible), which is what made materials like mat_kbd02_001_5 show the
 # engine checkerboard. Fail here rather than publish it again.
+#
+# Orphan report only: a data-less texture that no material references is usually
+# dead weight, but every stub in Base_v3 turned out to exist with real pixel data
+# in the editor project — the defect was the source tree, not the art. Report, do
+# not delete: pruning by name would throw away assets that only need re-sourcing.
+echo "== texture orphan report (client)"
+python3 "$C1_TOOLS/prune_empty_textures.py" "$OUTDIR/cli/mod_out" --dry-run || true
 echo "== texture gate (client)"
 python3 "$C1_TOOLS/verify_textures.py" "$OUTDIR/cli/mod_out" --allow-ao \
     --write-list "$OUTDIR/texture_reimport.txt" \

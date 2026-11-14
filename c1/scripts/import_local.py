@@ -6,8 +6,10 @@ Deterministic by construction:
     half-applied mix;
   * every imported mesh gets CTF_UseComplexAsSimple in the same call that imports it,
     because the OBJ importer never creates collision;
+  * an existing asset is deleted before it is imported, so the new mesh has a single
+    LOD chain — replace_existing alone rewrites LOD0 and keeps the stale levels;
   * the run ends with a gate that re-reads every mesh and fails loudly if any mesh is
-    missing, unimported or left without collision.
+    missing, unimported, left without collision, or carrying more than one LOD.
 
 Nothing here touches the level. Placement is an actor problem and lives in
 set_transforms.py: loc = (origin_x * 100, -origin_y * 100, 0).
@@ -24,6 +26,12 @@ DEST = "/Game/Mods/C1Full/Meshes"
 SCALE = 100.0
 STATE = r"D:\C1FullMirror\import_state.json"
 FLAG = unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE
+# Deleting before importing is what keeps the LOD chain honest: replace_existing on a
+# mesh that already has LOD1+ rewrites LOD0 and silently keeps the stale levels, which
+# is how the earlier LOD pass survived into the shipped map. apply_slotmap.py must run
+# after a delete-import pass, because the delete also discards the slot array.
+DELETE_BEFORE_IMPORT = True
+TARGET_LODS = 1
 
 
 def log(m):
@@ -88,6 +96,28 @@ def ensure_collision(name):
     return None
 
 
+def drop_existing(name):
+    """Delete the asset so the importer creates a fresh single-LOD chain."""
+    pkg = "%s/%s" % (DEST, name)
+    if not unreal.EditorAssetLibrary.does_asset_exist(pkg):
+        return False
+    if not unreal.EditorAssetLibrary.delete_asset(pkg):
+        log("DELETE_FAILED %s" % pkg)
+        raise RuntimeError("could not delete %s" % pkg)
+    return True
+
+
+def num_lods(name):
+    sm = unreal.EditorAssetLibrary.load_asset("%s/%s" % (DEST, name))
+    if sm is None:
+        return None
+    try:
+        return int(sm.get_num_lods())
+    except Exception as e:
+        log("LOD_READ_FAILED %s: %s" % (name, e))
+        return None
+
+
 def main():
     open(PROGRESS, "w").close()
     files = sorted(f for f in os.listdir(SRC) if f.lower().endswith(".obj"))
@@ -104,10 +134,13 @@ def main():
     log("tiles=%d already_done=%d sig=%s" % (len(files), len(done), sig[:12]))
 
     imported, no_scale, col_fail = 0, 0, []
+    dropped = 0
     for f in files:
         name = os.path.splitext(f)[0]
         if name in done:
             continue
+        if DELETE_BEFORE_IMPORT and drop_existing(name):
+            dropped += 1
         if not import_one(os.path.join(SRC, f), name):
             no_scale += 1
         err = ensure_collision(name)
@@ -120,11 +153,11 @@ def main():
         if imported % 25 == 0:
             log("imported %d/%d this_run" % (imported, len(files)))
     json.dump({"signature": sig, "done": sorted(done)}, open(STATE, "w"))
-    log("import_done=%d scale_failures=%d collision_failed=%d"
-        % (imported, no_scale, len(col_fail)))
+    log("import_done=%d deleted_first=%d scale_failures=%d collision_failed=%d"
+        % (imported, dropped, no_scale, len(col_fail)))
 
     # ---- gate: read every mesh back, not the counters above ----
-    missing, no_col = [], []
+    missing, no_col, bad_lods = [], [], []
     for f in files:
         name = os.path.splitext(f)[0]
         sm = unreal.EditorAssetLibrary.load_asset("%s/%s" % (DEST, name))
@@ -140,13 +173,19 @@ def main():
             flag = body.get_editor_property("collision_trace_flag") if body else None
         if flag != FLAG:
             no_col.append(name)
-    ok = not missing and not no_col
-    log("GATE meshes=%d missing=%d no_collision=%d -> %s"
-        % (len(files), len(missing), len(no_col), "IMPORT_GATE_OK" if ok else "IMPORT_GATE_FAIL"))
+        lods = num_lods(name)
+        if lods != TARGET_LODS:
+            bad_lods.append([name, lods])
+    ok = not missing and not no_col and not bad_lods
+    log("GATE meshes=%d missing=%d no_collision=%d lods_ne_%d=%d -> %s"
+        % (len(files), len(missing), len(no_col), TARGET_LODS, len(bad_lods),
+           "IMPORT_GATE_OK" if ok else "IMPORT_GATE_FAIL"))
     if missing[:5]:
         log("missing sample: %s" % missing[:5])
     if no_col[:5]:
         log("no_collision sample: %s" % no_col[:5])
+    if bad_lods[:10]:
+        log("bad_lods sample: %s" % bad_lods[:10])
 
 
 main()

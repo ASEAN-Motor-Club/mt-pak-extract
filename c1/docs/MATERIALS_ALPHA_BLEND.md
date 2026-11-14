@@ -659,3 +659,32 @@ means the game is running.
 - Do not select fix targets by texture statistics alone (attempt D). Name the instance first.
 - Do not conclude "blending is broken" from a screenshot. Read the instance: parent, parameter
   names, texture format, alpha. The blend flag is the last thing to check, not the first.
+
+## 9. The "invisible masked materials" finding is retracted (2026-11-08)
+
+An audit of all 1,653 instances concluded that 369 masked instances had zero-alpha colour textures and
+therefore drew nothing. **That conclusion was an artefact of reading the wrong byte.** The
+`texture2ddecoder` BC3 decode returns alpha in the low byte of each 32-bit pixel; the audit read
+`(p >> 24) & 0xFF`, which is always 0 with that library.
+
+Re-measured with `p & 0xFF` on the same assets: **371 masked instances carry real cut-out alpha and zero
+have an empty alpha channel.** The bollard texture alone reads mean 143 with 24% of texels fully opaque
+and matches its source DDS. The masked masters behave correctly, and the proposed fix — reparenting the
+family — would have destroyed every cut-out in the map for nothing. No pak was built from it.
+
+Two things survive independently of alpha:
+
+- **Texture provenance decides whether a parameter is a binding at all.** 1,643 of 1,653 texture values
+  resolve inside the master's own package (a name the master already carries); only 6 bind a texture the
+  port ships.
+- **Source naming/normalisation** and the format rules (DXT1 has no alpha channel, BC4U/BC5U are masks,
+  DX10 needs the DXGI format at 132) are still correct and still save time.
+
+What this leaves open: **why the bollards do not draw is unexplained again.** Alpha is eliminated. The
+remaining candidates are the slot binding, the one-sided flag, UVs, or the geometry never being reached.
+The magenta probe showed the opaque instance on the same texture swaps correctly, so the difference is
+specific to the masked path.
+
+Standing rule: before trusting any statistic out of a decoder, run one synthetic block with known values
+and confirm which channel you are reading. A constant reading is a bug in the reader, not a property of
+the asset.

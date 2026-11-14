@@ -1143,3 +1143,24 @@ it from the installed filename, which is deliberately versionless.
 
 Corollary: a rebuild is `Copy-Item staging\<versioned>.pak Paks\<stable>.pak -Force`, one approval
 ever, no new names.
+
+## §44 — Release publishing: /var/lib is NOT the container
+
+`/var/lib/mod-releases/mods/` lives on the host only. `cp` inside the agent container writes to the
+container's own `/var/lib` and silently produces nothing on the server (the error is a plain
+`No such file or directory`, easy to mistake for a missing source). Only `/opt/data` is shared.
+
+Publish with a host-side copy:
+
+    ssh root@host.docker.internal "cp /opt/data/<path>/<pak> /var/lib/mod-releases/mods/<release name>.pak"
+
+Archive the superseded file into `mods/.archive/<name>_prev_<UTC>.pak` first — moving it away before
+the copy lands leaves the release slot empty, so do the copy immediately after (or copy first, then
+archive the old under a different name).
+
+Release naming follows the previous full-map release, not the dev shell names: the client pak ships
+as `zzz_AMC_Shuto_P.pak` (server counterpart `zzz_AMC_Shuto_Server_vN_P.pak`).
+
+Format must match the working release exactly — `repak info` both and compare:
+mount `../../../`, version `V11`, version major `Fnv64BugFix`, compression `Zlib`, unencrypted index,
+path hash seed 0. A previous attempt shipped `zstdfail`; Zstd is not accepted by this build.

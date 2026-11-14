@@ -1,6 +1,6 @@
 # C1 texture stub remediation — 2026-11-14
 
-Status: route A selected (source-of-truth fix), quantified, awaiting cook window
+Status: route A confirmed — every stub exists with real data in the project; fix is sourcing only
 Owner: Yumemi (for freeman)
 Repo: `mt-pak-wt-c1commit` (branch `feat/c1-nav-guards`)
 
@@ -127,3 +127,28 @@ Outcome: 220 stubs → 0, with 210 carrying real pixel data and 67 removed as de
 4. Gates: `verify_textures.py` 0 stubs on tree and pak, `check_texture_coverage.py` rc=0,
    entry count parity with v3 minus 67, publish, then in-game spot check of
    `mat_kbd02_001_5` and one `building_concrete*`.
+
+
+## Correction after per-folder survey (2026-11-14)
+
+The earlier 143/77 split was wrong: it checked every stub name against
+`Textures\other\` only, but the project organises textures in eleven subfolders
+(`bridge`, `fence`, `glass`, `lamp`, `marking`, `other`, `pipe`, `road`, `tunnel`,
+`vegetation`, `wall`). Searching the whole `Textures` tree:
+
+- **220 of 220 stubs exist in the editor project with real pixel data — 18,712,481 B total.**
+- Zero missing. No import pass was ever required, and the 66 `*_ao_data` masks +
+  `T_UVTest` are real assets, not orphans.
+
+So the defect is **purely packaging**: `Base_v3` is assembled from a stale texture tree
+(`texcook_v2314` / the old source pak) while the project holds the correct art. Nothing needs
+authoring; a client cook of the project plus packing from its cooked output fixes all 220.
+
+Consequences:
+
+- `prune_empty_textures.py` is kept as a *report-only* step in `07b` (deleting by name would
+  have discarded 170 assets that only needed re-sourcing).
+- The 10 manual imports into `Textures\other\` were unnecessary and are being removed so the
+  project is not left with duplicates outside its folder convention.
+- Real fix to land: `build_basepak.sh`/`07b` must take textures from the project's cooked
+  output, and the gate then proves it (0 stubs) before any pak is published.

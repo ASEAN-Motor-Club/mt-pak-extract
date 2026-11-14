@@ -1,0 +1,6553 @@
+{
+ "source": "BeamNG mod map \"C1 Tokyo Expressway Shutokow\" (levels/c1)",
+ "archive": "/opt/data/inbox/c1src/c1_src.zip",
+ "map_meta": {
+  "title": "C1 Tokyo Expressway Shutokow",
+  "size": [
+   18600,
+   30840
+  ],
+  "biome": "City Highway",
+  "country": "Japan",
+  "suitablefor": "Driving with traffic",
+  "features": "Speed traps",
+  "authors": "Ezo, NistingurA, Car_Killer, 2004bmw530d, Kolas, Leo Zieger",
+  "roadRules": {
+   "rightHandDrive": true
+  }
+ },
+ "frames": {
+  "bng_m": "BeamNG level metres, X east / Y north / Z up",
+  "ue_cm": "Motor Town / Unreal cm = (x*100, -y*100, z*100), Y mirrored"
+ },
+ "counts": {
+  "spawn": 6,
+  "garage_entrance": 4,
+  "garage_marker": 4,
+  "g2g_garage_site": 8,
+  "city_parking": 3,
+  "speed_trap": 45,
+  "tunnel_portal": 74
+ },
+ "pois": [
+  {
+   "name": "spawn_parking",
+   "kind": "spawn",
+   "bng_m": [
+    5932.34,
+    4667.84,
+    874.491
+   ],
+   "ue_cm": [
+    593233.9,
+    -466784.3,
+    87449.1
+   ],
+   "cell": "11_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 4689.6,
+   "dz_vs_loop_m": 27.2,
+   "dist_to_source_road_m": 20.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 874.0,
+    "width_m": 3,
+    "dz_m": 0.5
+   },
+   "source_label": "Tatsumi 1st PA",
+   "is_default_spawn": false,
+   "yaw_ue_derived": -14.4,
+   "spawn_radius_m": 5,
+   "raw_position": [
+    5932.339,
+    4667.843,
+    874.491
+   ],
+   "port": {
+    "port_cell": "c11_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     5000.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     500000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.0,
+    "mesh_z_m": 861.02,
+    "dz_vs_mesh_m": 13.47,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "spawn_road",
+   "kind": "spawn",
+   "bng_m": [
+    831.67,
+    -4062.7,
+    849.901
+   ],
+   "ue_cm": [
+    83166.9,
+    406270.3,
+    84990.1
+   ],
+   "cell": "1_-9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9764.4,
+   "dz_vs_loop_m": -12.0,
+   "dist_to_source_road_m": 15.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 849.32,
+    "width_m": 7,
+    "dz_m": 0.58
+   },
+   "source_label": "Yotsuyakamicho",
+   "is_default_spawn": false,
+   "yaw_ue_derived": -166.6,
+   "spawn_radius_m": 5,
+   "raw_position": [
+    831.669,
+    -4062.703,
+    849.901
+   ],
+   "port": {
+    "port_cell": "c1_-9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     -5000.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     500000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.8,
+    "mesh_z_m": 856.49,
+    "dz_vs_mesh_m": -6.59,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "spawn_default",
+   "kind": "spawn",
+   "bng_m": [
+    1102.37,
+    4709.02,
+    874.106
+   ],
+   "ue_cm": [
+    110237.0,
+    -470902.0,
+    87410.6
+   ],
+   "cell": "2_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 990.2,
+   "dz_vs_loop_m": 12.2,
+   "dist_to_source_road_m": 5.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 881.62,
+    "width_m": 4,
+    "dz_m": -7.51
+   },
+   "source_label": "Shibaura PA",
+   "is_default_spawn": true,
+   "yaw_ue_derived": null,
+   "spawn_radius_m": 5,
+   "raw_position": [
+    1102.37,
+    4709.02,
+    874.106
+   ],
+   "port": {
+    "port_cell": "c2_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.84,
+    "mesh_z_m": 887.67,
+    "dz_vs_mesh_m": -13.56,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "spawn_new",
+   "kind": "spawn",
+   "bng_m": [
+    3819.65,
+    -5113.19,
+    852.16
+   ],
+   "ue_cm": [
+    381964.8,
+    511319.0,
+    85216.0
+   ],
+   "cell": "7_-11",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 11112.5,
+   "dz_vs_loop_m": -9.7,
+   "dist_to_source_road_m": 11.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 852.16,
+    "width_m": 10,
+    "dz_m": 0.0
+   },
+   "source_label": "Hanedak\u016bk\u014d",
+   "is_default_spawn": false,
+   "yaw_ue_derived": -26.0,
+   "spawn_radius_m": 1,
+   "raw_position": [
+    3819.648,
+    -5113.19,
+    852.16
+   ],
+   "port": {
+    "port_cell": "c7_-11",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     3000.0,
+     -6000.0
+    ],
+    "cell_actor_ue_cm": [
+     300000.0,
+     600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 3.29,
+    "mesh_z_m": 852.18,
+    "dz_vs_mesh_m": -0.02,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "spawn_mirai",
+   "kind": "spawn",
+   "bng_m": [
+    -8443.49,
+    -16068.25,
+    866.724
+   ],
+   "ue_cm": [
+    -844349.2,
+    1606825.2,
+    86672.4
+   ],
+   "cell": "-17_-33",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23422.2,
+   "dz_vs_loop_m": 3.2,
+   "dist_to_source_road_m": 12.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 866.96,
+    "width_m": 7,
+    "dz_m": -0.23
+   },
+   "source_label": "Shin-yamashita",
+   "is_default_spawn": false,
+   "yaw_ue_derived": 79.1,
+   "spawn_radius_m": 1,
+   "raw_position": [
+    -8443.492,
+    -16068.252,
+    866.724
+   ],
+   "port": {
+    "port_cell": "c-17_-33",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -9000.0,
+     -16500.0
+    ],
+    "cell_actor_ue_cm": [
+     -900000.0,
+     1650000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.63,
+    "mesh_z_m": 866.69,
+    "dz_vs_mesh_m": 0.04,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "spawn_garage",
+   "kind": "spawn",
+   "bng_m": [
+    -0.84,
+    0.39,
+    0
+   ],
+   "ue_cm": [
+    -84.1,
+    -39.0,
+    0
+   ],
+   "cell": "-1_0",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 5738.7,
+   "dz_vs_loop_m": -861.2,
+   "dist_to_source_road_m": 79.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 858.86,
+    "width_m": 7,
+    "dz_m": -858.86
+   },
+   "source_label": "Garage",
+   "is_default_spawn": false,
+   "yaw_ue_derived": null,
+   "spawn_radius_m": 5,
+   "raw_position": [
+    -0.841,
+    0.39,
+    0
+   ],
+   "port": {
+    "port_cell": "c-1_0",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     -500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     50000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 12.36,
+    "mesh_z_m": 864.94,
+    "dz_vs_mesh_m": -864.94,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "garage_entrance1",
+   "kind": "garage_entrance",
+   "bng_m": [
+    -525.3,
+    -754.31,
+    862.639
+   ],
+   "ue_cm": [
+    -52529.8,
+    75431.3,
+    86263.9
+   ],
+   "cell": "-2_-2",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 6538.4,
+   "dz_vs_loop_m": 1.4,
+   "dist_to_source_road_m": 14.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 859.5,
+    "width_m": 7,
+    "dz_m": 3.14
+   },
+   "yaw_ue_derived": 33.8,
+   "trigger_scale_m": [
+    9.16,
+    19.76,
+    7.37
+   ],
+   "port": {
+    "port_cell": "c-2_-2",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     -1500.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     150000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 4.23,
+    "mesh_z_m": 859.73,
+    "dz_vs_mesh_m": 2.91,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "garage_entrance2",
+   "kind": "garage_entrance",
+   "bng_m": [
+    -178.98,
+    -1386.57,
+    858.856
+   ],
+   "ue_cm": [
+    -17897.9,
+    138656.8,
+    85885.6
+   ],
+   "cell": "-1_-3",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 7134.1,
+   "dz_vs_loop_m": -2.4,
+   "dist_to_source_road_m": 17.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 855.16,
+    "width_m": 7,
+    "dz_m": 3.7
+   },
+   "yaw_ue_derived": -38.7,
+   "trigger_scale_m": [
+    6.19,
+    13.33,
+    7.96
+   ],
+   "port": {
+    "port_cell": "c-1_-3",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     -2000.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     200000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.86,
+    "mesh_z_m": 857.09,
+    "dz_vs_mesh_m": 1.77,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "garage_entrance3",
+   "kind": "garage_entrance",
+   "bng_m": [
+    203.41,
+    -2229.18,
+    858.856
+   ],
+   "ue_cm": [
+    20341.2,
+    222917.7,
+    85885.6
+   ],
+   "cell": "0_-5",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 7960.0,
+   "dz_vs_loop_m": -2.4,
+   "dist_to_source_road_m": 13.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 854.89,
+    "width_m": 7,
+    "dz_m": 3.97
+   },
+   "yaw_ue_derived": -24.7,
+   "trigger_scale_m": [
+    9.69,
+    15.79,
+    7.96
+   ],
+   "port": {
+    "port_cell": "c0_-5",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     -3000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     300000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 4.69,
+    "mesh_z_m": 854.87,
+    "dz_vs_mesh_m": 3.98,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "garage_entrance4",
+   "kind": "garage_entrance",
+   "bng_m": [
+    177.14,
+    -2242.2,
+    858.856
+   ],
+   "ue_cm": [
+    17713.6,
+    224219.8,
+    85885.6
+   ],
+   "cell": "0_-5",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 7973.5,
+   "dz_vs_loop_m": -2.4,
+   "dist_to_source_road_m": 10.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 854.87,
+    "width_m": 7,
+    "dz_m": 3.98
+   },
+   "yaw_ue_derived": -24.7,
+   "trigger_scale_m": [
+    8.51,
+    18.74,
+    7.96
+   ],
+   "port": {
+    "port_cell": "c0_-5",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     -3000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     300000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 4.01,
+    "mesh_z_m": 861.93,
+    "dz_vs_mesh_m": -3.08,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "garage_marker_1",
+   "kind": "garage_marker",
+   "bng_m": [
+    177.9,
+    -2241.39,
+    854.843
+   ],
+   "ue_cm": [
+    17790.4,
+    224139.3,
+    85484.3
+   ],
+   "cell": "0_-5",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 7972.7,
+   "dz_vs_loop_m": -6.4,
+   "dist_to_source_road_m": 9.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 854.87,
+    "width_m": 7,
+    "dz_m": -0.03
+   },
+   "yaw_ue_derived": -25.2,
+   "marker_scale_m": [
+    5.253,
+    5.879,
+    1
+   ],
+   "port": {
+    "port_cell": "c0_-5",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     -3000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     300000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 4.43,
+    "mesh_z_m": 861.93,
+    "dz_vs_mesh_m": -7.09,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "garage_marker_2",
+   "kind": "garage_marker",
+   "bng_m": [
+    -179.25,
+    -1386.82,
+    854.843
+   ],
+   "ue_cm": [
+    -17924.7,
+    138682.0,
+    85484.3
+   ],
+   "cell": "-1_-3",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 7134.4,
+   "dz_vs_loop_m": -6.4,
+   "dist_to_source_road_m": 16.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 855.16,
+    "width_m": 7,
+    "dz_m": -0.31
+   },
+   "yaw_ue_derived": -39.5,
+   "marker_scale_m": [
+    4.024,
+    5.106,
+    1
+   ],
+   "port": {
+    "port_cell": "c-1_-3",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     -2000.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     200000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.49,
+    "mesh_z_m": 857.09,
+    "dz_vs_mesh_m": -2.25,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "garage_marker_3",
+   "kind": "garage_marker",
+   "bng_m": [
+    203.87,
+    -2229.18,
+    854.843
+   ],
+   "ue_cm": [
+    20387.4,
+    222918.1,
+    85484.3
+   ],
+   "cell": "0_-5",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 7960.0,
+   "dz_vs_loop_m": -6.4,
+   "dist_to_source_road_m": 14.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 854.89,
+    "width_m": 7,
+    "dz_m": -0.04
+   },
+   "yaw_ue_derived": -25.2,
+   "marker_scale_m": [
+    5.253,
+    5.879,
+    1
+   ],
+   "port": {
+    "port_cell": "c0_-5",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     -3000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     300000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 4.8,
+    "mesh_z_m": 854.87,
+    "dz_vs_mesh_m": -0.03,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "garage_marker_4",
+   "kind": "garage_marker",
+   "bng_m": [
+    -525.39,
+    -754.78,
+    859.545
+   ],
+   "ue_cm": [
+    -52538.6,
+    75477.7,
+    85954.5
+   ],
+   "cell": "-2_-2",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 6538.9,
+   "dz_vs_loop_m": -1.7,
+   "dist_to_source_road_m": 14.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 859.5,
+    "width_m": 7,
+    "dz_m": 0.05
+   },
+   "yaw_ue_derived": 33.2,
+   "marker_scale_m": [
+    6.438,
+    6.751,
+    1
+   ],
+   "port": {
+    "port_cell": "c-2_-2",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     -1500.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     150000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 4.06,
+    "mesh_z_m": 859.74,
+    "dz_vs_mesh_m": -0.19,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Parking 2816",
+   "kind": "g2g_garage_site",
+   "bng_m": [
+    1099.04,
+    4738.52,
+    874.047
+   ],
+   "ue_cm": [
+    109904.1,
+    -473851.6,
+    87404.7
+   ],
+   "cell": "2_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 961.1,
+   "dz_vs_loop_m": 12.1,
+   "dist_to_source_road_m": 4.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 881.26,
+    "width_m": 4,
+    "dz_m": -7.22
+   },
+   "source_parking_id": 85,
+   "spot_amount": 1,
+   "port": {
+    "port_cell": "c2_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.32,
+    "mesh_z_m": 881.19,
+    "dz_vs_mesh_m": -7.15,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Parking 2818",
+   "kind": "g2g_garage_site",
+   "bng_m": [
+    1110.01,
+    4694.36,
+    873.882
+   ],
+   "ue_cm": [
+    111000.6,
+    -469435.6,
+    87388.2
+   ],
+   "cell": "2_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 1004.2,
+   "dz_vs_loop_m": 12.0,
+   "dist_to_source_road_m": 8.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 881.65,
+    "width_m": 4,
+    "dz_m": -7.76
+   },
+   "source_parking_id": 86,
+   "spot_amount": 1,
+   "port": {
+    "port_cell": "c2_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.9,
+    "mesh_z_m": 881.8,
+    "dz_vs_mesh_m": -7.92,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Parking 2819",
+   "kind": "g2g_garage_site",
+   "bng_m": [
+    5888.94,
+    4650.49,
+    873.306
+   ],
+   "ue_cm": [
+    588893.5,
+    -465049.0,
+    87330.6
+   ],
+   "cell": "11_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 4667.8,
+   "dz_vs_loop_m": 26.0,
+   "dist_to_source_road_m": 15.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 872.62,
+    "width_m": 3,
+    "dz_m": 0.68
+   },
+   "source_parking_id": 87,
+   "spot_amount": 14,
+   "port": {
+    "port_cell": "c11_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     5000.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     500000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.19,
+    "mesh_z_m": 872.95,
+    "dz_vs_mesh_m": 0.36,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Parking 2820",
+   "kind": "g2g_garage_site",
+   "bng_m": [
+    5896.92,
+    4643.48,
+    872.821
+   ],
+   "ue_cm": [
+    589692.1,
+    -464348.4,
+    87282.1
+   ],
+   "cell": "11_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 4678.5,
+   "dz_vs_loop_m": 25.5,
+   "dist_to_source_road_m": 19.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 873.37,
+    "width_m": 6,
+    "dz_m": -0.55
+   },
+   "source_parking_id": 88,
+   "spot_amount": 1,
+   "port": {
+    "port_cell": "c11_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     5000.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     500000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.38,
+    "mesh_z_m": 860.73,
+    "dz_vs_mesh_m": 12.09,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Parking 2821",
+   "kind": "g2g_garage_site",
+   "bng_m": [
+    964.34,
+    77.67,
+    855.26
+   ],
+   "ue_cm": [
+    96434.1,
+    -7767.0,
+    85526.0
+   ],
+   "cell": "1_0",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 5622.1,
+   "dz_vs_loop_m": -6.6,
+   "dist_to_source_road_m": 8.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 855.23,
+    "width_m": 4,
+    "dz_m": 0.03
+   },
+   "source_parking_id": 89,
+   "spot_amount": 1,
+   "port": {
+    "port_cell": "c1_0",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     -500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     50000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.03,
+    "mesh_z_m": 855.41,
+    "dz_vs_mesh_m": -0.15,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Parking 2822",
+   "kind": "g2g_garage_site",
+   "bng_m": [
+    964.35,
+    66.67,
+    855.216
+   ],
+   "ue_cm": [
+    96434.6,
+    -6666.8,
+    85521.6
+   ],
+   "cell": "1_0",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 5633.1,
+   "dz_vs_loop_m": -6.7,
+   "dist_to_source_road_m": 5.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 855.23,
+    "width_m": 4,
+    "dz_m": -0.01
+   },
+   "source_parking_id": 90,
+   "spot_amount": 1,
+   "port": {
+    "port_cell": "c1_0",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     -500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     50000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 3.11,
+    "mesh_z_m": 855.23,
+    "dz_vs_mesh_m": -0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Parking 2823",
+   "kind": "g2g_garage_site",
+   "bng_m": [
+    -309.31,
+    -6155.46,
+    864.215
+   ],
+   "ue_cm": [
+    -30931.1,
+    615546.4,
+    86421.5
+   ],
+   "cell": "-1_-13",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 11902.2,
+   "dz_vs_loop_m": 3.0,
+   "dist_to_source_road_m": 14.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 864.19,
+    "width_m": 4,
+    "dz_m": 0.02
+   },
+   "source_parking_id": 91,
+   "spot_amount": 1,
+   "port": {
+    "port_cell": "c-1_-13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     -7000.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     700000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.84,
+    "mesh_z_m": 864.22,
+    "dz_vs_mesh_m": -0.0,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Parking 2824",
+   "kind": "g2g_garage_site",
+   "bng_m": [
+    -159.04,
+    -1429.52,
+    855.117
+   ],
+   "ue_cm": [
+    -15903.7,
+    142951.5,
+    85511.7
+   ],
+   "cell": "-1_-3",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 7175.6,
+   "dz_vs_loop_m": -6.1,
+   "dist_to_source_road_m": 15.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 855.22,
+    "width_m": 7,
+    "dz_m": -0.1
+   },
+   "source_parking_id": 92,
+   "spot_amount": 1,
+   "port": {
+    "port_cell": "c-1_-3",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     -2000.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     200000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.29,
+    "mesh_z_m": 855.14,
+    "dz_vs_mesh_m": -0.03,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Parking 3387",
+   "kind": "city_parking",
+   "bng_m": [
+    5889.04,
+    4650.53,
+    872.892
+   ],
+   "ue_cm": [
+    588903.5,
+    -465053.1,
+    87289.2
+   ],
+   "cell": "11_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 4667.9,
+   "dz_vs_loop_m": 25.6,
+   "dist_to_source_road_m": 15.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 872.62,
+    "width_m": 3,
+    "dz_m": 0.27
+   },
+   "source_parking_id": 3,
+   "spot_amount": 13,
+   "port": {
+    "port_cell": "c11_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     5000.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     500000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.09,
+    "mesh_z_m": 872.95,
+    "dz_vs_mesh_m": -0.06,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Parking 3388",
+   "kind": "city_parking",
+   "bng_m": [
+    1099.29,
+    4642.16,
+    874.041
+   ],
+   "ue_cm": [
+    109929.4,
+    -464215.9,
+    87404.1
+   ],
+   "cell": "2_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 1057.1,
+   "dz_vs_loop_m": 12.1,
+   "dist_to_source_road_m": 9.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 878.2,
+    "width_m": 4,
+    "dz_m": -4.16
+   },
+   "source_parking_id": 4,
+   "spot_amount": 44,
+   "port": {
+    "port_cell": "c2_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.21,
+    "mesh_z_m": 874.01,
+    "dz_vs_mesh_m": 0.03,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Parking 3389",
+   "kind": "city_parking",
+   "bng_m": [
+    1105.56,
+    4639.43,
+    873.94
+   ],
+   "ue_cm": [
+    110555.8,
+    -463942.7,
+    87394.0
+   ],
+   "cell": "2_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 1059.3,
+   "dz_vs_loop_m": 12.0,
+   "dist_to_source_road_m": 8.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 882.37,
+    "width_m": 4,
+    "dz_m": -8.43
+   },
+   "source_parking_id": 5,
+   "spot_amount": 2,
+   "port": {
+    "port_cell": "c2_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.9,
+    "mesh_z_m": 882.25,
+    "dz_vs_mesh_m": -8.31,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "speed_trap_1",
+   "kind": "speed_trap",
+   "bng_m": [
+    -10941.99,
+    -14408.46,
+    862.668
+   ],
+   "ue_cm": [
+    -1094198.6,
+    1440846.4,
+    86266.8
+   ],
+   "cell": "-22_-29",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 22870.3,
+   "dz_vs_loop_m": -0.9,
+   "dist_to_source_road_m": 9.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 862.76,
+    "width_m": 7,
+    "dz_m": -0.1
+   },
+   "source_name": "BeamNGTrigger_38",
+   "port": {
+    "port_cell": "c-22_-29",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -11500.0,
+     -15000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1150000.0,
+     1500000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.72,
+    "mesh_z_m": 862.65,
+    "dz_vs_mesh_m": 0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_2",
+   "kind": "speed_trap",
+   "bng_m": [
+    -10889.22,
+    -14467.62,
+    862.047
+   ],
+   "ue_cm": [
+    -1088922.1,
+    1446761.5,
+    86204.7
+   ],
+   "cell": "-22_-29",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 22899.6,
+   "dz_vs_loop_m": -1.5,
+   "dist_to_source_road_m": 27.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 861.84,
+    "width_m": 7,
+    "dz_m": 0.2
+   },
+   "source_name": "BeamNGTrigger_11",
+   "port": {
+    "port_cell": "c-22_-29",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -11500.0,
+     -15000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1150000.0,
+     1500000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.85,
+    "mesh_z_m": 862.07,
+    "dz_vs_mesh_m": -0.02,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_3",
+   "kind": "speed_trap",
+   "bng_m": [
+    -10091.55,
+    -12786.81,
+    862.518
+   ],
+   "ue_cm": [
+    -1009155.2,
+    1278681.2,
+    86251.8
+   ],
+   "cell": "-21_-26",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 21039.5,
+   "dz_vs_loop_m": -1.1,
+   "dist_to_source_road_m": 13.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 862.55,
+    "width_m": 7,
+    "dz_m": -0.03
+   },
+   "source_name": "BeamNGTrigger_39",
+   "port": {
+    "port_cell": "c-21_-26",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -10500.0,
+     -13500.0
+    ],
+    "cell_actor_ue_cm": [
+     -1050000.0,
+     1350000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.8,
+    "mesh_z_m": 862.52,
+    "dz_vs_mesh_m": -0.0,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_4",
+   "kind": "speed_trap",
+   "bng_m": [
+    -8936.54,
+    -16286.97,
+    862.465
+   ],
+   "ue_cm": [
+    -893653.9,
+    1628697.4,
+    86246.5
+   ],
+   "cell": "-18_-33",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23795.4,
+   "dz_vs_loop_m": -1.1,
+   "dist_to_source_road_m": 9.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 862.44,
+    "width_m": 4,
+    "dz_m": 0.03
+   },
+   "source_name": "BeamNGTrigger_37",
+   "port": {
+    "port_cell": "c-18_-33",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -9500.0,
+     -16500.0
+    ],
+    "cell_actor_ue_cm": [
+     -950000.0,
+     1650000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.49,
+    "mesh_z_m": 862.49,
+    "dz_vs_mesh_m": -0.03,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_5",
+   "kind": "speed_trap",
+   "bng_m": [
+    -8216.27,
+    -15975.93,
+    872.195
+   ],
+   "ue_cm": [
+    -821627.4,
+    1597592.7,
+    87219.5
+   ],
+   "cell": "-17_-32",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23260.4,
+   "dz_vs_loop_m": 8.6,
+   "dist_to_source_road_m": 3.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 872.15,
+    "width_m": 7,
+    "dz_m": 0.04
+   },
+   "source_name": "BeamNGTrigger_12",
+   "port": {
+    "port_cell": "c-17_-32",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -9000.0,
+     -17000.0
+    ],
+    "cell_actor_ue_cm": [
+     -900000.0,
+     1700000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.49,
+    "mesh_z_m": 872.23,
+    "dz_vs_mesh_m": -0.03,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_6",
+   "kind": "speed_trap",
+   "bng_m": [
+    -7906.23,
+    -11557.11,
+    859.245
+   ],
+   "ue_cm": [
+    -790623.3,
+    1155711.0,
+    85924.5
+   ],
+   "cell": "-16_-24",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 19014.1,
+   "dz_vs_loop_m": -4.3,
+   "dist_to_source_road_m": 3.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 858.96,
+    "width_m": 7,
+    "dz_m": 0.28
+   },
+   "source_name": "BeamNGTrigger_10",
+   "port": {
+    "port_cell": "c-16_-24",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -8500.0,
+     -12000.0
+    ],
+    "cell_actor_ue_cm": [
+     -850000.0,
+     1200000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.22,
+    "mesh_z_m": 858.94,
+    "dz_vs_mesh_m": 0.3,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_7",
+   "kind": "speed_trap",
+   "bng_m": [
+    -7707.68,
+    -11393.58,
+    863.83
+   ],
+   "ue_cm": [
+    -770768.2,
+    1139357.5,
+    86383.0
+   ],
+   "cell": "-16_-23",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 18787.7,
+   "dz_vs_loop_m": 0.3,
+   "dist_to_source_road_m": 9.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 863.84,
+    "width_m": 7,
+    "dz_m": -0.01
+   },
+   "source_name": "BeamNGTrigger_40",
+   "port": {
+    "port_cell": "c-16_-23",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -8000.0,
+     -12000.0
+    ],
+    "cell_actor_ue_cm": [
+     -800000.0,
+     1200000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.2,
+    "mesh_z_m": 863.87,
+    "dz_vs_mesh_m": -0.04,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_8",
+   "kind": "speed_trap",
+   "bng_m": [
+    -7418.37,
+    -11319.38,
+    867.536
+   ],
+   "ue_cm": [
+    -741836.8,
+    1131937.9,
+    86753.6
+   ],
+   "cell": "-15_-23",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 18612.2,
+   "dz_vs_loop_m": 4.0,
+   "dist_to_source_road_m": 1.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 865.64,
+    "width_m": 7,
+    "dz_m": 1.9
+   },
+   "source_name": "BeamNGTrigger_9",
+   "port": {
+    "port_cell": "c-15_-23",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -8000.0,
+     -12000.0
+    ],
+    "cell_actor_ue_cm": [
+     -800000.0,
+     1200000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.01,
+    "mesh_z_m": 865.64,
+    "dz_vs_mesh_m": 1.89,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_9",
+   "kind": "speed_trap",
+   "bng_m": [
+    -6759.8,
+    -15295.33,
+    908.354
+   ],
+   "ue_cm": [
+    -675979.7,
+    1529533.2,
+    90835.4
+   ],
+   "cell": "-14_-31",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 22160.5,
+   "dz_vs_loop_m": 47.1,
+   "dist_to_source_road_m": 55.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 907.06,
+    "width_m": 10,
+    "dz_m": 1.29
+   },
+   "source_name": "BeamNGTrigger_13",
+   "port": {
+    "port_cell": "c-14_-31",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -7000.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -700000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.74,
+    "mesh_z_m": 908.39,
+    "dz_vs_mesh_m": -0.04,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_10",
+   "kind": "speed_trap",
+   "bng_m": [
+    -6513.5,
+    -11458.61,
+    874.882
+   ],
+   "ue_cm": [
+    -651349.6,
+    1145860.6,
+    87488.2
+   ],
+   "cell": "-14_-23",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 18435.5,
+   "dz_vs_loop_m": 11.3,
+   "dist_to_source_road_m": 8.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 862.46,
+    "width_m": 7,
+    "dz_m": 12.43
+   },
+   "source_name": "BeamNGTrigger_35",
+   "port": {
+    "port_cell": "c-14_-23",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -7500.0,
+     -12000.0
+    ],
+    "cell_actor_ue_cm": [
+     -750000.0,
+     1200000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.44,
+    "mesh_z_m": 872.62,
+    "dz_vs_mesh_m": 2.26,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_11",
+   "kind": "speed_trap",
+   "bng_m": [
+    -6416.12,
+    -11621.47,
+    863.073
+   ],
+   "ue_cm": [
+    -641612.0,
+    1162147.3,
+    86307.3
+   ],
+   "cell": "-13_-24",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 18559.6,
+   "dz_vs_loop_m": -0.5,
+   "dist_to_source_road_m": 2.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 863.09,
+    "width_m": 7,
+    "dz_m": -0.02
+   },
+   "source_name": "BeamNGTrigger_36",
+   "port": {
+    "port_cell": "c-13_-24",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -7000.0,
+     -12500.0
+    ],
+    "cell_actor_ue_cm": [
+     -700000.0,
+     1250000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.53,
+    "mesh_z_m": 863.07,
+    "dz_vs_mesh_m": -0.0,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_12",
+   "kind": "speed_trap",
+   "bng_m": [
+    -6351.62,
+    -12869.98,
+    875.164
+   ],
+   "ue_cm": [
+    -635161.6,
+    1286998.1,
+    87516.4
+   ],
+   "cell": "-13_-26",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 19731.8,
+   "dz_vs_loop_m": 11.6,
+   "dist_to_source_road_m": 23.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 873.49,
+    "width_m": 7,
+    "dz_m": 1.68
+   },
+   "source_name": "BeamNGTrigger_34",
+   "port": {
+    "port_cell": "c-13_-26",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -7000.0,
+     -13500.0
+    ],
+    "cell_actor_ue_cm": [
+     -700000.0,
+     1350000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.19,
+    "mesh_z_m": 873.57,
+    "dz_vs_mesh_m": 1.59,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_13",
+   "kind": "speed_trap",
+   "bng_m": [
+    -5779.53,
+    -10618.75,
+    861.167
+   ],
+   "ue_cm": [
+    -577952.7,
+    1061874.6,
+    86116.7
+   ],
+   "cell": "-12_-22",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 17411.5,
+   "dz_vs_loop_m": -2.4,
+   "dist_to_source_road_m": 111.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 861.52,
+    "width_m": 7,
+    "dz_m": -0.35
+   },
+   "source_name": "BeamNGTrigger_41",
+   "port": {
+    "port_cell": "c-12_-22",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -6500.0,
+     -11500.0
+    ],
+    "cell_actor_ue_cm": [
+     -650000.0,
+     1150000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.44,
+    "mesh_z_m": 861.16,
+    "dz_vs_mesh_m": 0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_14",
+   "kind": "speed_trap",
+   "bng_m": [
+    -5481.25,
+    -10505.89,
+    861.616
+   ],
+   "ue_cm": [
+    -548124.9,
+    1050588.9,
+    86161.6
+   ],
+   "cell": "-11_-22",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 17213.6,
+   "dz_vs_loop_m": 0.4,
+   "dist_to_source_road_m": 25.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.23,
+    "width_m": 7,
+    "dz_m": 1.38
+   },
+   "source_name": "BeamNGTrigger_8",
+   "port": {
+    "port_cell": "c-11_-22",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -6000.0,
+     -11500.0
+    ],
+    "cell_actor_ue_cm": [
+     -600000.0,
+     1150000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.96,
+    "mesh_z_m": 860.17,
+    "dz_vs_mesh_m": 1.44,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_15",
+   "kind": "speed_trap",
+   "bng_m": [
+    -4636.07,
+    -13272.2,
+    891.854
+   ],
+   "ue_cm": [
+    -463607.0,
+    1327219.9,
+    89185.4
+   ],
+   "cell": "-10_-27",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 19623.6,
+   "dz_vs_loop_m": 30.6,
+   "dist_to_source_road_m": 31.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 892.84,
+    "width_m": 10,
+    "dz_m": -0.99
+   },
+   "source_name": "BeamNGTrigger_50",
+   "port": {
+    "port_cell": "c-10_-27",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -5500.0,
+     -14000.0
+    ],
+    "cell_actor_ue_cm": [
+     -550000.0,
+     1400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.34,
+    "mesh_z_m": 852.32,
+    "dz_vs_mesh_m": 39.54,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "speed_trap_16",
+   "kind": "speed_trap",
+   "bng_m": [
+    -2634.25,
+    -8891.13,
+    860.234
+   ],
+   "ue_cm": [
+    -263424.7,
+    889113.2,
+    86023.4
+   ],
+   "cell": "-6_-18",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 14909.8,
+   "dz_vs_loop_m": -1.0,
+   "dist_to_source_road_m": 74.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.61,
+    "width_m": 7,
+    "dz_m": -0.38
+   },
+   "source_name": "BeamNGTrigger_42",
+   "port": {
+    "port_cell": "c-6_-18",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -3500.0,
+     -9500.0
+    ],
+    "cell_actor_ue_cm": [
+     -350000.0,
+     950000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 3.84,
+    "mesh_z_m": 860.25,
+    "dz_vs_mesh_m": -0.02,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_17",
+   "kind": "speed_trap",
+   "bng_m": [
+    -865.99,
+    -7539.81,
+    860.204
+   ],
+   "ue_cm": [
+    -86599.1,
+    753981.1,
+    86020.4
+   ],
+   "cell": "-2_-16",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 13322.7,
+   "dz_vs_loop_m": -1.0,
+   "dist_to_source_road_m": 4.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.22,
+    "width_m": 7,
+    "dz_m": -0.01
+   },
+   "source_name": "BeamNGTrigger_43",
+   "port": {
+    "port_cell": "c-2_-16",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     -8500.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     850000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.86,
+    "mesh_z_m": 860.23,
+    "dz_vs_mesh_m": -0.02,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_18",
+   "kind": "speed_trap",
+   "bng_m": [
+    -518.21,
+    -7043.86,
+    862.473
+   ],
+   "ue_cm": [
+    -51821.5,
+    704386.2,
+    86247.3
+   ],
+   "cell": "-2_-15",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 12801.4,
+   "dz_vs_loop_m": 1.3,
+   "dist_to_source_road_m": 187.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.42,
+    "width_m": 7,
+    "dz_m": 2.05
+   },
+   "source_name": "BeamNGTrigger_7",
+   "port": {
+    "port_cell": "c-2_-15",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     -8000.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     800000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.52,
+    "mesh_z_m": 860.07,
+    "dz_vs_mesh_m": 2.4,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_19",
+   "kind": "speed_trap",
+   "bng_m": [
+    -230.16,
+    -5743.73,
+    862.758
+   ],
+   "ue_cm": [
+    -23016.2,
+    574372.9,
+    86275.8
+   ],
+   "cell": "-1_-12",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 11487.1,
+   "dz_vs_loop_m": 1.5,
+   "dist_to_source_road_m": 23.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 862.58,
+    "width_m": 7,
+    "dz_m": 0.18
+   },
+   "source_name": "BeamNGTrigger_6",
+   "port": {
+    "port_cell": "c-1_-12",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     -6500.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     650000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.97,
+    "mesh_z_m": 862.77,
+    "dz_vs_mesh_m": -0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_20",
+   "kind": "speed_trap",
+   "bng_m": [
+    -114.48,
+    -5232.33,
+    860.379
+   ],
+   "ue_cm": [
+    -11447.8,
+    523233.1,
+    86037.9
+   ],
+   "cell": "-1_-11",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 10971.1,
+   "dz_vs_loop_m": -0.8,
+   "dist_to_source_road_m": 11.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.22,
+    "width_m": 7,
+    "dz_m": 0.16
+   },
+   "source_name": "BeamNGTrigger_44",
+   "port": {
+    "port_cell": "c-1_-11",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     -6000.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.75,
+    "mesh_z_m": 860.39,
+    "dz_vs_mesh_m": -0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_21",
+   "kind": "speed_trap",
+   "bng_m": [
+    47.77,
+    9746.45,
+    867.627
+   ],
+   "ue_cm": [
+    4777.0,
+    -974644.8,
+    86762.7
+   ],
+   "cell": "0_19",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 26.9,
+   "dz_vs_loop_m": 0.2,
+   "dist_to_source_road_m": 2.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 867.63,
+    "width_m": 6,
+    "dz_m": 0.0
+   },
+   "source_name": "BeamNGTrigger_20",
+   "port": {
+    "port_cell": "c0_19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     9000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.46,
+    "mesh_z_m": 867.64,
+    "dz_vs_mesh_m": -0.02,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_22",
+   "kind": "speed_trap",
+   "bng_m": [
+    124.83,
+    213.01,
+    858.021
+   ],
+   "ue_cm": [
+    12483.5,
+    -21300.5,
+    85802.1
+   ],
+   "cell": "0_0",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 5520.6,
+   "dz_vs_loop_m": -3.2,
+   "dist_to_source_road_m": 28.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 857.62,
+    "width_m": 7,
+    "dz_m": 0.4
+   },
+   "source_name": "BeamNGTrigger_31",
+   "port": {
+    "port_cell": "c0_0",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     -500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     50000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.13,
+    "mesh_z_m": 858.02,
+    "dz_vs_mesh_m": -0.0,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_23",
+   "kind": "speed_trap",
+   "bng_m": [
+    135.07,
+    -4621.38,
+    857.496
+   ],
+   "ue_cm": [
+    13506.7,
+    462138.1,
+    85749.6
+   ],
+   "cell": "0_-10",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 10353.1,
+   "dz_vs_loop_m": -3.7,
+   "dist_to_source_road_m": 1.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 857.4,
+    "width_m": 7,
+    "dz_m": 0.1
+   },
+   "source_name": "BeamNGTrigger_33",
+   "port": {
+    "port_cell": "c0_-10",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     -5500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     550000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.13,
+    "mesh_z_m": 857.46,
+    "dz_vs_mesh_m": 0.03,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_24",
+   "kind": "speed_trap",
+   "bng_m": [
+    317.31,
+    -3038.24,
+    859.311
+   ],
+   "ue_cm": [
+    31731.2,
+    303824.2,
+    85931.1
+   ],
+   "cell": "0_-7",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 8768.1,
+   "dz_vs_loop_m": -1.9,
+   "dist_to_source_road_m": 2.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 859.31,
+    "width_m": 3.5,
+    "dz_m": 0.0
+   },
+   "source_name": "BeamNGTrigger_46",
+   "port": {
+    "port_cell": "c0_-7",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     -4000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.91,
+    "mesh_z_m": 855.47,
+    "dz_vs_mesh_m": 3.84,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_25",
+   "kind": "speed_trap",
+   "bng_m": [
+    471.04,
+    3008.95,
+    859.811
+   ],
+   "ue_cm": [
+    47103.6,
+    -300895.1,
+    85981.1
+   ],
+   "cell": "0_6",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 2724.4,
+   "dz_vs_loop_m": -1.4,
+   "dist_to_source_road_m": 118.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 859.22,
+    "width_m": 7,
+    "dz_m": 0.59
+   },
+   "source_name": "BeamNGTrigger_30",
+   "port": {
+    "port_cell": "c0_6",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     2500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -250000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.81,
+    "mesh_z_m": 859.81,
+    "dz_vs_mesh_m": -0.0,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_26",
+   "kind": "speed_trap",
+   "bng_m": [
+    529.37,
+    2324.03,
+    858.865
+   ],
+   "ue_cm": [
+    52936.6,
+    -232402.6,
+    85886.5
+   ],
+   "cell": "1_4",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 3411.5,
+   "dz_vs_loop_m": -2.3,
+   "dist_to_source_road_m": 36.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 858.91,
+    "width_m": 7,
+    "dz_m": -0.04
+   },
+   "source_name": "BeamNGTrigger_48",
+   "port": {
+    "port_cell": "c1_4",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     1500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     -150000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.24,
+    "mesh_z_m": 858.88,
+    "dz_vs_mesh_m": -0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_27",
+   "kind": "speed_trap",
+   "bng_m": [
+    535.02,
+    1144.67,
+    852.332
+   ],
+   "ue_cm": [
+    53502.4,
+    -114466.9,
+    85233.2
+   ],
+   "cell": "1_2",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 4589.7,
+   "dz_vs_loop_m": -8.9,
+   "dist_to_source_road_m": 4.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 852.33,
+    "width_m": 4,
+    "dz_m": -0.0
+   },
+   "source_name": "BeamNGTrigger_47",
+   "port": {
+    "port_cell": "c1_2",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     -50000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.72,
+    "mesh_z_m": 852.33,
+    "dz_vs_mesh_m": 0.0,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_28",
+   "kind": "speed_trap",
+   "bng_m": [
+    685.15,
+    -3657.26,
+    847.864
+   ],
+   "ue_cm": [
+    68514.6,
+    365725.5,
+    84786.4
+   ],
+   "cell": "1_-8",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9366.3,
+   "dz_vs_loop_m": -14.1,
+   "dist_to_source_road_m": 6.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 848.09,
+    "width_m": 7,
+    "dz_m": -0.23
+   },
+   "source_name": "BeamNGTrigger_32",
+   "port": {
+    "port_cell": "c1_-8",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     -4500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     450000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.61,
+    "mesh_z_m": 847.85,
+    "dz_vs_mesh_m": 0.02,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_29",
+   "kind": "speed_trap",
+   "bng_m": [
+    850.95,
+    -3946.51,
+    845.067
+   ],
+   "ue_cm": [
+    85094.8,
+    394650.6,
+    84506.7
+   ],
+   "cell": "1_-8",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9647.6,
+   "dz_vs_loop_m": -16.8,
+   "dist_to_source_road_m": 0.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 845.06,
+    "width_m": 7,
+    "dz_m": 0.0
+   },
+   "source_name": "BeamNGTrigger_45",
+   "port": {
+    "port_cell": "c1_-8",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     -4500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     450000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 3.02,
+    "mesh_z_m": 845.22,
+    "dz_vs_mesh_m": -0.15,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_30",
+   "kind": "speed_trap",
+   "bng_m": [
+    871.21,
+    4573.07,
+    858.792
+   ],
+   "ue_cm": [
+    87121.2,
+    -457307.5,
+    85879.2
+   ],
+   "cell": "1_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 1148.3,
+   "dz_vs_loop_m": -4.0,
+   "dist_to_source_road_m": 12.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 858.74,
+    "width_m": 7,
+    "dz_m": 0.05
+   },
+   "source_name": "BeamNGTrigger_49",
+   "port": {
+    "port_cell": "c1_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.8,
+    "mesh_z_m": 858.79,
+    "dz_vs_mesh_m": 0.0,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_31",
+   "kind": "speed_trap",
+   "bng_m": [
+    1025.75,
+    4932.53,
+    861.212
+   ],
+   "ue_cm": [
+    102574.9,
+    -493253.2,
+    86121.2
+   ],
+   "cell": "2_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 775.1,
+   "dz_vs_loop_m": -1.0,
+   "dist_to_source_road_m": 12.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 861.02,
+    "width_m": 7,
+    "dz_m": 0.19
+   },
+   "source_name": "BeamNGTrigger_29",
+   "port": {
+    "port_cell": "c2_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.15,
+    "mesh_z_m": 861.2,
+    "dz_vs_mesh_m": 0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_32",
+   "kind": "speed_trap",
+   "bng_m": [
+    1109.75,
+    4632.83,
+    882.4
+   ],
+   "ue_cm": [
+    110974.6,
+    -463283.5,
+    88240.0
+   ],
+   "cell": "2_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 1065.5,
+   "dz_vs_loop_m": 20.5,
+   "dist_to_source_road_m": 1.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 882.37,
+    "width_m": 4,
+    "dz_m": 0.03
+   },
+   "source_name": "BeamNGTrigger_28",
+   "port": {
+    "port_cell": "c2_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.23,
+    "mesh_z_m": 876.22,
+    "dz_vs_mesh_m": 6.18,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "speed_trap_33",
+   "kind": "speed_trap",
+   "bng_m": [
+    1331.21,
+    6107.42,
+    859.007
+   ],
+   "ue_cm": [
+    133121.1,
+    -610742.1,
+    85900.7
+   ],
+   "cell": "2_12",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 0.6,
+   "dz_vs_loop_m": -0.3,
+   "dist_to_source_road_m": 28.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 859.14,
+    "width_m": 10,
+    "dz_m": -0.13
+   },
+   "source_name": "BeamNGTrigger_21",
+   "port": {
+    "port_cell": "c2_12",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     5500.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -550000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.49,
+    "mesh_z_m": 859.02,
+    "dz_vs_mesh_m": -0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_34",
+   "kind": "speed_trap",
+   "bng_m": [
+    2068.54,
+    9663.53,
+    865.314
+   ],
+   "ue_cm": [
+    206854.1,
+    -966353.2,
+    86531.4
+   ],
+   "cell": "4_19",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 19.5,
+   "dz_vs_loop_m": 0.0,
+   "dist_to_source_road_m": 1.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 865.28,
+    "width_m": 6,
+    "dz_m": 0.04
+   },
+   "source_name": "BeamNGTrigger_19",
+   "port": {
+    "port_cell": "c4_19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1500.0,
+     9000.0
+    ],
+    "cell_actor_ue_cm": [
+     150000.0,
+     -900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.31,
+    "mesh_z_m": 854.35,
+    "dz_vs_mesh_m": 10.96,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "speed_trap_35",
+   "kind": "speed_trap",
+   "bng_m": [
+    2509.18,
+    8203.19,
+    846.181
+   ],
+   "ue_cm": [
+    250917.6,
+    -820318.6,
+    84618.1
+   ],
+   "cell": "5_16",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 8.4,
+   "dz_vs_loop_m": -0.7,
+   "dist_to_source_road_m": 4.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 846.29,
+    "width_m": 4,
+    "dz_m": -0.11
+   },
+   "source_name": "BeamNGTrigger_22",
+   "port": {
+    "port_cell": "c5_16",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2000.0,
+     7500.0
+    ],
+    "cell_actor_ue_cm": [
+     200000.0,
+     -750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.88,
+    "mesh_z_m": 846.22,
+    "dz_vs_mesh_m": -0.04,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_36",
+   "kind": "speed_trap",
+   "bng_m": [
+    2654.33,
+    8448.02,
+    847.6
+   ],
+   "ue_cm": [
+    265432.9,
+    -844802.1,
+    84760.0
+   ],
+   "cell": "5_16",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 10.1,
+   "dz_vs_loop_m": 0.0,
+   "dist_to_source_road_m": 12.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 847.6,
+    "width_m": 10,
+    "dz_m": 0.0
+   },
+   "source_name": "BeamNGTrigger_17",
+   "port": {
+    "port_cell": "c5_16",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2000.0,
+     7500.0
+    ],
+    "cell_actor_ue_cm": [
+     200000.0,
+     -750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.62,
+    "mesh_z_m": 847.59,
+    "dz_vs_mesh_m": 0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_37",
+   "kind": "speed_trap",
+   "bng_m": [
+    2709.89,
+    3875.85,
+    885.558
+   ],
+   "ue_cm": [
+    270989.1,
+    -387584.5,
+    88555.8
+   ],
+   "cell": "5_7",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 2324.6,
+   "dz_vs_loop_m": 24.1,
+   "dist_to_source_road_m": 2.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 885.57,
+    "width_m": 7,
+    "dz_m": -0.01
+   },
+   "source_name": "BeamNGTrigger_18",
+   "port": {
+    "port_cell": "c5_7",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2000.0,
+     3000.0
+    ],
+    "cell_actor_ue_cm": [
+     200000.0,
+     -300000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.53,
+    "mesh_z_m": 885.57,
+    "dz_vs_mesh_m": -0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_38",
+   "kind": "speed_trap",
+   "bng_m": [
+    3400.7,
+    8754.42,
+    867.04
+   ],
+   "ue_cm": [
+    340069.6,
+    -875441.9,
+    86704.0
+   ],
+   "cell": "6_17",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 548.3,
+   "dz_vs_loop_m": 6.6,
+   "dist_to_source_road_m": 3.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 866.72,
+    "width_m": 4,
+    "dz_m": 0.32
+   },
+   "source_name": "BeamNGTrigger_23",
+   "port": {
+    "port_cell": "c6_17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2500.0,
+     8000.0
+    ],
+    "cell_actor_ue_cm": [
+     250000.0,
+     -800000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.1,
+    "mesh_z_m": 876.65,
+    "dz_vs_mesh_m": -9.61,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "speed_trap_39",
+   "kind": "speed_trap",
+   "bng_m": [
+    3891.31,
+    3540.09,
+    857.811
+   ],
+   "ue_cm": [
+    389131.4,
+    -354009.1,
+    85781.1
+   ],
+   "cell": "7_7",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 3388.9,
+   "dz_vs_loop_m": -2.9,
+   "dist_to_source_road_m": 7.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 857.53,
+    "width_m": 4,
+    "dz_m": 0.28
+   },
+   "source_name": "BeamNGTrigger_14",
+   "port": {
+    "port_cell": "c7_7",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     3000.0,
+     3000.0
+    ],
+    "cell_actor_ue_cm": [
+     300000.0,
+     -300000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.98,
+    "mesh_z_m": 857.78,
+    "dz_vs_mesh_m": 0.03,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_40",
+   "kind": "speed_trap",
+   "bng_m": [
+    4911.45,
+    4194.15,
+    853.53
+   ],
+   "ue_cm": [
+    491145.1,
+    -419415.2,
+    85353.0
+   ],
+   "cell": "9_8",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 3915.9,
+   "dz_vs_loop_m": -6.5,
+   "dist_to_source_road_m": 12.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 853.55,
+    "width_m": 10,
+    "dz_m": -0.02
+   },
+   "source_name": "BeamNGTrigger_27",
+   "port": {
+    "port_cell": "c9_8",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     3500.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     -350000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.47,
+    "mesh_z_m": 853.53,
+    "dz_vs_mesh_m": 0.0,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_41",
+   "kind": "speed_trap",
+   "bng_m": [
+    4939.8,
+    7969.38,
+    861.075
+   ],
+   "ue_cm": [
+    493979.5,
+    -796938.3,
+    86107.5
+   ],
+   "cell": "9_15",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 2274.6,
+   "dz_vs_loop_m": 0.6,
+   "dist_to_source_road_m": 3.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 861.06,
+    "width_m": 6,
+    "dz_m": 0.02
+   },
+   "source_name": "BeamNGTrigger_24",
+   "port": {
+    "port_cell": "c9_15",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     7500.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     -750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.73,
+    "mesh_z_m": 861.08,
+    "dz_vs_mesh_m": 0.0,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_42",
+   "kind": "speed_trap",
+   "bng_m": [
+    5408.82,
+    7714.6,
+    877.639
+   ],
+   "ue_cm": [
+    540882.2,
+    -771459.9,
+    87763.9
+   ],
+   "cell": "10_15",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 2807.8,
+   "dz_vs_loop_m": 17.2,
+   "dist_to_source_road_m": 5.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 875.5,
+    "width_m": 6,
+    "dz_m": 2.13
+   },
+   "source_name": "BeamNGTrigger_16",
+   "port": {
+    "port_cell": "c10_15",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4500.0,
+     7000.0
+    ],
+    "cell_actor_ue_cm": [
+     450000.0,
+     -700000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.32,
+    "mesh_z_m": 875.47,
+    "dz_vs_mesh_m": 2.17,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_43",
+   "kind": "speed_trap",
+   "bng_m": [
+    5872.14,
+    6178.12,
+    863.994
+   ],
+   "ue_cm": [
+    587214.5,
+    -617811.7,
+    86399.4
+   ],
+   "cell": "11_12",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 3824.4,
+   "dz_vs_loop_m": 16.9,
+   "dist_to_source_road_m": 9.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 863.82,
+    "width_m": 6,
+    "dz_m": 0.17
+   },
+   "source_name": "BeamNGTrigger_25",
+   "port": {
+    "port_cell": "c11_12",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     5000.0,
+     5500.0
+    ],
+    "cell_actor_ue_cm": [
+     500000.0,
+     -550000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.65,
+    "mesh_z_m": 864.01,
+    "dz_vs_mesh_m": -0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_44",
+   "kind": "speed_trap",
+   "bng_m": [
+    6041.14,
+    4698.94,
+    875.355
+   ],
+   "ue_cm": [
+    604114.4,
+    -469894.2,
+    87535.5
+   ],
+   "cell": "12_9",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 4753.6,
+   "dz_vs_loop_m": 28.0,
+   "dist_to_source_road_m": 4.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 875.35,
+    "width_m": 6,
+    "dz_m": 0.0
+   },
+   "source_name": "BeamNGTrigger_26",
+   "port": {
+    "port_cell": "c12_9",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     5500.0,
+     4000.0
+    ],
+    "cell_actor_ue_cm": [
+     550000.0,
+     -400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.8,
+    "mesh_z_m": 875.36,
+    "dz_vs_mesh_m": -0.01,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "speed_trap_45",
+   "kind": "speed_trap",
+   "bng_m": [
+    6088.79,
+    5061.66,
+    885.837
+   ],
+   "ue_cm": [
+    608879.3,
+    -506166.1,
+    88583.7
+   ],
+   "cell": "12_10",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 4572.6,
+   "dz_vs_loop_m": 38.5,
+   "dist_to_source_road_m": 2.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 881.24,
+    "width_m": 3,
+    "dz_m": 4.59
+   },
+   "source_name": "BeamNGTrigger_15",
+   "port": {
+    "port_cell": "c12_10",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     5500.0,
+     4500.0
+    ],
+    "cell_actor_ue_cm": [
+     550000.0,
+     -450000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.29,
+    "mesh_z_m": 881.32,
+    "dz_vs_mesh_m": 4.52,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_1",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    1478.22,
+    6738.22,
+    851.948
+   ],
+   "ue_cm": [
+    147822.4,
+    -673822.1,
+    85194.8
+   ],
+   "cell": "2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 5.5,
+   "dz_vs_loop_m": 1.7,
+   "dist_to_source_road_m": 5.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 850.57,
+    "width_m": 6,
+    "dz_m": 1.38
+   },
+   "port": {
+    "port_cell": "c2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.84,
+    "mesh_z_m": 857.28,
+    "dz_vs_mesh_m": -5.33,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_2",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    1478.22,
+    6738.73,
+    851.948
+   ],
+   "ue_cm": [
+    147822.4,
+    -673873.1,
+    85194.8
+   ],
+   "cell": "2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 5.0,
+   "dz_vs_loop_m": 1.7,
+   "dist_to_source_road_m": 5.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 850.57,
+    "width_m": 6,
+    "dz_m": 1.38
+   },
+   "port": {
+    "port_cell": "c2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     50000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.77,
+    "mesh_z_m": 850.67,
+    "dz_vs_mesh_m": 1.28,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_3",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    1741.66,
+    6962.42,
+    842.676
+   ],
+   "ue_cm": [
+    174165.5,
+    -696242.2,
+    84267.6
+   ],
+   "cell": "3_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 4.2,
+   "dz_vs_loop_m": 2.1,
+   "dist_to_source_road_m": 3.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.97,
+    "width_m": 6,
+    "dz_m": 2.7
+   },
+   "port": {
+    "port_cell": "c3_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1000.0,
+     6500.0
+    ],
+    "cell_actor_ue_cm": [
+     100000.0,
+     -650000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.2,
+    "mesh_z_m": 840.5,
+    "dz_vs_mesh_m": 2.17,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_4",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    1741.66,
+    6962.93,
+    842.676
+   ],
+   "ue_cm": [
+    174165.5,
+    -696293.3,
+    84267.6
+   ],
+   "cell": "3_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 4.7,
+   "dz_vs_loop_m": 2.1,
+   "dist_to_source_road_m": 3.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.97,
+    "width_m": 6,
+    "dz_m": 2.7
+   },
+   "port": {
+    "port_cell": "c3_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1000.0,
+     6500.0
+    ],
+    "cell_actor_ue_cm": [
+     100000.0,
+     -650000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.19,
+    "mesh_z_m": 840.26,
+    "dz_vs_mesh_m": 2.42,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_5",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    2157.81,
+    2291.5,
+    848.188
+   ],
+   "ue_cm": [
+    215781.5,
+    -229150.3,
+    84818.8
+   ],
+   "cell": "4_4",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 3525.5,
+   "dz_vs_loop_m": -13.6,
+   "dist_to_source_road_m": 16.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 842.43,
+    "width_m": 10,
+    "dz_m": 5.76
+   },
+   "port": {
+    "port_cell": "c4_4",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1500.0,
+     2000.0
+    ],
+    "cell_actor_ue_cm": [
+     150000.0,
+     -200000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.88,
+    "mesh_z_m": 847.55,
+    "dz_vs_mesh_m": 0.64,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_6",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    2157.81,
+    2290.53,
+    848.188
+   ],
+   "ue_cm": [
+    215781.5,
+    -229052.9,
+    84818.8
+   ],
+   "cell": "4_4",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 3526.4,
+   "dz_vs_loop_m": -13.6,
+   "dist_to_source_road_m": 16.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 842.43,
+    "width_m": 10,
+    "dz_m": 5.76
+   },
+   "port": {
+    "port_cell": "c4_4",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1500.0,
+     2000.0
+    ],
+    "cell_actor_ue_cm": [
+     150000.0,
+     -200000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.29,
+    "mesh_z_m": 845.85,
+    "dz_vs_mesh_m": 2.34,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_7",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    1397.95,
+    1636.13,
+    837.772
+   ],
+   "ue_cm": [
+    139795.4,
+    -163613.2,
+    83777.2
+   ],
+   "cell": "2_3",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 4062.5,
+   "dz_vs_loop_m": -24.1,
+   "dist_to_source_road_m": 9.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 833.34,
+    "width_m": 10,
+    "dz_m": 4.43
+   },
+   "port": {
+    "port_cell": "c2_3",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1000.0,
+     1000.0
+    ],
+    "cell_actor_ue_cm": [
+     100000.0,
+     -100000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.95,
+    "mesh_z_m": 837.98,
+    "dz_vs_mesh_m": -0.21,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_8",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    1397.95,
+    1635.16,
+    837.772
+   ],
+   "ue_cm": [
+    139795.4,
+    -163515.7,
+    83777.2
+   ],
+   "cell": "2_3",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 4063.4,
+   "dz_vs_loop_m": -24.1,
+   "dist_to_source_road_m": 9.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 833.34,
+    "width_m": 10,
+    "dz_m": 4.43
+   },
+   "port": {
+    "port_cell": "c2_3",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1000.0,
+     1000.0
+    ],
+    "cell_actor_ue_cm": [
+     100000.0,
+     -100000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.43,
+    "mesh_z_m": 838.01,
+    "dz_vs_mesh_m": -0.24,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_9",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    1905.56,
+    -3433.96,
+    838.887
+   ],
+   "ue_cm": [
+    190555.8,
+    343396.4,
+    83888.7
+   ],
+   "cell": "3_-7",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9154.1,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 12.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.35,
+    "width_m": 10,
+    "dz_m": -0.47
+   },
+   "port": {
+    "port_cell": "c3_-7",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1000.0,
+     -4000.0
+    ],
+    "cell_actor_ue_cm": [
+     100000.0,
+     400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.82,
+    "mesh_z_m": 844.62,
+    "dz_vs_mesh_m": -5.73,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_10",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    1906.51,
+    -3433.77,
+    838.887
+   ],
+   "ue_cm": [
+    190651.4,
+    343377.4,
+    83888.7
+   ],
+   "cell": "3_-7",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9154.0,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 13.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.35,
+    "width_m": 10,
+    "dz_m": -0.47
+   },
+   "port": {
+    "port_cell": "c3_-7",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1000.0,
+     -4000.0
+    ],
+    "cell_actor_ue_cm": [
+     100000.0,
+     400000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.09,
+    "mesh_z_m": 845.11,
+    "dz_vs_mesh_m": -6.23,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_11",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    2780.11,
+    -3927.17,
+    838.887
+   ],
+   "ue_cm": [
+    278010.6,
+    392717.4,
+    83888.7
+   ],
+   "cell": "5_-8",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9746.0,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 5.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.74,
+    "width_m": 10,
+    "dz_m": -0.85
+   },
+   "port": {
+    "port_cell": "c5_-8",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2000.0,
+     -4500.0
+    ],
+    "cell_actor_ue_cm": [
+     200000.0,
+     450000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.8,
+    "mesh_z_m": 845.31,
+    "dz_vs_mesh_m": -6.42,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_12",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    2781.06,
+    -3926.98,
+    838.887
+   ],
+   "ue_cm": [
+    278106.2,
+    392698.4,
+    83888.7
+   ],
+   "cell": "5_-8",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9745.9,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 4.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.74,
+    "width_m": 10,
+    "dz_m": -0.85
+   },
+   "port": {
+    "port_cell": "c5_-8",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2000.0,
+     -4500.0
+    ],
+    "cell_actor_ue_cm": [
+     200000.0,
+     450000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.99,
+    "mesh_z_m": 845.81,
+    "dz_vs_mesh_m": -6.92,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_13",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4562.02,
+    -6476.76,
+    838.887
+   ],
+   "ue_cm": [
+    456201.7,
+    647675.6,
+    83888.7
+   ],
+   "cell": "9_-13",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 12617.3,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 8.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.94,
+    "width_m": 10,
+    "dz_m": -1.06
+   },
+   "port": {
+    "port_cell": "c9_-13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -7000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     700000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.48,
+    "mesh_z_m": 840.34,
+    "dz_vs_mesh_m": -1.46,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_14",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4561.32,
+    -6476.07,
+    838.887
+   ],
+   "ue_cm": [
+    456132.5,
+    647607.0,
+    83888.7
+   ],
+   "cell": "9_-13",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 12616.4,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 8.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.94,
+    "width_m": 10,
+    "dz_m": -1.06
+   },
+   "port": {
+    "port_cell": "c9_-13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -7000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     700000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.53,
+    "mesh_z_m": 840.34,
+    "dz_vs_mesh_m": -1.46,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_15",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4522.66,
+    -7152.93,
+    838.887
+   ],
+   "ue_cm": [
+    452265.7,
+    715293.0,
+    83888.7
+   ],
+   "cell": "9_-15",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 13261.3,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 12.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 824.63,
+    "width_m": 10,
+    "dz_m": 14.25
+   },
+   "port": {
+    "port_cell": "c9_-15",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -7500.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.14,
+    "mesh_z_m": 825.98,
+    "dz_vs_mesh_m": 12.91,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_16",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4522.06,
+    -7152.16,
+    838.887
+   ],
+   "ue_cm": [
+    452206.4,
+    715215.6,
+    83888.7
+   ],
+   "cell": "9_-15",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 13260.4,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 12.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 824.63,
+    "width_m": 10,
+    "dz_m": 14.25
+   },
+   "port": {
+    "port_cell": "c9_-15",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -7500.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.84,
+    "mesh_z_m": 825.98,
+    "dz_vs_mesh_m": 12.91,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_17",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4467.19,
+    -7393.24,
+    838.887
+   ],
+   "ue_cm": [
+    446719.2,
+    739324.4,
+    83888.7
+   ],
+   "cell": "8_-15",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 13480.9,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 55.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 826.11,
+    "width_m": 10,
+    "dz_m": 12.78
+   },
+   "port": {
+    "port_cell": "c8_-15",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -8000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     800000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.26,
+    "mesh_z_m": 826.78,
+    "dz_vs_mesh_m": 12.11,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_18",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4464.95,
+    -7394.94,
+    838.887
+   ],
+   "ue_cm": [
+    446495.2,
+    739494.5,
+    83888.7
+   ],
+   "cell": "8_-15",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 13482.1,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 57.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 826.11,
+    "width_m": 10,
+    "dz_m": 12.78
+   },
+   "port": {
+    "port_cell": "c8_-15",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -8000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     800000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.19,
+    "mesh_z_m": 827.49,
+    "dz_vs_mesh_m": 11.39,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_19",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4284.42,
+    -8126.17,
+    838.887
+   ],
+   "ue_cm": [
+    428441.7,
+    812616.8,
+    83888.7
+   ],
+   "cell": "8_-17",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 14153.4,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 20.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 829.09,
+    "width_m": 10,
+    "dz_m": 9.8
+   },
+   "port": {
+    "port_cell": "c8_-17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -9000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.1,
+    "mesh_z_m": 829.53,
+    "dz_vs_mesh_m": 9.36,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_20",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4285.01,
+    -8126.94,
+    838.887
+   ],
+   "ue_cm": [
+    428501.1,
+    812694.2,
+    83888.7
+   ],
+   "cell": "8_-17",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 14154.3,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 20.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 829.09,
+    "width_m": 10,
+    "dz_m": 9.8
+   },
+   "port": {
+    "port_cell": "c8_-17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -9000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.42,
+    "mesh_z_m": 829.53,
+    "dz_vs_mesh_m": 9.36,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_21",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4293.6,
+    -8090.94,
+    838.887
+   ],
+   "ue_cm": [
+    429360.2,
+    809094.4,
+    83888.7
+   ],
+   "cell": "8_-17",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 14121.0,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 6.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 826.93,
+    "width_m": 10,
+    "dz_m": 11.96
+   },
+   "port": {
+    "port_cell": "c8_-17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -9000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.09,
+    "mesh_z_m": 826.74,
+    "dz_vs_mesh_m": 12.15,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_22",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4294.0,
+    -8091.83,
+    838.887
+   ],
+   "ue_cm": [
+    429400.4,
+    809183.2,
+    83888.7
+   ],
+   "cell": "8_-17",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 14121.9,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 6.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 826.93,
+    "width_m": 10,
+    "dz_m": 11.96
+   },
+   "port": {
+    "port_cell": "c8_-17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -9000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.79,
+    "mesh_z_m": 828.04,
+    "dz_vs_mesh_m": 10.84,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_23",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4166.31,
+    -8429.57,
+    838.887
+   ],
+   "ue_cm": [
+    416630.6,
+    842957.3,
+    83888.7
+   ],
+   "cell": "8_-17",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 14425.5,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 9.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.46,
+    "width_m": 10,
+    "dz_m": -0.58
+   },
+   "port": {
+    "port_cell": "c8_-17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -9000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.07,
+    "mesh_z_m": 839.55,
+    "dz_vs_mesh_m": -0.66,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_24",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    4166.71,
+    -8430.46,
+    838.887
+   ],
+   "ue_cm": [
+    416670.8,
+    843046.1,
+    83888.7
+   ],
+   "cell": "8_-17",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 14426.4,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 8.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.46,
+    "width_m": 10,
+    "dz_m": -0.58
+   },
+   "port": {
+    "port_cell": "c8_-17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     4000.0,
+     -9000.0
+    ],
+    "cell_actor_ue_cm": [
+     400000.0,
+     900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.98,
+    "mesh_z_m": 839.55,
+    "dz_vs_mesh_m": -0.66,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_25",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    3771.05,
+    -8892.12,
+    838.887
+   ],
+   "ue_cm": [
+    377104.6,
+    889212.5,
+    83888.7
+   ],
+   "cell": "7_-18",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 14806.3,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 8.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 838.7,
+    "width_m": 10,
+    "dz_m": 0.19
+   },
+   "port": {
+    "port_cell": "c7_-18",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     3500.0,
+     -9500.0
+    ],
+    "cell_actor_ue_cm": [
+     350000.0,
+     950000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.6,
+    "mesh_z_m": 839.05,
+    "dz_vs_mesh_m": -0.16,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_26",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    3770.77,
+    -8893.06,
+    838.887
+   ],
+   "ue_cm": [
+    377077.0,
+    889306.0,
+    83888.7
+   ],
+   "cell": "7_-18",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 14807.2,
+   "dz_vs_loop_m": -22.9,
+   "dist_to_source_road_m": 8.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 838.7,
+    "width_m": 10,
+    "dz_m": 0.19
+   },
+   "port": {
+    "port_cell": "c7_-18",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     3500.0,
+     -9500.0
+    ],
+    "cell_actor_ue_cm": [
+     350000.0,
+     950000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.45,
+    "mesh_z_m": 839.05,
+    "dz_vs_mesh_m": -0.16,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_27",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    2936.27,
+    -9441.38,
+    838.887
+   ],
+   "ue_cm": [
+    293627.1,
+    944137.8,
+    83888.7
+   ],
+   "cell": "5_-19",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 15232.3,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 58.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 825.87,
+    "width_m": 10,
+    "dz_m": 13.01
+   },
+   "port": {
+    "port_cell": "c5_-19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2500.0,
+     -10000.0
+    ],
+    "cell_actor_ue_cm": [
+     250000.0,
+     1000000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.96,
+    "mesh_z_m": 826.8,
+    "dz_vs_mesh_m": 12.08,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_28",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    2936.0,
+    -9442.31,
+    838.887
+   ],
+   "ue_cm": [
+    293599.5,
+    944231.2,
+    83888.7
+   ],
+   "cell": "5_-19",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 15233.2,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 59.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 825.87,
+    "width_m": 10,
+    "dz_m": 13.01
+   },
+   "port": {
+    "port_cell": "c5_-19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2500.0,
+     -10000.0
+    ],
+    "cell_actor_ue_cm": [
+     250000.0,
+     1000000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.89,
+    "mesh_z_m": 830.08,
+    "dz_vs_mesh_m": 8.81,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_29",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    3084.81,
+    -9343.76,
+    838.887
+   ],
+   "ue_cm": [
+    308480.6,
+    934376.2,
+    83888.7
+   ],
+   "cell": "6_-19",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 15152.7,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 67.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 826.77,
+    "width_m": 10,
+    "dz_m": 12.12
+   },
+   "port": {
+    "port_cell": "c6_-19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2500.0,
+     -9500.0
+    ],
+    "cell_actor_ue_cm": [
+     250000.0,
+     950000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.49,
+    "mesh_z_m": 831.55,
+    "dz_vs_mesh_m": 7.33,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_30",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    3084.55,
+    -9344.7,
+    838.887
+   ],
+   "ue_cm": [
+    308455.0,
+    934470.2,
+    83888.7
+   ],
+   "cell": "6_-19",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 15153.6,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 68.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 826.77,
+    "width_m": 10,
+    "dz_m": 12.12
+   },
+   "port": {
+    "port_cell": "c6_-19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     2500.0,
+     -9500.0
+    ],
+    "cell_actor_ue_cm": [
+     250000.0,
+     950000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.22,
+    "mesh_z_m": 830.17,
+    "dz_vs_mesh_m": 8.72,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_31",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    2226.03,
+    -9852.11,
+    838.887
+   ],
+   "ue_cm": [
+    222603.3,
+    985210.5,
+    83888.7
+   ],
+   "cell": "4_-20",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 15579.2,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 12.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 842.2,
+    "width_m": 10,
+    "dz_m": -3.31
+   },
+   "port": {
+    "port_cell": "c4_-20",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1500.0,
+     -10500.0
+    ],
+    "cell_actor_ue_cm": [
+     150000.0,
+     1050000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.06,
+    "mesh_z_m": 842.71,
+    "dz_vs_mesh_m": -3.82,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_32",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    2225.78,
+    -9853.05,
+    838.887
+   ],
+   "ue_cm": [
+    222577.7,
+    985304.6,
+    83888.7
+   ],
+   "cell": "4_-20",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 15580.1,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 12.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 842.2,
+    "width_m": 10,
+    "dz_m": -3.31
+   },
+   "port": {
+    "port_cell": "c4_-20",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     1500.0,
+     -10500.0
+    ],
+    "cell_actor_ue_cm": [
+     150000.0,
+     1050000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.12,
+    "mesh_z_m": 842.71,
+    "dz_vs_mesh_m": -3.82,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_33",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -9381.9,
+    -16233.66,
+    838.887
+   ],
+   "ue_cm": [
+    -938189.6,
+    1623366.4,
+    83888.7
+   ],
+   "cell": "-19_-33",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23904.1,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 6.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 840.5,
+    "width_m": 4,
+    "dz_m": -1.62
+   },
+   "port": {
+    "port_cell": "c-19_-33",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -10000.0,
+     -17000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1000000.0,
+     1700000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.65,
+    "mesh_z_m": 845.75,
+    "dz_vs_mesh_m": -6.87,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_34",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -9382.83,
+    -16233.94,
+    838.887
+   ],
+   "ue_cm": [
+    -938283.2,
+    1623393.9,
+    83888.7
+   ],
+   "cell": "-19_-33",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23904.7,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 5.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 840.5,
+    "width_m": 4,
+    "dz_m": -1.62
+   },
+   "port": {
+    "port_cell": "c-19_-33",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -10000.0,
+     -17000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1000000.0,
+     1700000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.09,
+    "mesh_z_m": 845.35,
+    "dz_vs_mesh_m": -6.46,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_35",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10046.2,
+    -15821.4,
+    838.887
+   ],
+   "ue_cm": [
+    -1004619.5,
+    1582140.4,
+    83888.7
+   ],
+   "cell": "-21_-32",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23774.5,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 5.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.55,
+    "width_m": 7,
+    "dz_m": -0.66
+   },
+   "port": {
+    "port_cell": "c-21_-32",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -10500.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1050000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.36,
+    "mesh_z_m": 844.45,
+    "dz_vs_mesh_m": -5.57,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_36",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10047.13,
+    -15821.68,
+    838.887
+   ],
+   "ue_cm": [
+    -1004713.1,
+    1582168.0,
+    83888.7
+   ],
+   "cell": "-21_-32",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23775.1,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 6.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 839.55,
+    "width_m": 7,
+    "dz_m": -0.66
+   },
+   "port": {
+    "port_cell": "c-21_-32",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -10500.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1050000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.76,
+    "mesh_z_m": 844.05,
+    "dz_vs_mesh_m": -5.16,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_37",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10229.68,
+    -15578.79,
+    838.887
+   ],
+   "ue_cm": [
+    -1022967.8,
+    1557879.1,
+    83888.7
+   ],
+   "cell": "-21_-32",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23625.3,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 19.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 837.68,
+    "width_m": 7,
+    "dz_m": 1.21
+   },
+   "port": {
+    "port_cell": "c-21_-32",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -10500.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1050000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.54,
+    "mesh_z_m": 844.46,
+    "dz_vs_mesh_m": -5.58,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_38",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10230.61,
+    -15579.07,
+    838.887
+   ],
+   "ue_cm": [
+    -1023061.3,
+    1557906.6,
+    83888.7
+   ],
+   "cell": "-21_-32",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23626.0,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 19.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 837.68,
+    "width_m": 7,
+    "dz_m": 1.21
+   },
+   "port": {
+    "port_cell": "c-21_-32",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -10500.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1050000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.72,
+    "mesh_z_m": 844.46,
+    "dz_vs_mesh_m": -5.58,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_39",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10214.22,
+    -15254.43,
+    838.887
+   ],
+   "ue_cm": [
+    -1021422.3,
+    1525443.5,
+    83888.7
+   ],
+   "cell": "-21_-31",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23322.7,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 4.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 843.32,
+    "width_m": 7,
+    "dz_m": -4.44
+   },
+   "port": {
+    "port_cell": "c-21_-31",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -11000.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1100000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.23,
+    "mesh_z_m": 849.66,
+    "dz_vs_mesh_m": -10.77,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_40",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10214.87,
+    -15253.71,
+    838.887
+   ],
+   "ue_cm": [
+    -1021487.0,
+    1525370.5,
+    83888.7
+   ],
+   "cell": "-21_-31",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23322.3,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 5.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 843.32,
+    "width_m": 7,
+    "dz_m": -4.44
+   },
+   "port": {
+    "port_cell": "c-21_-31",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -11000.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1100000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.52,
+    "mesh_z_m": 849.63,
+    "dz_vs_mesh_m": -10.74,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_41",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10251.58,
+    -15124.54,
+    838.887
+   ],
+   "ue_cm": [
+    -1025157.7,
+    1512453.6,
+    83888.7
+   ],
+   "cell": "-21_-31",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23219.6,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 8.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 844.03,
+    "width_m": 7,
+    "dz_m": -5.15
+   },
+   "port": {
+    "port_cell": "c-21_-31",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -11000.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1100000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.76,
+    "mesh_z_m": 850.45,
+    "dz_vs_mesh_m": -11.56,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_42",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10252.52,
+    -15124.79,
+    838.887
+   ],
+   "ue_cm": [
+    -1025251.8,
+    1512479.4,
+    83888.7
+   ],
+   "cell": "-21_-31",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23220.2,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 8.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 843.66,
+    "width_m": 7,
+    "dz_m": -4.77
+   },
+   "port": {
+    "port_cell": "c-21_-31",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -11000.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1100000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.24,
+    "mesh_z_m": 843.93,
+    "dz_vs_mesh_m": -5.05,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_43",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10346.8,
+    -15042.2,
+    838.887
+   ],
+   "ue_cm": [
+    -1034679.6,
+    1504219.7,
+    83888.7
+   ],
+   "cell": "-21_-31",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23184.2,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 8.1,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 844.08,
+    "width_m": 7,
+    "dz_m": -5.2
+   },
+   "port": {
+    "port_cell": "c-21_-31",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -11000.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1100000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 2.24,
+    "mesh_z_m": 844.08,
+    "dz_vs_mesh_m": -5.2,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_44",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -10345.86,
+    -15041.94,
+    838.887
+   ],
+   "ue_cm": [
+    -1034585.5,
+    1504193.9,
+    83888.7
+   ],
+   "cell": "-21_-31",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 23183.5,
+   "dz_vs_loop_m": -24.7,
+   "dist_to_source_road_m": 8.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 844.08,
+    "width_m": 7,
+    "dz_m": -5.2
+   },
+   "port": {
+    "port_cell": "c-21_-31",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -11000.0,
+     -16000.0
+    ],
+    "cell_actor_ue_cm": [
+     -1100000.0,
+     1600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.61,
+    "mesh_z_m": 848.79,
+    "dz_vs_mesh_m": -9.9,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_45",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    847.83,
+    -3909.01,
+    838.887
+   ],
+   "ue_cm": [
+    84783.3,
+    390900.8,
+    83888.7
+   ],
+   "cell": "1_-8",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9610.2,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 3.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 843.54,
+    "width_m": 7,
+    "dz_m": -4.65
+   },
+   "port": {
+    "port_cell": "c1_-8",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     -4500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     450000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.72,
+    "mesh_z_m": 847.84,
+    "dz_vs_mesh_m": -8.95,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_46",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    848.8,
+    -3909.12,
+    838.887
+   ],
+   "ue_cm": [
+    84880.2,
+    390911.8,
+    83888.7
+   ],
+   "cell": "1_-8",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9610.3,
+   "dz_vs_loop_m": -23.0,
+   "dist_to_source_road_m": 4.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 843.54,
+    "width_m": 7,
+    "dz_m": -4.65
+   },
+   "port": {
+    "port_cell": "c1_-8",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     -4500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     450000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.06,
+    "mesh_z_m": 844.58,
+    "dz_vs_mesh_m": -5.69,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_47",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    694.07,
+    -3675.41,
+    850.379
+   ],
+   "ue_cm": [
+    69407.2,
+    367541.3,
+    85037.9
+   ],
+   "cell": "1_-8",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9383.9,
+   "dz_vs_loop_m": -11.5,
+   "dist_to_source_road_m": 9.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 847.48,
+    "width_m": 7,
+    "dz_m": 2.9
+   },
+   "port": {
+    "port_cell": "c1_-8",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     -4500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     450000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.02,
+    "mesh_z_m": 848.66,
+    "dz_vs_mesh_m": 1.72,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_48",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    695.04,
+    -3675.52,
+    850.379
+   ],
+   "ue_cm": [
+    69504.1,
+    367552.3,
+    85037.9
+   ],
+   "cell": "1_-8",
+   "in_shipped_corridor": false,
+   "dist_to_c1_loop_m": 9384.0,
+   "dz_vs_loop_m": -11.5,
+   "dist_to_source_road_m": 9.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 847.48,
+    "width_m": 7,
+    "dz_m": 2.9
+   },
+   "port": {
+    "port_cell": "c1_-8",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     -4500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     450000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.19,
+    "mesh_z_m": 852.19,
+    "dz_vs_mesh_m": -1.81,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_49",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -711.64,
+    6609.15,
+    869.192
+   ],
+   "ue_cm": [
+    -71164.0,
+    -660914.6,
+    86919.2
+   ],
+   "cell": "-2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 4.7,
+   "dz_vs_loop_m": 2.5,
+   "dist_to_source_road_m": 3.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 866.55,
+    "width_m": 6,
+    "dz_m": 2.64
+   },
+   "port": {
+    "port_cell": "c-2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.29,
+    "mesh_z_m": 871.43,
+    "dz_vs_mesh_m": -2.24,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_50",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -711.31,
+    6608.23,
+    869.192
+   ],
+   "ue_cm": [
+    -71131.0,
+    -660822.9,
+    86919.2
+   ],
+   "cell": "-2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 4.0,
+   "dz_vs_loop_m": 2.5,
+   "dist_to_source_road_m": 3.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 883.49,
+    "width_m": 6,
+    "dz_m": -14.3
+   },
+   "port": {
+    "port_cell": "c-2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.49,
+    "mesh_z_m": 871.59,
+    "dz_vs_mesh_m": -2.4,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_51",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -686.79,
+    6686.43,
+    869.192
+   ],
+   "ue_cm": [
+    -68679.1,
+    -668642.6,
+    86919.2
+   ],
+   "cell": "-2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 4.2,
+   "dz_vs_loop_m": 2.1,
+   "dist_to_source_road_m": 4.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 867.12,
+    "width_m": 6,
+    "dz_m": 2.08
+   },
+   "port": {
+    "port_cell": "c-2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.09,
+    "mesh_z_m": 884.07,
+    "dz_vs_mesh_m": -14.87,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_52",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -686.46,
+    6685.51,
+    869.192
+   ],
+   "ue_cm": [
+    -68646.1,
+    -668550.9,
+    86919.2
+   ],
+   "cell": "-2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 3.2,
+   "dz_vs_loop_m": 2.1,
+   "dist_to_source_road_m": 3.6,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 867.12,
+    "width_m": 6,
+    "dz_m": 2.08
+   },
+   "port": {
+    "port_cell": "c-2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.11,
+    "mesh_z_m": 871.61,
+    "dz_vs_mesh_m": -2.41,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_53",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -651.35,
+    6847.58,
+    869.192
+   ],
+   "ue_cm": [
+    -65134.7,
+    -684757.6,
+    86919.2
+   ],
+   "cell": "-2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 2.2,
+   "dz_vs_loop_m": -1.6,
+   "dist_to_source_road_m": 4.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 884.98,
+    "width_m": 6,
+    "dz_m": -15.79
+   },
+   "port": {
+    "port_cell": "c-2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.67,
+    "mesh_z_m": 878.01,
+    "dz_vs_mesh_m": -8.82,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_54",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -650.77,
+    6846.79,
+    869.192
+   ],
+   "ue_cm": [
+    -65076.8,
+    -684679.2,
+    86919.2
+   ],
+   "cell": "-2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 2.7,
+   "dz_vs_loop_m": -1.6,
+   "dist_to_source_road_m": 5.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 884.98,
+    "width_m": 6,
+    "dz_m": -15.79
+   },
+   "port": {
+    "port_cell": "c-2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.17,
+    "mesh_z_m": 871.02,
+    "dz_vs_mesh_m": -1.83,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_55",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -629.07,
+    6960.77,
+    869.192
+   ],
+   "ue_cm": [
+    -62907.0,
+    -696076.7,
+    86919.2
+   ],
+   "cell": "-2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 3.9,
+   "dz_vs_loop_m": -3.7,
+   "dist_to_source_road_m": 4.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 872.24,
+    "width_m": 6,
+    "dz_m": -3.04
+   },
+   "port": {
+    "port_cell": "c-2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.16,
+    "mesh_z_m": 876.93,
+    "dz_vs_mesh_m": -7.73,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_56",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -628.49,
+    6959.98,
+    869.192
+   ],
+   "ue_cm": [
+    -62849.1,
+    -695998.3,
+    86919.2
+   ],
+   "cell": "-2_13",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 3.0,
+   "dz_vs_loop_m": -3.7,
+   "dist_to_source_road_m": 4.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 872.24,
+    "width_m": 6,
+    "dz_m": -3.04
+   },
+   "port": {
+    "port_cell": "c-2_13",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1500.0,
+     6000.0
+    ],
+    "cell_actor_ue_cm": [
+     -150000.0,
+     -600000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.92,
+    "mesh_z_m": 872.12,
+    "dz_vs_mesh_m": -2.93,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_57",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -61.97,
+    7844.96,
+    859.887
+   ],
+   "ue_cm": [
+    -6196.8,
+    -784496.0,
+    85988.7
+   ],
+   "cell": "-1_15",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 14.7,
+   "dz_vs_loop_m": 3.4,
+   "dist_to_source_road_m": 6.4,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 856.46,
+    "width_m": 6,
+    "dz_m": 3.43
+   },
+   "port": {
+    "port_cell": "c-1_15",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     7000.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     -700000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.5,
+    "mesh_z_m": 856.56,
+    "dz_vs_mesh_m": 3.32,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_58",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -61.99,
+    7843.99,
+    859.887
+   ],
+   "ue_cm": [
+    -6199.1,
+    -784398.6,
+    85988.7
+   ],
+   "cell": "-1_15",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 13.8,
+   "dz_vs_loop_m": 3.4,
+   "dist_to_source_road_m": 5.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 856.46,
+    "width_m": 6,
+    "dz_m": 3.43
+   },
+   "port": {
+    "port_cell": "c-1_15",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     7000.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     -700000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.95,
+    "mesh_z_m": 858.58,
+    "dz_vs_mesh_m": 1.31,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_59",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    283.98,
+    8200.82,
+    859.887
+   ],
+   "ue_cm": [
+    28398.0,
+    -820082.2,
+    85988.7
+   ],
+   "cell": "0_16",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 2.5,
+   "dz_vs_loop_m": -0.4,
+   "dist_to_source_road_m": 10.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.36,
+    "width_m": 6,
+    "dz_m": -0.47
+   },
+   "port": {
+    "port_cell": "c0_16",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     7500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.08,
+    "mesh_z_m": 864.7,
+    "dz_vs_mesh_m": -4.82,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_60",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    283.96,
+    8199.85,
+    859.887
+   ],
+   "ue_cm": [
+    28395.6,
+    -819984.8,
+    85988.7
+   ],
+   "cell": "0_16",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 2.5,
+   "dz_vs_loop_m": -0.4,
+   "dist_to_source_road_m": 10.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.36,
+    "width_m": 6,
+    "dz_m": -0.47
+   },
+   "port": {
+    "port_cell": "c0_16",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     7500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.76,
+    "mesh_z_m": 864.92,
+    "dz_vs_mesh_m": -5.03,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_61",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    314.29,
+    8255.82,
+    859.887
+   ],
+   "ue_cm": [
+    31428.9,
+    -825581.8,
+    85988.7
+   ],
+   "cell": "0_16",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 5.6,
+   "dz_vs_loop_m": -0.7,
+   "dist_to_source_road_m": 13.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 861.29,
+    "width_m": 6,
+    "dz_m": -1.4
+   },
+   "port": {
+    "port_cell": "c0_16",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     7500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.15,
+    "mesh_z_m": 863.47,
+    "dz_vs_mesh_m": -3.58,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_62",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    312.94,
+    8256.72,
+    859.887
+   ],
+   "ue_cm": [
+    31294.4,
+    -825672.1,
+    85988.7
+   ],
+   "cell": "0_16",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 4.9,
+   "dz_vs_loop_m": -0.7,
+   "dist_to_source_road_m": 12.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 861.29,
+    "width_m": 6,
+    "dz_m": -1.4
+   },
+   "port": {
+    "port_cell": "c0_16",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     7500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.27,
+    "mesh_z_m": 865.87,
+    "dz_vs_mesh_m": -5.99,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_63",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    310.42,
+    8435.83,
+    859.887
+   ],
+   "ue_cm": [
+    31042.2,
+    -843582.9,
+    85988.7
+   ],
+   "cell": "0_16",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 23.7,
+   "dz_vs_loop_m": 3.1,
+   "dist_to_source_road_m": 3.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 854.68,
+    "width_m": 6,
+    "dz_m": 5.2
+   },
+   "port": {
+    "port_cell": "c0_16",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     7500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.01,
+    "mesh_z_m": 859.24,
+    "dz_vs_mesh_m": 0.65,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_64",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    309.08,
+    8436.73,
+    859.887
+   ],
+   "ue_cm": [
+    30907.6,
+    -843673.1,
+    85988.7
+   ],
+   "cell": "0_16",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 23.4,
+   "dz_vs_loop_m": 3.1,
+   "dist_to_source_road_m": 3.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 854.79,
+    "width_m": 6,
+    "dz_m": 5.09
+   },
+   "port": {
+    "port_cell": "c0_16",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     7500.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -750000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.24,
+    "mesh_z_m": 867.2,
+    "dz_vs_mesh_m": -7.32,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_65",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    86.87,
+    8664.42,
+    859.887
+   ],
+   "ue_cm": [
+    8686.9,
+    -866441.8,
+    85988.7
+   ],
+   "cell": "0_17",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 31.4,
+   "dz_vs_loop_m": 0.9,
+   "dist_to_source_road_m": 5.8,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 858.63,
+    "width_m": 6,
+    "dz_m": 1.26
+   },
+   "port": {
+    "port_cell": "c0_17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     8000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -800000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.38,
+    "mesh_z_m": 865.22,
+    "dz_vs_mesh_m": -5.33,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_66",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    85.25,
+    8664.3,
+    859.887
+   ],
+   "ue_cm": [
+    8525.3,
+    -866430.4,
+    85988.7
+   ],
+   "cell": "0_17",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 30.5,
+   "dz_vs_loop_m": 0.9,
+   "dist_to_source_road_m": 6.5,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 858.63,
+    "width_m": 6,
+    "dz_m": 1.26
+   },
+   "port": {
+    "port_cell": "c0_17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     8000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -800000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.67,
+    "mesh_z_m": 863.07,
+    "dz_vs_mesh_m": -3.18,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_67",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -133.8,
+    8943.18,
+    859.887
+   ],
+   "ue_cm": [
+    -13380.5,
+    -894318.1,
+    85988.7
+   ],
+   "cell": "-1_17",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 10.4,
+   "dz_vs_loop_m": -0.3,
+   "dist_to_source_road_m": 7.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.42,
+    "width_m": 6,
+    "dz_m": -0.53
+   },
+   "port": {
+    "port_cell": "c-1_17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     8000.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     -800000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.34,
+    "mesh_z_m": 864.78,
+    "dz_vs_mesh_m": -4.89,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_68",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -134.8,
+    8941.18,
+    859.887
+   ],
+   "ue_cm": [
+    -13480.1,
+    -894117.6,
+    85988.7
+   ],
+   "cell": "-1_17",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 11.2,
+   "dz_vs_loop_m": -0.5,
+   "dist_to_source_road_m": 6.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.42,
+    "width_m": 6,
+    "dz_m": -0.53
+   },
+   "port": {
+    "port_cell": "c-1_17",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -1000.0,
+     8000.0
+    ],
+    "cell_actor_ue_cm": [
+     -100000.0,
+     -800000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.21,
+    "mesh_z_m": 864.18,
+    "dz_vs_mesh_m": -4.29,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_69",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -4.41,
+    9690.41,
+    859.887
+   ],
+   "ue_cm": [
+    -441.0,
+    -969040.6,
+    85988.7
+   ],
+   "cell": "-1_19",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 10.2,
+   "dz_vs_loop_m": -4.2,
+   "dist_to_source_road_m": 4.2,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 864.18,
+    "width_m": 6,
+    "dz_m": -4.29
+   },
+   "port": {
+    "port_cell": "c-1_19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     9000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 1.34,
+    "mesh_z_m": 863.99,
+    "dz_vs_mesh_m": -4.1,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_70",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    -3.54,
+    9689.04,
+    859.887
+   ],
+   "ue_cm": [
+    -353.7,
+    -968904.1,
+    85988.7
+   ],
+   "cell": "-1_19",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 8.7,
+   "dz_vs_loop_m": -4.2,
+   "dist_to_source_road_m": 5.6,
+   "nearest_source_road": {
+    "group": "ck_rainroad",
+    "z_m": 864.18,
+    "width_m": 6,
+    "dz_m": -4.29
+   },
+   "port": {
+    "port_cell": "c-1_19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     9000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.2,
+    "mesh_z_m": 863.86,
+    "dz_vs_mesh_m": -3.98,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_71",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    467.45,
+    9793.27,
+    868.747
+   ],
+   "ue_cm": [
+    46744.9,
+    -979327.4,
+    86874.7
+   ],
+   "cell": "0_19",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 41.9,
+   "dz_vs_loop_m": 6.7,
+   "dist_to_source_road_m": 6.3,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 862.25,
+    "width_m": 6,
+    "dz_m": 6.5
+   },
+   "port": {
+    "port_cell": "c0_19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     9000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.73,
+    "mesh_z_m": 868.71,
+    "dz_vs_mesh_m": 0.03,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_72",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    466.82,
+    9791.78,
+    868.747
+   ],
+   "ue_cm": [
+    46682.1,
+    -979178.1,
+    86874.7
+   ],
+   "cell": "0_19",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 40.8,
+   "dz_vs_loop_m": 6.7,
+   "dist_to_source_road_m": 5.0,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 862.25,
+    "width_m": 6,
+    "dz_m": 6.5
+   },
+   "port": {
+    "port_cell": "c0_19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     -500.0,
+     9000.0
+    ],
+    "cell_actor_ue_cm": [
+     -50000.0,
+     -900000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.56,
+    "mesh_z_m": 861.84,
+    "dz_vs_mesh_m": 6.91,
+    "on_ported_deck": false
+   }
+  },
+  {
+   "name": "Portal_73",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    605.0,
+    9849.84,
+    863.591
+   ],
+   "ue_cm": [
+    60499.5,
+    -984984.4,
+    86359.1
+   ],
+   "cell": "1_19",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 25.7,
+   "dz_vs_loop_m": 3.0,
+   "dist_to_source_road_m": 2.9,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.56,
+    "width_m": 6,
+    "dz_m": 3.03
+   },
+   "port": {
+    "port_cell": "c1_19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     9500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     -950000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.26,
+    "mesh_z_m": 865.08,
+    "dz_vs_mesh_m": -1.49,
+    "on_ported_deck": true
+   }
+  },
+  {
+   "name": "Portal_74",
+   "kind": "tunnel_portal",
+   "bng_m": [
+    604.37,
+    9848.35,
+    863.591
+   ],
+   "ue_cm": [
+    60436.7,
+    -984835.1,
+    86359.1
+   ],
+   "cell": "1_19",
+   "in_shipped_corridor": true,
+   "dist_to_c1_loop_m": 24.7,
+   "dz_vs_loop_m": 3.0,
+   "dist_to_source_road_m": 2.7,
+   "nearest_source_road": {
+    "group": "ck_ai",
+    "z_m": 860.56,
+    "width_m": 6,
+    "dz_m": 3.03
+   },
+   "port": {
+    "port_cell": "c1_19",
+    "in_full_port": true,
+    "cell_actor_origin_m": [
+     0.0,
+     9500.0
+    ],
+    "cell_actor_ue_cm": [
+     0.0,
+     -950000.0,
+     0.0
+    ],
+    "cell_obj_present": true,
+    "cell_actor_origin_note": "origin from cell_origins.json, the build input of set_transforms.py; local-offset arithmetic is NOT derivable from the world-space OBJs, so use the world position",
+    "mesh_nearest_vertex_m": 0.28,
+    "mesh_z_m": 867.26,
+    "dz_vs_mesh_m": -3.67,
+    "on_ported_deck": true
+   }
+  }
+ ],
+ "port_reference": {
+  "pak": "zzz_AMC_C1Full_v26_P.pak",
+  "cells_shipped": 554,
+  "frame": "ue_cm = (x*100, -y*100, z*100); cell actor at (origin_m*100, -origin_m_y*100, 0) carrying local-space vertices, so world = actor + local",
+  "deck_test": "nearest cell-OBJ vertex within 25 m in XY and |dz| <= 5 m"
+ },
+ "port_summary": {
+  "pois": 144,
+  "cell_mesh_shipped": 144,
+  "on_ported_deck": 92,
+  "missing_cell": 0,
+  "cells": 75,
+  "cells_shipped": 75
+ }
+}
