@@ -436,3 +436,25 @@ c1/
     c1_bake_nav.py             bake GraphData (deterministic, sorted)
     author_traffic_spawner.py  AMTAIVehicleSpawnSystem + embedded ROWS
 ```
+
+
+## Texture pixel-data gate
+
+An imported texture can exist, resolve by name, and still carry no pixel data: the DDS
+converter writes a ~834 B stub `.uasset` + ~159 B `.uexp` (only `ImportedSize` and
+`LightingGuid`, no `SizeX`, no mips, no `.ubulk`) when its import is skipped. Such an
+asset renders as the engine checkerboard. `Base_v3` shipped 220 of them (68 visible:
+`mat_kbd02_001_5`, most `building_concrete*`, `building_window*`…).
+
+Three checks now make that impossible to ship again:
+
+- `c1/tools/verify_textures.py` — scans a tree or `.pak`, fails on any `Texture2D` with
+  no pixel data, `--write-list` emits the re-import work list. Server paks are detected
+  (all textures empty by design) and skipped.
+- `c1/tools/check_texture_coverage.py` — the existing coverage gate now counts a
+  resolved-but-empty asset as a gap (`EMPTY-ASSET`), so a material whose colour map is a
+  stub fails the build even though the name resolved.
+- `pipeline/07b_build_release_paks.sh` runs the gate on the client tree before packing;
+  `pipeline/09_verify.sh` runs it on any client pak handed to it.
+
+Publishing a client pak whose texture gate is red is the bug, not the checkerboard.

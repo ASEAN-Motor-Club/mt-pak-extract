@@ -19,6 +19,13 @@ if [ -n "$PAK" ]; then
     grep -q 'Maps/C1_Roads.uexp' /tmp/c1_pak_list.txt && echo "OK roads sublevel" || { echo "FAIL no roads sublevel"; FAIL=1; }
     grep -q 'Maps/C1.umap'       /tmp/c1_pak_list.txt && echo "OK parent map"      || { echo "FAIL no parent map"; FAIL=1; }
     grep -q 'BP_C1_Sky'          /tmp/c1_pak_list.txt && echo "OK sky bp"          || { echo "WARN sky bp absent"; }
+
+    # Texture gate: a client pak whose Texture2Ds carry no pixel data renders as
+    # checkerboard (Base_v3 shipped 220 such stubs). Server paks are exempt — the
+    # tool detects an all-empty texture set and reports it as a server build.
+    echo "== texture gate"
+    REPAK="$REPAK" python3 "$C1_TOOLS/verify_textures.py" "$PAK" --allow-ao --max-report 20 \
+        || { echo "FAIL: pak ships data-less textures"; FAIL=1; }
 fi
 
 echo "== live probe"

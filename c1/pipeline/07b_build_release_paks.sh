@@ -61,6 +61,16 @@ bash "$C1_PIPE/07_pack.sh" "$OUTDIR/srv/mod_out" "$OUTDIR/$SERVER_NAME"
 
 echo "== client tree"
 assemble "$BASE_CLIENT_PAK" cli client
+
+# Texture gate: the client pak is the only artifact that renders, so every
+# Texture2D in it must carry pixel data. Base_v3 shipped 220 empty stubs (68 of
+# them visible), which is what made materials like mat_kbd02_001_5 show the
+# engine checkerboard. Fail here rather than publish it again.
+echo "== texture gate (client)"
+python3 "$C1_TOOLS/verify_textures.py" "$OUTDIR/cli/mod_out" --allow-ao \
+    --write-list "$OUTDIR/texture_reimport.txt" \
+    || { echo "FAIL: client tree has data-less textures — see $OUTDIR/texture_reimport.txt" >&2; exit 6; }
+
 bash "$C1_PIPE/07_pack.sh" "$OUTDIR/cli/mod_out" "$OUTDIR/$CLIENT_NAME"
 
 echo "== assertions"

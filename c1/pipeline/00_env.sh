@@ -7,6 +7,7 @@
 
 C1_PIPE="${C1_PIPE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 C1_REPO="${C1_REPO:-$(cd "$C1_PIPE/../.." && pwd)}"
+C1_TOOLS="${C1_TOOLS:-$C1_REPO/c1/tools}"
 C1_C1="${C1_C1:-$C1_REPO/c1}"
 C1_WORK="${C1_WORK:-/opt/data/cache/scratch/c1}"
 
@@ -17,7 +18,6 @@ MOD_EXPLORE="${MOD_EXPLORE:-$C1_REPO/target/release/mod_explore}"
 # repak (compression) lives next to mod_pack/mod_explore so the same binary works
 # from the container and from the host; build it with pipeline/make_repak.sh.
 REPAK="${REPAK:-$C1_REPO/target/release/repak}"
-
 # desktop (editor / cook side) — reachable through the Windows relay
 WIN_PS="${WIN_PS:-/opt/data/scripts/win_ps_file.sh}"
 WIN_PUT="${WIN_PUT:-/opt/data/scripts/win_put.sh}"
