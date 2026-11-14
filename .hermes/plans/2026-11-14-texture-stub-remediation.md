@@ -81,3 +81,93 @@ Net effect: **a build can no longer ship this silently.** That part of "permanen
 
 `Base_v3` stays published; the client can be pointed back by restoring its `CustomPak.ini`
 line. No pak is deleted during remediation.
+
+---
+
+# Revision — 2026-11-14 (after the PIL/PNG experiments)
+
+## Where the numbers really stand
+
+| stage | result |
+|---|---|
+| stubs in `Base_v3` | 220 |
+| fixed by overlaying the **current** cooked output (166 assets, 25,022,890 B) | 165 |
+| `t_asphalt_old_b_color` fixed separately (cooked 1,392,640 B `.ubulk`) | +1 |
+| **remaining** | **54** |
+| of the 54: DDS present in `c1_src.zip` | 52 (all 8–32 px) |
+| of the 54: no DDS by name (even with suffix fallback) | 2 — `mat_jimen_01_color`, `mat_jimen_02_color` |
+
+## The 54 — what has been tried, and what it did *not* prove
+
+1. Re-imported the 52 from archive **DDS** into their real folders (`other`, `glass`, `lamp`):
+   `TEX52 done 52/52`, saved, rc=0. Cook still reported `uexp=491 ubulk=0`.
+2. Re-imported the same 52 as **PNG** (PIL reads the archive DDS fine — proven, 52/52 converted;
+   this is the EMISSIVE doc's own extraction path). `TEX52 done 52/52`, saved, rc=0. Cook
+   reported the **byte-identical** `1077/491/0`.
+
+**Neither result is evidence yet.** The cooked files were not checked for `LastWriteTime`, and the
+byte-identical output is exactly what stale files look like. Do not plan the next fix on top of
+"PNG import doesn't work" — that claim is unsupported.
+
+## Next actions, strictly in this order
+
+1. **Timestamp check.** Read `LastWriteTime` on
+   `Saved\Cooked\Windows\C1\Content\Mods\C1\Textures\other\building_concrete13.*` and compare with the
+   cook start time. If older, the cook is not rewriting them and both experiments above are void.
+2. If the cook *is* rewriting them and they stay 491 B: measure the imported **editor** asset properly —
+   does it contain `SizeX` / a mip chain at all? That distinguishes "import silently failed" from
+   "cook drops tiny textures". Use `UAssetTool --dump` on the editor package, not file sizes.
+3. Only then choose: fix import settings (compression / mip generation / legacy importer) or re-source.
+4. `mat_jimen_01_color` / `mat_jimen_02_color`: resolve by scanning the archive for `mat_jimen*` —
+   if the sheets genuinely do not exist, they join the "author or drop" group.
+
+## Rule carried forward
+
+Anything measured from a cook must be timestamped against that cook. Two runs produced identical
+bytes and I nearly reported that as a result.
+
+---
+
+# Emissive — corrections for `emissive_materials.py`
+
+Source of truth: `docs/c1-shuto/EMISSIVE_MATERIALS.md` (in `mt-pak-extract-wt-0719`). The script does
+not exist yet in `c1/tools/`; when written it must follow these, all of which the doc establishes and
+`c1/source/merged.materials.json` gets wrong:
+
+1. **Authority is `/opt/data/inbox/c1src/c1_src.zip`**, not the ported UE table. 16 `*.materials.json`,
+   1,643 definitions, keyed by *definition* name and reached through `mapTo`. Resolve `mapTo` first or
+   a minority of materials silently census as empty (e.g. `mat_road_01`).
+2. **Read stage 0 only.** Fields that matter: `emissiveMap`, `emissive: true`, `emissiveFactor`
+   (HDR colour, 1.0–16.06, no scalar strength), `sequenceSegmentSize` + `animFlags 16` (flipbook),
+   `instanceEmissive`.
+3. **`scalars.EmissiveStrength` in the UE table is a decoy** — `1.0` everywhere, always. Never read it.
+4. **Ship filter, not "all 183".** Of 183 declared emitters, 65 with a real `emissiveMap` ship as-is;
+   of the 118 self-emissive, keep only those whose colour map is dark (**mean ≤ 0.30**) or that carry
+   an explicit HDR tint (`emissiveFactor` max > 1.5) — that keeps 27 and drops 91. Total **92**.
+   Dropping the bright ones is the fix for "whole facades turned into lamps", not a regression.
+5. **Two drawing paths:** `emissiveMap` materials take their own rect in the packed atlas; the 27
+   sentinel materials reuse the albedo texel already sampled (`clamp(texel.rgb*2.0,0,1)` because the
+   albedo atlas is stored at 0.5×). Sentinels cost no atlas space — do not allocate cells for them.
+6. **Texture extraction: PIL from the archive**, case-insensitively (`_file0EM.dds` vs lowercase).
+   Verified working in this container: PIL 12.3.0 reads BC1/BC2/BC3 DDS. The `mat_daisi_*` /
+   `mat_singou_*` sheets were never extracted by the port and exist **only** in the archive.
+7. **Exclusions:** `emissiveFactor` at `1e-06` (BeamNG's "dead" marker, e.g. `lamp1_tunnel`) and
+   definitions never ported (`godray_emitter`, `thunderbolt`).
+8. **Intensity per material** from `emissiveFactor`, Reinhard-compressed (`em/(1+em)`), with
+   `emisGainUniform` (default 1.2) as the global level. A single white multiplier inverts the ordering
+   — it overdrives the glass pages and flattens the tower/signals.
+
+### Validation gates for the script
+
+- dry-run must report `186 MIs / 154 opaque / 32 skipped_masked / 66 with map / 120 no-map / 69 factor`
+  (the contract from the earlier session) and the same 8 unresolved maps;
+- emitted set must be **92**, matching the doc's count; a different number is a bug in the filter;
+- every shipped material must trace to an archive definition — print the `mapTo` key next to it;
+- no material may take both an atlas rect and the sentinel path.
+
+### Still unresolved from the doc
+
+The doc describes the **web viewer** (`site/emis.png` + `emis.json`), not the UE material path. Whether
+the engine side should ship emissive as MIs on `M_PolygonMaster` or as a packed atlas + one master is an
+open decision: the atlas path is proven in the viewer, the MI path is unproven (`Use_Emissive` spike
+never confirmed in-game). Do not assume the viewer's numbers transfer to the shipped pak.
