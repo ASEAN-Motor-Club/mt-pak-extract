@@ -31,12 +31,17 @@ import sys
 import tempfile
 
 # Empirically calibrated on cooked Motor Town packages (2026-11-14):
-#   stub  : uexp 159-323 B, no .ubulk          (e.g. null 323, mat_jimen_01_color 299)
-#   real  : uexp 411-591 B for tiny inline textures (16x16, no .ubulk), or any size
-#           with a .ubulk sibling
+#   stub  : uexp 159-323 B, no .ubulk (null 323, mat_jimen_01_color 299) = package
+#           overhead only, zero mip payload
+#   real  : uexp 347+ for tiny inline textures (8x8 DXT1 lands at 347-379 because
+#           its mip chain is only 56 B) up to 591 for 16x16 DXT5, or any size with
+#           a .ubulk sibling
+# The boundary is overhead (~300 B) plus at least one mip level, so 340 splits the
+# known pairs exactly; it is empirical and should be re-derived if the engine's
+# package overhead changes.
 # Name-table markers do NOT work: cooked packages carry neither `SizeX` nor
 # `PlatformData` as literal strings, in stubs and in freshly cooked textures alike.
-STUB_UEXP_MAX = 400
+STUB_UEXP_MAX = 340
 STUB_UASSET_MAX = 1500
 
 
