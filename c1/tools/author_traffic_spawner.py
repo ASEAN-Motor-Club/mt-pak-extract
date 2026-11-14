@@ -1,8 +1,13 @@
 """Author AMTAIVehicleSpawnSystem into C1Roads (exact UPROPERTY names).
 
-Scalars only: EMTVehicleType is not exposed to Python, so VehicleTypes cannot be built here
-and VehicleClass stays null. SettingKey (Small/Special/Truck/Bus) is the semantic selector the
-spawner reads; the server probe will tell us whether that is sufficient.
+EMTVehicleType is not exposed to Python, so VehicleTypes are written through
+`import_text` using enum ENTRY NAMES ('Small', 'Pickup', 'Truck', ...), never raw
+integers: numeric ordinals are not stable and an earlier integer table (offset by
+two) made the 250-count "Small" row spawn Bus/Truck instead of Small/Pickup.
+
+Row set and every count below mirror the vanilla Jeju MTAIVehicleSpawnSystem1
+(16 rows, verified 2026-11-14) so the C1 map spawns traffic exactly like the
+island. `verify()` re-reads the authored actor and fails loudly on any drift.
 """
 
 import json
@@ -15,8 +20,8 @@ ROWS = json.loads(r"""[
   "SettingKey": "Small",
   "SpawnType": 0,
   "VehicleTypes": [
-   2,
-   3
+   "Small",
+   "Pickup"
   ],
   "VehicleKey": "",
   "bSpawnAIController": true,
@@ -42,7 +47,7 @@ ROWS = json.loads(r"""[
   "SettingKey": "Special",
   "SpawnType": 0,
   "VehicleTypes": [
-   9
+   "Motorhome"
   ],
   "VehicleKey": "",
   "bSpawnAIController": true,
@@ -68,8 +73,8 @@ ROWS = json.loads(r"""[
   "SettingKey": "Truck",
   "SpawnType": 0,
   "VehicleTypes": [
-   5,
-   6
+   "Truck",
+   "SemiTractor"
   ],
   "VehicleKey": "",
   "bSpawnAIController": true,
@@ -95,7 +100,7 @@ ROWS = json.loads(r"""[
   "SettingKey": "Bus",
   "SpawnType": 0,
   "VehicleTypes": [
-   4
+   "Bus"
   ],
   "VehicleKey": "",
   "bSpawnAIController": true,
@@ -121,7 +126,7 @@ ROWS = json.loads(r"""[
   "SettingKey": "Police",
   "SpawnType": 0,
   "VehicleTypes": [
-   2
+   "Small"
   ],
   "VehicleKey": "",
   "bSpawnAIController": true,
@@ -147,7 +152,7 @@ ROWS = json.loads(r"""[
   "SettingKey": "Tow_LD",
   "SpawnType": 1,
   "VehicleTypes": [
-   2
+   "Small"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -173,11 +178,11 @@ ROWS = json.loads(r"""[
   "SettingKey": "Tow",
   "SpawnType": 1,
   "VehicleTypes": [
-   2,
-   3,
-   4,
-   5,
-   6
+   "Small",
+   "Pickup",
+   "Bus",
+   "Truck",
+   "SemiTractor"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -203,7 +208,7 @@ ROWS = json.loads(r"""[
   "SettingKey": "TowHeavy",
   "SpawnType": 1,
   "VehicleTypes": [
-   6
+   "SemiTractor"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -229,8 +234,8 @@ ROWS = json.loads(r"""[
   "SettingKey": "Rescue",
   "SpawnType": 2,
   "VehicleTypes": [
-   2,
-   3
+   "Small",
+   "Pickup"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -256,9 +261,9 @@ ROWS = json.loads(r"""[
   "SettingKey": "HeavyRescue",
   "SpawnType": 2,
   "VehicleTypes": [
-   4,
-   5,
-   6
+   "Bus",
+   "Truck",
+   "SemiTractor"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -284,7 +289,7 @@ ROWS = json.loads(r"""[
   "SettingKey": "VehicleDelivery",
   "SpawnType": 3,
   "VehicleTypes": [
-   2
+   "Small"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -310,9 +315,9 @@ ROWS = json.loads(r"""[
   "SettingKey": "VehicleDeliveryHeavy",
   "SpawnType": 3,
   "VehicleTypes": [
-   4,
-   5,
-   6
+   "Bus",
+   "Truck",
+   "SemiTractor"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -338,7 +343,7 @@ ROWS = json.loads(r"""[
   "SettingKey": "Getaway",
   "SpawnType": 4,
   "VehicleTypes": [
-   2
+   "Small"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -388,8 +393,8 @@ ROWS = json.loads(r"""[
   "SettingKey": "VehicleDeliveryAmbulance",
   "SpawnType": 3,
   "VehicleTypes": [
-   2,
-   5
+   "Small",
+   "Truck"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -415,7 +420,7 @@ ROWS = json.loads(r"""[
   "SettingKey": "VehicleDeliveryFireEngine",
   "SpawnType": 3,
   "VehicleTypes": [
-   5
+   "Truck"
   ],
   "VehicleKey": "",
   "bSpawnAIController": false,
@@ -451,6 +456,11 @@ FLOAT_FIELDS = ["MaxLifetimeSeconds", "SpawnOverMinCountCoolDownTimeSeconds", "M
                 "MaxDistanceFromRoad", "MinDistanceFromLastSpawnLocation"]
 INT_FIELDS = ["MaxCount", "MinCount"]
 
+# Valid EMTVehicleType entry names (subset the spawner can spawn). Any other name is a
+# hard error -- silently writing a bogus type is what produced zero-traffic maps before.
+VEHICLE_TYPES = {"Small", "Pickup", "Bus", "Truck", "SemiTractor", "Motorhome",
+                 "SportsCar", "Van", "Tanker", "Trailer"}
+
 
 def build(row):
     s = unreal.MTAIVehicleSpawnSetting()
@@ -474,14 +484,24 @@ def build(row):
     for f in INT_FIELDS:
         s.set_editor_property(f, int(row.get(f, 0)))
     # EMTVehicleType is not exposed to Python, but import_text parses enum arrays natively.
+    # Names only -- see module docstring for why integers are unsafe here.
     types = row.get("VehicleTypes") or []
     if types:
-        txt = "(VehicleTypes=(" + ",".join(str(int(t)) for t in types) + "))"
-        try:
-            s.import_text(txt)
-        except Exception as e:
-            print("[TRAFFIC] types_import_fail " + row["SettingKey"] + " " + str(e))
+        bad = [t for t in types if t not in VEHICLE_TYPES]
+        if bad:
+            raise RuntimeError("[TRAFFIC] unknown VehicleTypes " + str(bad)
+                               + " in row " + row["SettingKey"])
+        s.import_text("(VehicleTypes=(" + ",".join(types) + "))")
     return s
+
+
+def types_of(s):
+    """Read back VehicleTypes from an authored setting as a list of names."""
+    t = s.export_text()
+    if "VehicleTypes=(" not in t:
+        return []
+    seg = t.split("VehicleTypes=(", 1)[1].split(")", 1)[0]
+    return [x.strip().split("::")[-1] for x in seg.split(",") if x.strip()]
 
 
 LES.load_level(LEVEL)
@@ -502,16 +522,30 @@ else:
     LES.save_current_level()
     print("[TRAFFIC] saved")
 
+fail = []
 for a in EAS.get_all_level_actors():
     if a.get_class().get_name() == "MTAIVehicleSpawnSystem":
         st = a.get_editor_property("SpawnSettings")
         print("[TRAFFIC] readback=" + str(len(st)))
+        if len(st) != len(ROWS):
+            fail.append("row_count %d != %d" % (len(st), len(ROWS)))
         for i in range(len(st)):
             s = st[i]
-            print("[TRAFFIC] row " + str(i) + " key=" + str(s.get_editor_property("SettingKey"))
+            want = ROWS[i]["VehicleTypes"] if i < len(ROWS) else []
+            got = types_of(s)
+            ok = (got == want)
+            print("[TRAFFIC] row " + str(i)
+                  + " key=" + str(s.get_editor_property("SettingKey"))
                   + " max=" + str(s.get_editor_property("MaxCount"))
                   + " traffic=" + str(s.get_editor_property("bIsTrafficVehicle"))
                   + " dens=" + str(s.get_editor_property("bUseNPCVehicleDensity"))
                   + " cd=" + str(s.get_editor_property("SpawnOverMinCountCoolDownTimeSeconds"))
-                  + " types=" + str(s.export_text().split("VehicleTypes=")[1].split(",")[0] if "VehicleTypes=(" in s.export_text() else "EMPTY"))
+                  + " types=" + (",".join(got) if got else "EMPTY")
+                  + ("  OK" if ok else "  MISMATCH want=" + ",".join(want)))
+            if not ok:
+                fail.append("row %d %s types %s != %s" % (i, s.get_editor_property("SettingKey"),
+                                                          got, want))
+if fail:
+    raise RuntimeError("[TRAFFIC] SPAWNER VERIFY FAILED: " + " | ".join(fail))
+print("[TRAFFIC] verified=" + str(len(ROWS)) + " rows")
 print("[TRAFFIC] done")
