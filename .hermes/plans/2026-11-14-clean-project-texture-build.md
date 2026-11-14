@@ -90,3 +90,40 @@ Out: materials/MI authoring (stays in the C1 project), meshes, maps, nav.
 - Importing textures inside the C1 project (broken path, see Evidence).
 - Inferring texture dimensions from `.ubulk` size or uexp size — parse the package.
 - Regenerating `CustomPak.ini` from a folder listing — edit Count/PakN only.
+
+---
+
+# Outcome — S1..S4 done 2026-11-14
+
+**Root cause found: the DDS importer produces empty packages and reports success.**
+
+Measured in the clean project, same session, same source art, same destination folder:
+
+    zz_png_probe  load_asset=Texture2D  save=True  disk=61,895 B
+    zz_dds_probe  load_asset=None       save=True  disk=MISSING
+
+This explains every earlier symptom: the 220 empty stubs, the 52 archive reimports, the 200
+"native" reimports, the 22 missing-sheet attempts, and the phantom "downsampling" (which was
+never real — it was my inference from .ubulk byte counts, three times wrong in one session).
+
+## What was actually executed
+
+1. `D:\UEProjects\C1Tex` created from TP_Blank. The `ConvertTo-Json` rewrite of the .uproject broke
+   commandlet loading; a hand-written minimal .uproject (FileVersion 3, EngineAssociation "5.5",
+   PythonScriptPlugin + EditorScriptingUtilities + Interchange + InterchangeEditor) fixed it.
+2. All 2,397 DDS converted to PNG with PIL (`/opt/hermes/.venv/bin/python`, PIL 12.3.0 — the plain
+   `python3` on this host has no PIL). 0 failures.
+3. 2,327 PNGs imported into C1Tex: **ok=2327 bad=0**, each verified by `load_asset` != None and saved.
+4. Editor packages copied into `D:\UEProjects\C1\Content\Mods\C1\Textures` (2,328 files). Section
+   counts confirm the previously-missing sheets: lamp 49→54 (SMO_3..7), tunnel 90→96 (TNL, TNL_3..7),
+   wall 291→292 (WALL1).
+5. C1 cook: rc=0. Cooked SMO_3 = uexp 5,859 B + **ubulk 81,920 B** — real mip data, versus 491 B of
+   uexp and no bulk before.
+
+## Plan corrections
+
+- S3 changes: do NOT cook in the clean project (its cook exits early with no map). Copy the **editor**
+  packages into C1 and let C1's own cook run. Simpler and matches what the pipeline needs.
+- G3: `ImportedSize` is **protected** on a loaded Texture2D in Python (`... is protected and cannot
+  be read`). Use asset-registry tags or the cooked package instead.
+- Any future texture work: **convert to PNG first**. Importing DDS is not a viable path in this build.
