@@ -176,6 +176,36 @@ brightest channel is below 8 are dropped as effectively black.
 
 Published at `map_tiles/shuto/v8emis/emis.bin` and `shuto-map/emis.json`.
 
+### The UE conversion dropped the emissive flag for 126 materials
+
+The atlas used to be built from `materials_ue_v2.json` (the ported UE material
+table), which kept an `emissive` slot for only **57** materials. BeamNG's own
+definitions say **183 ported materials emit**. The 126 missing ones are exactly the
+per-material emitters:
+
+- 8 with a real `emissiveMap`: `mat_daisi_window_etc`, `mat_daisi_all_komono`,
+  `mat_daisi_komono_etc`, `mat_heiwajima_all_komono`, `mat_ooi_w_all_komono`,
+  `mat_all_komono_00`, `mat_singou_d`, `mat_singou_d_depth`.
+- 118 **self-emissive** materials — `emissive: true` with no `emissiveMap`, so BeamNG
+  makes their own colour map glow: `mat_u_window_sh`, `mat_windou2_siro8_sh`,
+  `mat_window3_aka5_sh`, `mat_skg_hizyou_*`, every `sign_*`, vending machines
+  (`mat_PA_siba_jihanki02`), station signs, `mat_kbj*` building lights.
+
+`mkemis.py` now reads the **BeamNG archive** as the authority, not the UE table, and
+resolves each material two ways:
+
+- `emissiveMap` present → its own atlas cell (65 materials, 8x9 grid at 256 px).
+- `emissive: true`, no map → **cell 255 sentinel**: the shader reuses the albedo
+  texel already sampled for that vertex (`clamp(texel.rgb * 2.0, 0, 1)`, since the
+  albedo atlas stores mean-normalised texels). No atlas space, no extra fetch.
+
+Textures the conversion never extracted (the `mat_daisi_*`/`mat_singou_c_*` sheets)
+are read straight out of `c1_src.zip` with PIL — it reads DDS (BC1/BC2/BC3) as well
+as PNG. Note BeamNG capitalises suffixes (`_file0EM.dds`) while the archive stores
+lowercase, so the lookup is case-insensitive.
+
+Result: 183 materials emitting, 71 atlas cells, 18.9 MB (3.9 MB served brotli).
+
 ### Two defects found by review (2026-11-14, second pass)
 
 **Animated materials showed every frame at once.** Four of the 57 are BeamNG
