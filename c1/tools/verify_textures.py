@@ -30,9 +30,14 @@ import subprocess
 import sys
 import tempfile
 
-STUB_UEXP_MAX = 600          # a stub uexp is 159-491 B; real ones are >= ~1 kB
-STUB_UASSET_MAX = 1500       # a stub .uasset is ~834 B; real ones are far larger
-MARKER = b"SizeX"            # present in every real Texture2D name/bulk table
+# Empirically calibrated on cooked Motor Town packages (2026-11-14):
+#   stub  : uexp 159-323 B, no .ubulk          (e.g. null 323, mat_jimen_01_color 299)
+#   real  : uexp 411-591 B for tiny inline textures (16x16, no .ubulk), or any size
+#           with a .ubulk sibling
+# Name-table markers do NOT work: cooked packages carry neither `SizeX` nor
+# `PlatformData` as literal strings, in stubs and in freshly cooked textures alike.
+STUB_UEXP_MAX = 400
+STUB_UASSET_MAX = 1500
 
 
 def classify(uasset_path: str, uexp_path: str):
@@ -56,8 +61,8 @@ def classify(uasset_path: str, uexp_path: str):
             return True, False
     except OSError:
         return True, True
-    # A real Texture2D always names its dimensions; a stub does not.
-    return True, MARKER not in blob
+    # Small package, no .ubulk and a trivial uexp: this is the stub signature.
+    return True, True
 
 
 def scan_tree(root: str):
