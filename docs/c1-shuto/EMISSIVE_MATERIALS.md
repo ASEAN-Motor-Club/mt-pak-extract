@@ -222,8 +222,11 @@ chromium --headless=new --use-gl=angle --use-angle=swiftshader --enable-unsafe-s
 - Emissive and baked lamp irradiance are independent and can double-count where a lamp
   material also sits inside a light's radius. It reads as "bright lamp housing", not as
   an error, but a per-material weight (0.5 for lamp housings) is the knob if it looks hot.
-- Masked emissive (glass seen through an alpha-test master) is not special-cased: the
-  emissive cell alpha is forced opaque, so an emissive material on a masked master glows
-  over its whole card.
+- Emissive cells are always stored opaque, so mask clamping comes only from the
+  *albedo* cell alpha: on `M_C1_Surface_Masked` materials (`mat_lamp_tnl_01`,
+  `mat_kb_light_a`, `mat_tokyotower_sh_glow`, …) the fragment still discards on the
+  basecolor/opacity mask, but a glow texture is never clipped by its own alpha. If a
+  glow map ever needs its own cutout, that is a format change (it has no spare channel
+  once the emissive colour is in RGB).
 - Per-material `EmissiveStrength` is read but always 1.0 in this content; the atlas
   format already carries it, so varying it later needs no format change.
