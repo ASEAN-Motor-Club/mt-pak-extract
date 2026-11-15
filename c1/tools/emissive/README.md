@@ -97,3 +97,42 @@ cook. Do not invent per-material parents.
   Material) or the load fails.
 - **Never probe objects at the frontend**; it crashed the client. Probe only after the
   map is loaded.
+
+## Custom masters — the shared-shader-code law (verified 2026-11-15)
+
+Custom **masters are viable**, but only with shared shader code disabled in the mod
+project's `Config/DefaultEngine.ini`:
+
+```
+[/Script/UnrealEd.ProjectPackagingSettings]
+bShareMaterialShaderCode=False
+bSharedMaterialNativeLibraries=False
+```
+
+With the default (enabled), compiled shaders go into a shared
+`ShaderArchive-…-PCD3D_SM5.ushaderbytecode` that a game mounting a third-party pak never
+loads. The material then falls back to default grey (`Missing shader resource for hash …
+in the shader library`, `Can't compile … with cooked content`). Disabling it embeds
+standalone shader code in each material: our masked master's `.uexp` went from ~17 KB to
+**31,060 B** and rendered correctly in-game.
+
+This is the same root cause as the instance permutation problem, one level up:
+**any new shader — a custom master, or an instance's static permutation — is unavailable
+unless its code is embedded in the pak.** Inheriting a vanilla parent's shaders always
+works; compiling new ones requires this setting.
+
+## Masked + emissive (10 materials)
+
+No vanilla material is both masked and emissive-capable, so we author
+`M_C1_MaskedEmissive` (`/Game/Mods/C1/Materials`): `BLEND_MASKED`, `BaseColor` → Base
+Color with its **alpha → Opacity Mask**, `Emissive` × `EmissiveIntensity` → Emissive
+Color. Ten fresh instances parent to it with their own textures and source intensities.
+
+- Build: `build_masked.py` + `masked_entries.json`
+- Ship **master and instances together** (the master is ours, under `/Game/Mods`, so it
+  overwrites nothing vanilla). Ship as a separate pak from the opaque set.
+- `MI_Transparent` is masked but exposes no parameters — not usable as a parent.
+- `M_PlantMaster` is masked with no emissive — not usable either.
+
+Opaque set: `build_emissive_batch.py` + `emissive_entries.json` (173 materials + the
+original window facade), same matte-parent recipe, no custom master needed.

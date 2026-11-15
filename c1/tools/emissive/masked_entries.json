@@ -1,0 +1,62 @@
+[
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_honsen_daisi05",
+  "base": "/Game/Mods/C1/Textures/other/mat_honsen_daisi05_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_honsen_daisi05_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kb_light_a",
+  "base": "/Game/Mods/C1/Textures/wall/area_zz_02_gtf_tex_099",
+  "emissive": "/Game/Mods/C1/Textures/wall/area_zz_02_gtf_tex_099",
+  "intensity": 4.706
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_lamp_tnl_01",
+  "base": "/Game/Mods/C1/Textures/tunnel/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/area_zz_01_gtf_tex_130tnl",
+  "intensity": 6.275
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_lamp_tnl_01_mrc",
+  "base": "/Game/Mods/C1/Textures/tunnel/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/area_zz_01_gtf_tex_130tnl",
+  "intensity": 4.706
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_obj_dkk_b",
+  "base": "/Game/Mods/C1/Textures/other/mat_obj_dkk_b_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_obj_dkk_b_file0",
+  "intensity": 7.843
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_sglgta_00",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_168_g",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_singou_c",
+  "base": "/Game/Mods/C1/Textures/other/mat_singou_c_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_singou_c_file0",
+  "intensity": 10.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_singou_d",
+  "base": "/Game/Mods/C1/Textures/other/mat_singou_c_file0c_color",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_singou_c_file0c_color",
+  "intensity": 10.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_singou_d_depth",
+  "base": "/Game/Mods/C1/Textures/other/mat_singou_c_file0c_color",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_singou_c_file0c_color",
+  "intensity": 5.098
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_tokyotower_sh_glow",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_189",
+  "intensity": 2.349
+ }
+]

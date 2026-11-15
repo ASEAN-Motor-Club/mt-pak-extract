@@ -1,0 +1,1040 @@
+[
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_ad1",
+  "base": "/Game/Mods/C1/Textures/other/building_ad1",
+  "emissive": "/Game/Mods/C1/Textures/other/building_ad1",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_black1",
+  "base": "/Game/Mods/C1/Textures/other/building_black1",
+  "emissive": "/Game/Mods/C1/Textures/other/building_black1",
+  "intensity": 4.706
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_black3",
+  "base": "/Game/Mods/C1/Textures/other/building_black3",
+  "emissive": "/Game/Mods/C1/Textures/other/building_black3",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_black4",
+  "base": "/Game/Mods/C1/Textures/other/building_black4",
+  "emissive": "/Game/Mods/C1/Textures/other/building_black4",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_flash1",
+  "base": "/Game/Mods/C1/Textures/other/building_flash1",
+  "emissive": "/Game/Mods/C1/Textures/other/building_flash1",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_internal_lights1",
+  "base": "/Game/Mods/C1/Textures/lamp/building_internal_lights1",
+  "emissive": "/Game/Mods/C1/Textures/lamp/building_internal_lights1",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_internal_lights2",
+  "base": "/Game/Mods/C1/Textures/lamp/building_internal_lights2",
+  "emissive": "/Game/Mods/C1/Textures/lamp/building_internal_lights2",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_window1",
+  "base": "/Game/Mods/C1/Textures/glass/building_window1",
+  "emissive": "/Game/Mods/C1/Textures/lamp/building_internal_lights1",
+  "intensity": 7.063
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_window12",
+  "base": "/Game/Mods/C1/Textures/glass/building_window12",
+  "emissive": "/Game/Mods/C1/Textures/lamp/building_internal_lights1",
+  "intensity": 5.882
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_window20",
+  "base": "/Game/Mods/C1/Textures/glass/building_window20",
+  "emissive": "/Game/Mods/C1/Textures/lamp/building_internal_lights1",
+  "intensity": 5.773
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_window23",
+  "base": "/Game/Mods/C1/Textures/glass/building_window23",
+  "emissive": "/Game/Mods/C1/Textures/lamp/building_internal_lights1",
+  "intensity": 8.302
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_window330",
+  "base": "/Game/Mods/C1/Textures/glass/building_window33",
+  "emissive": "/Game/Mods/C1/Textures/glass/building_window33",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_building_window8",
+  "base": "/Game/Mods/C1/Textures/glass/building_window8",
+  "emissive": "/Game/Mods/C1/Textures/lamp/building_internal_lights1",
+  "intensity": 7.345
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_lamp1_tunnel",
+  "base": "/Game/Mods/C1/Textures/tunnel/lamp1",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/lamp1",
+  "intensity": 0.5
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_lamp6",
+  "base": "/Game/Mods/C1/Textures/lamp/lamp6",
+  "emissive": "/Game/Mods/C1/Textures/lamp/lamp6e",
+  "intensity": 4.706
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_lamp7",
+  "base": "/Game/Mods/C1/Textures/lamp/lamp7",
+  "emissive": "/Game/Mods/C1/Textures/lamp/lamp7",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_PA_siba_jihanki02",
+  "base": "/Game/Mods/C1/Textures/other/mat_pa_siba_jihanki02_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_pa_siba_jihanki02_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_PA_siba_komono01_glow",
+  "base": "/Game/Mods/C1/Textures/fence/mat_pa_siba_komono01_file0",
+  "emissive": "/Game/Mods/C1/Textures/fence/mat_pa_siba_komono01_file0",
+  "intensity": 5.145
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_PA_tatsumi_parts",
+  "base": "/Game/Mods/C1/Textures/other/mat_pa_tatsumi_parts_file1",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_pa_tatsumi_parts_file1_g",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_RKJ_edo_u_llight01",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_rkj_edo_u_llight01_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_rkj_edo_u_llight01_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_RKJ_ginza_s_light01",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_rkj_ginza_s_light01_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_rkj_ginza_s_light01_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_RKJ_ginza_u_light01",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_rkj_ginza_u_light01_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_rkj_ginza_u_light01_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_RKJ_kandabashi_s_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_rkj_kandabashi_s_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_rkj_kandabashi_s_light_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_RKJ_kanndabasi_u_light02",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_rkj_kanndabasi_u_light02_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_rkj_kanndabasi_u_light02_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_RKJ_siodome_s_light01",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_rkj_siodome_s_light01_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_rkj_siodome_s_light01_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_RKJ_siodome_s_top01",
+  "base": "/Game/Mods/C1/Textures/other/mat_rkj_siodome_s_top01_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_rkj_siodome_s_top01_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_RKJ_takara_u_light01",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_rkj_takara_u_light01_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_rkj_takara_u_light01_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_Wab18_sh",
+  "base": "/Game/Mods/C1/Textures/other/mat_wab18_sh_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_wab18_sh_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_ariake_RKJ_n_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_ariake_rkj_n_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_ariake_rkj_n_light_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_br_kameibashi_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_br_kameibashi_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_br_kameibashi_light_file0_g",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_br_light_tunnel_1",
+  "base": "/Game/Mods/C1/Textures/tunnel/mat_br_light_tunnel_1_file0",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/mat_br_light_tunnel_1_file0_g",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_br_shibabashi_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_br_shibabashi_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_br_shibabashi_light_file0_g",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_cup_00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_037",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_037",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_danseibashi_br_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_danseibashi_br_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_danseibashi_br_light_file0_g",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_dhc_00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_040",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_040",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_gofukubashi_RKJ_s_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_gofukubashi_rkj_s_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_gofukubashi_rkj_s_light_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kanban3go_a_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_091",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_091",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kanban4go_a_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_092",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_092",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kanban9go_a_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_092",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_092",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kanban9go_b_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_093",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_093",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kanbanc1_a_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_094",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_094",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kanbanc1_c_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_095",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_095",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kanbanc1_d_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_095",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_095",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kb_a_tsui_00",
+  "base": "/Game/Mods/C1/Textures/wall/mat_kb_a_tsui_00_file0",
+  "emissive": "/Game/Mods/C1/Textures/wall/mat_kb_a_tsui_00_file0_e",
+  "intensity": 4.988
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbb02_007",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbb02_007_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbb02_007_file0",
+  "intensity": 3.529
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbc01_006_1n",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbc01_006_1n_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbc01_006_1n_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbc01_006_2n",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbc01_006_2n_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbc01_006_2n_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbc01_006_3n",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbc01_006_3n_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbc01_006_3n_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbf01_004",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbf01_004_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbf01_004_file0_g",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbf01_005",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbf01_005_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbf01_005_file0",
+  "intensity": 3.012
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbf01_006",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbf01_006_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbf01_006_file0",
+  "intensity": 3.012
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbf01_007",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbf01_007_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbf01_007_file0",
+  "intensity": 3.012
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbf01_008",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbf01_008_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbf01_008_file0",
+  "intensity": 3.012
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbf_02_008",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbf_02_008_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbf_02_008_file0",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbf_02_009",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbf_02_009_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbf_02_009_file0",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbh_01_006",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbh_01_006_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbh_01_006_file0",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbi01_004",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbi01_004_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbi01_004_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbi01_006",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbi01_006_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbi01_006_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbi01_007",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbi01_007_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbi01_007_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbi03_006",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbi03_006_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbi03_006_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbi03_007",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbi03_007_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbi03_007_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_004",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_004_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_004_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_005",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_005_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_005_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_006",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_006_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_006_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_007",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_007_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_007_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_008",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_008_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_008_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_009",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_009_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_009_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_010",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_010_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_010_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_011",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_011_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_011_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_012",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_012_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_012_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_013",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_013_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_013_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_014",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_014_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_014_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_015",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_015_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_015_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_019",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_019_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_019_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_020",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_020_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_020_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_021",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_021_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_021_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_022",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_022_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_022_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_023",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_023_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_023_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_024",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_024_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_024_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_025",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_025_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_025_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_026",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_026_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_026_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_027",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_027_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_027_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_028",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_028_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_028_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbj02_029",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbj02_029_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbj02_029_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbk01_007",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbk01_007_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbk01_007_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbk02_004",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbk02_004_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbk02_004_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbk02_006",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbk02_006_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbk02_006_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbk02_006_5",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbk02_006_5_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbk02_006_5_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbk02_007",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbk02_007_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbk02_007_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbk02_008",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbk02_008_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbk02_008_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbl01_001",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbl01_001_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbl01_001_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbm01_010",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbm01_010_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbm01_010_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbm01_011",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbm01_011_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbm01_011_file0",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbm01_013",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbm01_013_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbm01_013_file0",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbm01_014",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbm01_014_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbm01_014_file0",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbs_dia_gouryu_neon",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbs_dia_gouryu_neon_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbs_dia_gouryu_neon_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kbs_hijo_kaidan",
+  "base": "/Game/Mods/C1/Textures/other/mat_kbs_hijo_kaidan_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_kbs_hijo_kaidan_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_koga_a_00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_koga_b_00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kyobashi_RKJ_s_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_kyobashi_rkj_s_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_kyobashi_rkj_s_light_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kyuanbashi_br_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_kyuanbashi_br_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_kyuanbashi_br_light_file0",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_mat_hanaharu_a_00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_053",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_053",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_mat_hanaharu_b_00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_055",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_055",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_mat_sitamiti00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_mat_u_window_wall_sh",
+  "base": "/Game/Mods/C1/Textures/glass/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/glass/area_zz_01_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_matuhatabashi_br_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_matuhatabashi_br_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_matuhatabashi_br_light_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_obj_tnl_box_B",
+  "base": "/Game/Mods/C1/Textures/tunnel/mat_obj_tnl_box_b_file0",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/mat_obj_tnl_box_b_file0",
+  "intensity": 3.012
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_obj_tnl_box_D",
+  "base": "/Game/Mods/C1/Textures/tunnel/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/area_zz_01_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_shibakouen_RKJ_u_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_shibakouen_rkj_u_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_shibakouen_rkj_u_light_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_shiohama_RKJ_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_shiohama_rkj_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_shiohama_rkj_light_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_singou_b",
+  "base": "/Game/Mods/C1/Textures/other/mat_singou_b_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_singou_b_file0_g",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_skg_hizyou_Pl_a",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_skg_hizyou_chl_a",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_skg_hizyou_guchi",
+  "base": "/Game/Mods/C1/Textures/other/mat_skg_hizyou_guchi_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_skg_hizyou_guchi_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_takarabashi_br_light",
+  "base": "/Game/Mods/C1/Textures/lamp/mat_takarabashi_br_light_file0",
+  "emissive": "/Game/Mods/C1/Textures/lamp/mat_takarabashi_br_light_file0_g",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_tate_kanban01_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_tdk_00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_tokyotower_sh_glow2",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_toshiba_00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_u_window_sh",
+  "base": "/Game/Mods/C1/Textures/glass/area_zz_02_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/glass/area_zz_02_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_wal_tnl_09_01_w",
+  "base": "/Game/Mods/C1/Textures/tunnel/mat_wal_tnl_09_01_w_file0",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/mat_wal_tnl_09_01_w_file0_g",
+  "intensity": 7.843
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_windou2_siro8_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_window3_aka5_sh",
+  "base": "/Game/Mods/C1/Textures/glass/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/glass/area_zz_01_gtf_tex",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_phone5",
+  "base": "/Game/Mods/C1/Textures/other/phone5",
+  "emissive": "/Game/Mods/C1/Textures/other/phone5",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_phone6",
+  "base": "/Game/Mods/C1/Textures/other/phone6",
+  "emissive": "/Game/Mods/C1/Textures/other/phone6",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_60",
+  "base": "/Game/Mods/C1/Textures/other/sign",
+  "emissive": "/Game/Mods/C1/Textures/other/sign",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_arrow_orange_2",
+  "base": "/Game/Mods/C1/Textures/other/sign_arrow_orange",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_arrow_orange",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_crossing2",
+  "base": "/Game/Mods/C1/Textures/other/sign_crossing2",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_crossing2",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_over18",
+  "base": "/Game/Mods/C1/Textures/other/sign_over18",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_over18",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_over19",
+  "base": "/Game/Mods/C1/Textures/other/sign_over19",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_over19",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_over20",
+  "base": "/Game/Mods/C1/Textures/other/sign_over20",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_over20",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_over21",
+  "base": "/Game/Mods/C1/Textures/other/sign_over21",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_over21",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_over22",
+  "base": "/Game/Mods/C1/Textures/other/sign_over22",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_over22",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_over25",
+  "base": "/Game/Mods/C1/Textures/other/sign_over25",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_over25",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_over50",
+  "base": "/Game/Mods/C1/Textures/other/sign_over50",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_over50",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_over60",
+  "base": "/Game/Mods/C1/Textures/other/sign_over60",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_over60",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_tunnel1",
+  "base": "/Game/Mods/C1/Textures/tunnel/sign_tunnel1",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/sign_tunnel1",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_tunnel2",
+  "base": "/Game/Mods/C1/Textures/tunnel/sign_tunnel2",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/sign_tunnel2",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_tunnel3",
+  "base": "/Game/Mods/C1/Textures/tunnel/sign_tunnel3",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/sign_tunnel3",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_turn2",
+  "base": "/Game/Mods/C1/Textures/other/sign_turn2",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_turn2",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_sign_writing_16",
+  "base": "/Game/Mods/C1/Textures/other/sign_writing",
+  "emissive": "/Game/Mods/C1/Textures/other/sign_writing",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_singal_lamp_between",
+  "base": "/Game/Mods/C1/Textures/lamp/singal_lamp_between",
+  "emissive": "/Game/Mods/C1/Textures/lamp/singal_lamp_between",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_station2",
+  "base": "/Game/Mods/C1/Textures/other/station2",
+  "emissive": "/Game/Mods/C1/Textures/other/station2",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_station_sign1",
+  "base": "/Game/Mods/C1/Textures/other/station_sign1",
+  "emissive": "/Game/Mods/C1/Textures/other/station_sign1",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_station_sign2",
+  "base": "/Game/Mods/C1/Textures/other/station_sign2",
+  "emissive": "/Game/Mods/C1/Textures/other/station_sign2",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_station_sign4",
+  "base": "/Game/Mods/C1/Textures/other/station_sign4",
+  "emissive": "/Game/Mods/C1/Textures/other/station_sign4",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_station_sign5",
+  "base": "/Game/Mods/C1/Textures/other/station_sign5",
+  "emissive": "/Game/Mods/C1/Textures/other/station_sign5",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_station_sign6",
+  "base": "/Game/Mods/C1/Textures/other/station_sign6",
+  "emissive": "/Game/Mods/C1/Textures/other/station_sign6",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_all_komono_00",
+  "base": "/Game/Mods/C1/Textures/fence/mat_all_komono_00_file0",
+  "emissive": "/Game/Mods/C1/Textures/fence/mat_all_komono_00_file0",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_botom_u_09",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_016_d_color",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_016em_color",
+  "intensity": 10.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_chika2_01_00",
+  "base": "/Game/Mods/C1/Textures/road/area_zz_01_gtf_tex_028",
+  "emissive": "/Game/Mods/C1/Textures/road/area_zz_01_gtf_tex_028_g",
+  "intensity": 10.02
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_daisi_all_komono",
+  "base": "/Game/Mods/C1/Textures/fence/mat_daisi_all_komono_file0",
+  "emissive": "/Game/Mods/C1/Textures/fence/mat_daisi_all_komono_file0",
+  "intensity": 0.608
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_daisi_komono_etc",
+  "base": "/Game/Mods/C1/Textures/fence/mat_daisi_komono_etc_file0",
+  "emissive": "/Game/Mods/C1/Textures/fence/mat_daisi_komono_etc_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_daisi_window_etc",
+  "base": "/Game/Mods/C1/Textures/glass/mat_daisi_window_etc_file0",
+  "emissive": "/Game/Mods/C1/Textures/glass/mat_daisi_window_etc_file0",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_denko_r_00",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_038",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_038em",
+  "intensity": 4.706
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_heiwajima_all_komono",
+  "base": "/Game/Mods/C1/Textures/fence/mat_heiwajima_all_komono_file0",
+  "emissive": "/Game/Mods/C1/Textures/fence/mat_daisi_all_komono_file0",
+  "intensity": 0.608
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_heiwajima_u_parts01",
+  "base": "/Game/Mods/C1/Textures/other/mat_heiwajima_u_parts01_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_heiwajima_u_parts01_file0em_color",
+  "intensity": 1.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_honsen_daisi01",
+  "base": "/Game/Mods/C1/Textures/other/mat_honsen_daisi01_file0",
+  "emissive": "/Game/Mods/C1/Textures/other/mat_honsen_daisi01_file0_e_color",
+  "intensity": 4.706
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kan_p1_00_sh",
+  "base": "/Game/Mods/C1/Textures/other/ferris_glow_color",
+  "emissive": "/Game/Mods/C1/Textures/other/ferris_glow_color",
+  "intensity": 7.843
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_kb_obj_a",
+  "base": "/Game/Mods/C1/Textures/wall/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/wall/area_zz_01_gtf_tex_100em_color",
+  "intensity": 10.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_lamp201_head",
+  "base": "/Game/Mods/C1/Textures/lamp/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/lamp/area_zz_01_gtf_tex_127",
+  "intensity": 10.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_lamp311",
+  "base": "/Game/Mods/C1/Textures/lamp/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/lamp/area_zz_01_gtf_tex_128",
+  "intensity": 10.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_lamp701_head",
+  "base": "/Game/Mods/C1/Textures/lamp/area_zz_02_gtf_tex_128_d_color",
+  "emissive": "/Game/Mods/C1/Textures/lamp/area_zz_02_gtf_tex_128_e_color",
+  "intensity": 7.059
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_obj_dkk_a_00",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_140_g",
+  "intensity": 16.0
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_obj_tnl_01",
+  "base": "/Game/Mods/C1/Textures/tunnel/light_obj01_normal",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/mat_obj_tnl_01_file0m_color",
+  "intensity": 6.365
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_ooi_w_all_komono",
+  "base": "/Game/Mods/C1/Textures/fence/mat_ooi_w_all_komono_file0",
+  "emissive": "/Game/Mods/C1/Textures/fence/mat_daisi_all_komono_file0",
+  "intensity": 0.608
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_shlgta_00",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_173",
+  "intensity": 4.851
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_shock_shingou",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_176_d_color",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_176_g_color",
+  "intensity": 7.843
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_singou_e",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_01_gtf_tex_180_g",
+  "intensity": 4.706
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_tate_kanban00_sh",
+  "base": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex",
+  "emissive": "/Game/Mods/C1/Textures/other/area_zz_02_gtf_tex_184",
+  "intensity": 3.922
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_wal_tnl_08_01",
+  "base": "/Game/Mods/C1/Textures/tunnel/mat_wal_tnl_08_01_file0",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/mat_wal_tnl_08_01_file0em_color",
+  "intensity": 5.882
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_wal_tnl_08_03",
+  "base": "/Game/Mods/C1/Textures/tunnel/mat_wal_tnl_08_03_file0",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/mat_wal_tnl_08_03_file0em_color",
+  "intensity": 5.882
+ },
+ {
+  "instance": "/Game/Mods/C1Full/Materials/MI_C1_mat_wal_tnl_08_04",
+  "base": "/Game/Mods/C1/Textures/tunnel/mat_wal_tnl_08_04_file0",
+  "emissive": "/Game/Mods/C1/Textures/tunnel/mat_wal_tnl_08_04_file0em_color",
+  "intensity": 5.027
+ }
+]
