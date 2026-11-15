@@ -65,6 +65,7 @@ class Program
         // Check modes
         bool batchMode = args.Contains("--batch");
         bool batchMapsMode = args.Contains("--batch-maps");
+        bool batchOutMode = args.Contains("--batch-out");
         bool addRowsMode = args.Contains("--add-rows");
         bool cloneAssetMode = args.Contains("--clone-asset");
         bool patchCdoMode = args.Contains("--patch-cdo-arrays");
@@ -102,6 +103,15 @@ class Program
         Console.WriteLine($"Loaded {Mappings.Schemas.Count} schemas");
         
         PatchMappingsForVersion();
+
+        int spawnIdx = Array.IndexOf(args, "--patch-spawn");
+        if (spawnIdx >= 0)
+        {
+            if (spawnIdx + 3 >= args.Length) { Console.WriteLine("usage: --patch-spawn <map.umap> <config.json> <outDir>"); return; }
+            var spawnAsset = new UAsset(args[spawnIdx + 1], EngineVersion.VER_UE5_5, Mappings);
+            SpawnPatch.Run(spawnAsset, args[spawnIdx + 2], args[spawnIdx + 3]);
+            return;
+        }
         
         // Factor of the `--dump` body so a batch run pays ONE process start instead of one per file.
         // Everything below writes to Console; the batch caller redirects Console.Out per file.
@@ -239,6 +249,14 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
             if (bi + 4 >= args.Length) { Console.WriteLine("usage: --set-blend <inDir> <outDir> <listFile|-> <masked|translucent>"); return; }
             var extra = args.Skip(bi + 5).ToArray();
             SetBlend(args[bi + 1], args[bi + 2], args[bi + 3], args[bi + 4], extra);
+            return;
+        }
+
+        if (args.Contains("--set-sidedness"))
+        {
+            int si = Array.IndexOf(args, "--set-sidedness");
+            if (si + 3 >= args.Length) { Console.WriteLine("usage: --set-sidedness <inDir> <outDir> <twoSidedListFile|->"); return; }
+            SetSidedness(args[si + 1], args[si + 2], args[si + 3]);
             return;
         }
 
@@ -669,7 +687,20 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
             return;
         }
 
-        if (batchMapsMode)
+        if (batchOutMode)
+        {
+            // Parse every .uasset sitting in out/ (manifest.json only lists the last
+            // extraction batch, so --batch silently re-parses ~9 files).
+            var outDirPath = Path.Combine(RootDir!, "out");
+            int ok = 0, bad = 0;
+            foreach (var f in Directory.GetFiles(outDirPath, "*.uasset").OrderBy(x => x))
+            {
+                try { ProcessSingleFile(f, outDirPath); ok++; }
+                catch (Exception ex) { Console.WriteLine($"  FAILED {Path.GetFileName(f)}: {ex.Message}"); bad++; }
+            }
+            Console.WriteLine($"=== batch-out complete: {ok} succeeded, {bad} failed ===");
+        }
+        else if (batchMapsMode)
         {
             ProcessBatchMaps();
         }
@@ -4280,6 +4311,38 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
                 break;
             }
             
+            case "set_or_create_vector":
+            {
+                // Like set_vector, but appends the StructProperty when the export
+                // never serialised it (component transforms that equal the archetype
+                // default are omitted, e.g. SteeringWheel in vehicle blueprints).
+                var cvName = path.Split('.').Last();
+                var cvProp = ResolveProperty(properties, path);
+                if (cvProp is StructPropertyData cvStruct)
+                {
+                    SetVector(cvStruct, patch.GetProperty("x").GetSingle(), patch.GetProperty("y").GetSingle(),
+                        patch.GetProperty("z").GetSingle(), asset, cvName);
+                    Console.WriteLine($"    set_or_create_vector: updated {path}");
+                }
+                else
+                {
+                    var cvNew = new StructPropertyData(FName.FromString(asset, cvName),
+                                                       FName.FromString(asset, "Vector"));
+                    cvNew.PropertyTypeName = MakeTypeName(asset, new FString("StructProperty"));
+                    var cvInner = new VectorPropertyData(FName.FromString(asset, cvName))
+                    {
+                        Value = new FVector(patch.GetProperty("x").GetSingle(),
+                                            patch.GetProperty("y").GetSingle(),
+                                            patch.GetProperty("z").GetSingle())
+                    };
+                    cvInner.PropertyTypeName = MakeTypeName(asset, new FString("VectorProperty"));
+                    cvNew.Value.Add(cvInner);
+                    properties.Add(cvNew);
+                    Console.WriteLine($"    set_or_create_vector: created {path}");
+                }
+                break;
+            }
+
             case "set_vector":
             {
                 var prop = ResolveProperty(properties, path);
@@ -5634,6 +5697,80 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
         Console.WriteLine($"clear_overrides props_removed={cleared} copied={copied} failed={failed}");
     }
 
+    // --set-sidedness <inDir> <outDir> <twoSidedListFile|->
+    //
+    // Sets MaterialInstanceBasePropertyOverrides.TwoSided EXPLICITLY, true or false, from a
+    // per-material list. The older set_blend/apply-plan paths only ever wrote TwoSided=true,
+    // and simply omitting the override is not enough: an instance whose PARENT is two-sided
+    // (e.g. MI_MatteBlue_01_E) still renders two-sided. BlendMode and OpacityMaskClipValue
+    // already present on the instance are preserved untouched.
+    static void SetSidedness(string inDir, string outDir, string listFile)
+    {
+        Directory.CreateDirectory(outDir);
+        var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (listFile != "-" && File.Exists(listFile))
+            foreach (var line in File.ReadAllLines(listFile))
+            {
+                var t = line.Trim();
+                if (t.Length != 0 && !t.StartsWith("#")) wanted.Add(t);
+            }
+
+        int changed = 0, copied = 0, failed = 0, twoCount = 0;
+        foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
+        {
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var uexp = Path.ChangeExtension(path, ".uexp");
+            bool two = wanted.Contains(stem);
+            try
+            {
+                var asset = new UAsset(path, EngineVersion.VER_UE5_5, Mappings);
+                var exp = asset.Exports.OfType<NormalExport>().FirstOrDefault();
+                if (exp == null) { Console.WriteLine("SKIP " + stem + ": no export"); failed++; continue; }
+                var props = exp.Data;
+
+                var overrides = props.OfType<StructPropertyData>()
+                    .FirstOrDefault(p => p.Name?.Value?.Value == "BasePropertyOverrides");
+                var existing = overrides?.Value.OfType<BoolPropertyData>()
+                    .FirstOrDefault(p => p.Name?.Value?.Value == "TwoSided");
+                if (existing != null && existing.Value == two)
+                {
+                    File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
+                    if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
+                    copied++;
+                    continue;
+                }
+
+                if (overrides == null)
+                {
+                    overrides = new StructPropertyData(FName.FromString(asset, "BasePropertyOverrides"))
+                    {
+                        StructType = FName.FromString(asset, "MaterialInstanceBasePropertyOverrides")
+                    };
+                    overrides.PropertyTypeName = MakeTypeName(asset, overrides.PropertyType);
+                    props.Add(overrides);
+                }
+                overrides.Value.RemoveAll(p => p.Name?.Value?.Value == "TwoSided");
+                var flag = new BoolPropertyData(FName.FromString(asset, "TwoSided"))
+                {
+                    Value = two,
+                    // IsZero must stay false even for a false value: UAssetAPI omits
+                    // zero/default properties from unversioned exports, and an omitted
+                    // TwoSided means the instance INHERITS the parent (which is two-sided
+                    // for the emissive masters) instead of overriding it to one-sided.
+                    IsZero = false
+                };
+                flag.PropertyTypeName = MakeTypeName(asset, flag.PropertyType);
+                overrides.Value.Add(flag);
+
+                asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
+                changed++;
+                if (two) twoCount++;
+            }
+            catch (Exception ex) { Console.WriteLine("FAIL " + stem + ": " + ex.Message); failed++; }
+        }
+        Console.WriteLine($"set_sidedness changed={changed} unchanged={copied} failed={failed} two_sided={twoCount}");
+    }
+
     static void SetBlend(string inDir, string outDir, string listFile, string mode, string[] scalars = null)
     {
         bool trans = mode.Equals("translucent", StringComparison.OrdinalIgnoreCase);
@@ -5866,7 +6003,7 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
                 var iface = el.Value.OfType<ObjectPropertyData>().FirstOrDefault(o => o.Name?.Value?.Value == "MaterialInterface");
                 if (iface == null) continue;
                 iface.Value = FPackageIndex.FromImport(idx - 1);
-                if (newSlot != null) nm.Value = FName.FromString(asset, newSlot);
+                if (newSlot != null) { nm.Value = FName.FromString(asset, newSlot); }
                 hit++;
             }
             if (hit == 0) { Console.WriteLine($"NOSLOT {mesh} {slot}"); missed++; continue; }
@@ -8281,6 +8418,9 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
             BytePropertyData byteProp => byteProp.Value,
             Vector2DPropertyData vec2Prop => new { X = vec2Prop.Value.X, Y = vec2Prop.Value.Y },
             VectorPropertyData vecProp => new { X = vecProp.Value.X, Y = vecProp.Value.Y, Z = vecProp.Value.Z },
+            RotatorPropertyData rotProp => new { Pitch = rotProp.Value.Pitch, Yaw = rotProp.Value.Yaw, Roll = rotProp.Value.Roll },
+            LinearColorPropertyData linColorProp => new { R = linColorProp.Value.R, G = linColorProp.Value.G, B = linColorProp.Value.B, A = linColorProp.Value.A },
+            ColorPropertyData colorProp => new { R = colorProp.Value.R, G = colorProp.Value.G, B = colorProp.Value.B, A = colorProp.Value.A },
             GameplayTagContainerPropertyData tagProp => ExtractGameplayTags(tagProp),
             GuidPropertyData guidProp => guidProp.Value.ToString("N"),
             RichCurveKeyPropertyData curveKeyProp => new
@@ -8437,7 +8577,7 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
         }
         var insts = root.GetProperty("instances");
 
-        int changed = 0, copied = 0, failed = 0, texOk = 0, scalOk = 0, statOk = 0;
+        int changed = 0, copied = 0, failed = 0, texOk = 0, scalOk = 0, statOk = 0, vecOk = 0;
         foreach (var path in Directory.GetFiles(inDir, "*.uasset", SearchOption.AllDirectories))
         {
             var stem = Path.GetFileNameWithoutExtension(path);
@@ -8478,12 +8618,27 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
                         else Console.WriteLine($"SKIP {stem}: no static entry to clone for {kv.Name}");
                     }
 
+                // Vector overrides (Emissive_Tint and friends). Costs one deep copy of an existing
+                // parameter struct and a value-node swap, exactly like the texture path: a scalar
+                // donor already carries the ParameterInfo + ExpressionGUID layout these need.
+                if (spec.TryGetProperty("vectors", out var vee))
+                    foreach (var kv in vee.EnumerateObject())
+                    {
+                        var o = kv.Value;
+                        float vr = o.TryGetProperty("r", out var rp) ? (float)rp.GetDouble() : 1f;
+                        float vg = o.TryGetProperty("g", out var gp) ? (float)gp.GetDouble() : 1f;
+                        float vb = o.TryGetProperty("b", out var bp) ? (float)bp.GetDouble() : 1f;
+                        float va = o.TryGetProperty("a", out var ap) ? (float)ap.GetDouble() : 1f;
+                        if (BindVectorParam(asset, exp, kv.Name, vr, vg, vb, va)) vecOk++;
+                        else Console.WriteLine($"SKIP {stem}: no vector entry to clone for {kv.Name}");
+                    }
+
                 asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
                 changed++;
             }
             catch (Exception ex) { CopyPair(path, uexp, outDir); Console.WriteLine($"FAIL {stem}: {ex.Message}"); failed++; }
         }
-        Console.WriteLine($"set_mi_params changed={changed} copied={copied} failed={failed} tex={texOk} scalars={scalOk} statics={statOk}");
+        Console.WriteLine($"set_mi_params changed={changed} copied={copied} failed={failed} tex={texOk} scalars={scalOk} vectors={vecOk} statics={statOk}");
     }
 
     static ArrayPropertyData? MiArray(NormalExport exp, string name) =>
@@ -8558,6 +8713,79 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
         cf.Value = (float)value;
         arr.Value = arr.Value.Concat(new PropertyData[] { clone }).ToArray();
         return true;
+    }
+
+    // Vector overrides. Same shape as BindScalarParam, but the value node is an FLinearColor
+    // struct rather than a float, and the array itself may not exist yet on instances that never
+    // had a vector override (every instance in this port was converted from an opaque BeamNG
+    // material, so VectorParameterValues is usually absent).
+    static bool BindVectorParam(UAsset asset, NormalExport exp, string param, float r, float g, float b, float a)
+    {
+        var arr = MiArray(exp, "VectorParameterValues");
+        StructPropertyData? entry = null;
+        if (arr != null)
+            foreach (var el in arr.Value.OfType<StructPropertyData>())
+                if (MiParamName(el) == param) { entry = el; break; }
+
+        if (entry != null)
+        {
+            for (int j = 0; j < entry.Value.Count; j++)
+                if (entry.Value[j].Name?.Value?.Value == "ParameterValue")
+                {
+                    entry.Value[j] = MakeLinearColor(asset, r, g, b, a);
+                    return true;
+                }
+            return false;
+        }
+
+        // Template: any parameter struct in this asset carries the ParameterInfo + ExpressionGUID
+        // layout; only the value node differs.
+        var donor = arr?.Value.OfType<StructPropertyData>().FirstOrDefault()
+            ?? exp.Data.OfType<ArrayPropertyData>()
+                 .Where(p => p.Name?.Value?.Value == "ScalarParameterValues"
+                          || p.Name?.Value?.Value == "TextureParameterValues")
+                 .SelectMany(p => p.Value).OfType<StructPropertyData>().FirstOrDefault();
+        if (donor == null) return false;
+
+        var clone = CloneMiParamEntry(donor, asset, param);
+        clone.Name = FName.FromString(asset, "VectorParameterValues");
+        clone.StructType = FName.FromString(asset, "VectorParameterValue");
+        bool swapped = false;
+        for (int j = 0; j < clone.Value.Count; j++)
+            if (clone.Value[j].Name?.Value?.Value == "ParameterValue")
+            {
+                clone.Value[j] = MakeLinearColor(asset, r, g, b, a);
+                swapped = true;
+                break;
+            }
+        if (!swapped) return false;
+
+        if (arr == null)
+        {
+            arr = new ArrayPropertyData(FName.FromString(asset, "VectorParameterValues"));
+            arr.PropertyTypeName = MakeTypeName(asset, arr.PropertyType);
+            exp.Data.Add(arr);
+        }
+        arr.Value = arr.Value.Concat(new PropertyData[] { clone }).ToArray();
+        return true;
+    }
+
+    static StructPropertyData MakeLinearColor(UAsset asset, float r, float g, float b, float a)
+    {
+        // LinearColor is a native struct with custom serialization, so the outer StructPropertyData
+        // must hold exactly ONE entry -- a LinearColorPropertyData. Four sibling float nodes make
+        // the writer throw "Structs with type LinearColor cannot have more than one entry".
+        var s = new StructPropertyData(FName.FromString(asset, "ParameterValue"))
+        {
+            StructType = FName.FromString(asset, "LinearColor")
+        };
+        var lc = new LinearColorPropertyData(FName.FromString(asset, "ParameterValue"))
+        {
+            Value = new FLinearColor(r, g, b, a),
+            PropertyTypeName = MakeTypeName(asset, new FString("LinearColor"))
+        };
+        s.Value = new List<PropertyData> { lc };
+        return s;
     }
 
     // Static switches live at StaticParametersRuntime.StaticSwitchParameters, one struct per
