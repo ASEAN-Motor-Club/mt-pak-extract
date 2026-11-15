@@ -1,6 +1,35 @@
 # PLAN — garage actors on the C1 map
 
-Status: researched, not implemented. 2026-11-03.
+Status: SHIPPED and verified in game, 2026-11-15 (plan written 2026-11-03).
+
+## As built (current live state)
+
+- **`zzzzzz_AMC_C1Map_v17_P.pak`** — six garages, one fuel pump, `MTSunSky`,
+  `DriveGameModeBP_C`, PlayerStart at Shibaura. Reproducible chain:
+  `c1/scripts/apply_map_edits_v17.sh`.
+- Garage markers `BP_C1_Prop_C_0..C_5`, each `Child.ChildActorClass = GarageActorBP_C`:
+  Shibaura (110237,-470902,87411), Tatsumi (593234,-466784,87449),
+  Yotsuyakamicho (83167,406270,84990), Haneda (381965,511319,85216),
+  Shin-yamashita (-844349,1606825,86672), Heiwajima (-13950,146710,85530).
+- Fuel pump marker `BP_C1_Fuel_C_0` at (-10260,155550,85540), cloned from a garage
+  marker then re-pointed at `FuelPump_01A_C`. Runtime probe: `GARAGES 6 / PUMPS 1`.
+- Extra sites are added by `--clone-actor` on the map, NOT by re-running placement:
+  a clone inherits the source component's class ref, so a garage clone needs no
+  further patch. Only a different class (fuel) needs `--set-child-class-refs`
+  again, which is why each class group needs its own actor-name prefix.
+- **`/tp <name>` on the Shuto server** targets these six garages at Z+100.
+  Implementation and the no-backend gating: MTDediMod PR #57, Nix location list and
+  `MOD_TP_LOCATIONS_FILE`: amc-server PR #569.
+
+## Failure that shaped the final design
+
+Setting `ChildActorClass` on the **Blueprint template** (`BP_C1_Prop`'s
+`Child_GEN_VARIABLE`) instead of the map instances crashed the client on map open
+(access violation in child-actor construction). The class ref belongs on the map
+instances only, and the dump gate is `NO_BAKED_CHILD` — no `GarageActorBP_C_N` /
+`FuelPump_01A_C_N` / `MTSunSky_C_N` export may appear in the cooked umap.
+
+## Verification gates
 
 ## What NS actually does (measured, not assumed)
 
