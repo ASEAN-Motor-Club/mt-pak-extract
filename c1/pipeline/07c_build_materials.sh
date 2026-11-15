@@ -15,7 +15,7 @@
 set -euo pipefail
 source "$(dirname "$0")/00_env.sh"
 
-FAMILY="${1:-mat_mj}"
+FAMILY="${1-mat_mj}"   # "-" not ":-": an explicit empty string means ALL families
 OUT="${2:-$C1_WORK/zzzzz_AMC_C1Mats_${FAMILY}_P.pak}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

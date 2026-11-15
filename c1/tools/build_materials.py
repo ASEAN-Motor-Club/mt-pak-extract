@@ -137,7 +137,9 @@ def _rmtree(path: str) -> None:
 
 
 def _dump(mi_path: str, tool: str, dotnet: str, cwd: str) -> str:
-    return run([dotnet, tool, "--dump", mi_path], cwd=cwd)
+    # UAssetTool resolves relative paths against /opt/data (its RootDir), not cwd, so always
+    # hand it an absolute path or it looks for /opt/data/<relative> and fails to find the file.
+    return run([dotnet, tool, "--dump", os.path.abspath(mi_path)], cwd=cwd)
 
 
 def _dump_many(paths: list[str], tool: str, dotnet: str, cwd: str, jobs: int = 4) -> dict[str, str]:
@@ -151,14 +153,25 @@ def _dump_many(paths: list[str], tool: str, dotnet: str, cwd: str, jobs: int = 4
     if not paths:
         return {}
     stems = [os.path.splitext(os.path.basename(p))[0].lower() for p in paths]
-    if len(paths) > 1 and len(set(stems)) == len(stems):
+    # --dump-batch makes UAssetTool load a reference Cargos.uasset next to the CWD and dies
+    # on any version mismatch (ArgumentOutOfRangeException, negative ReadBytes count).
+    # Per-file --dump does not touch it, so batching is opt-in only.
+    if os.environ.get("C1_DUMP_BATCH") == "1" and len(paths) > 1 and len(set(stems)) == len(stems):
         tmp = tempfile.mkdtemp(prefix="middump_")
         try:
             lst = os.path.join(tmp, "list.txt")
             outdir = os.path.join(tmp, "out")
             with open(lst, "w") as f:
                 f.write("\n".join(os.path.abspath(p) for p in paths) + "\n")
-            text = run([dotnet, tool, "--dump-batch", lst, outdir], cwd=cwd)
+            try:
+                text = run([dotnet, tool, "--dump-batch", lst, outdir], cwd=cwd)
+            except RuntimeError as e:
+                # UAssetTool's batch path can abort on a single unparseable package
+                # (ArgumentOutOfRangeException inside UAssetAPI). Fall through to the
+                # per-file path, which isolates the offender instead of losing the run.
+                print(f"WARN: --dump-batch failed, falling back to per-file dumps: {str(e)[:200]}",
+                      flush=True)
+                text = ""
             if "DUMP_BATCH_OK" in text:
                 got: dict[str, str] = {}
                 for p, stem in zip(paths, stems):
@@ -173,10 +186,18 @@ def _dump_many(paths: list[str], tool: str, dotnet: str, cwd: str, jobs: int = 4
     if jobs <= 1 or len(paths) <= 1:
         return {p: _dump(p, tool, dotnet, cwd) for p in paths}
     out: dict[str, str] = {}
+    skipped: list[str] = []
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         futures = {pool.submit(_dump, p, tool, dotnet, cwd): p for p in paths}
         for fut in as_completed(futures):
-            out[futures[fut]] = fut.result()
+            src = futures[fut]
+            try:
+                out[os.path.abspath(src)] = fut.result()
+            except Exception as e:
+                skipped.append(os.path.abspath(src))
+                print(f"WARN: dump failed, skipping {os.path.basename(src)}: {str(e)[:120]}", flush=True)
+    if skipped:
+        print(f"WARN: {len(skipped)} instance(s) skipped as unparseable", flush=True)
     return out
 
 def mi_texture_param_name(out: str) -> str | None:

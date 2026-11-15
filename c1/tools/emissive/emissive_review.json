@@ -1,0 +1,1297 @@
+[
+ {
+  "name": "_01___Default",
+  "parent": "NOT_SHIPPED",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": null
+ },
+ {
+  "name": "building_ad1",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "building_black1",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "building_black3",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "building_black4",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "building_flash1",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "building_internal_lights1",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "building_internal_lights2",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "building_window1",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "building_window12",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "building_window20",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "building_window23",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "building_window330",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "building_window8",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "lamp1_tunnel",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "lamp6",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "lamp7",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_PA_siba_jihanki02",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_PA_siba_komono01_glow",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_PA_tatsumi_parts",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_RKJ_edo_u_llight01",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_RKJ_ginza_s_light01",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_RKJ_ginza_u_light01",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_RKJ_kandabashi_s_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_RKJ_kanndabasi_u_light02",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_RKJ_siodome_s_light01",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_RKJ_siodome_s_top01",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_RKJ_takara_u_light01",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_Wab18_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_all_komono_00",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_ariake_RKJ_n_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_botom_u_09",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_br_kameibashi_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_br_light_tunnel_1",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_br_shibabashi_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_chika2_01_00",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_cup_00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_daisi_all_komono",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_daisi_komono_etc",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_daisi_window_etc",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_danseibashi_br_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_denko_r_00",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_dhc_00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_gofukubashi_RKJ_s_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_heiwajima_all_komono",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_heiwajima_u_parts01",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_honsen_daisi01",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_honsen_daisi05",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kan_p1_00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kanban3go_a_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kanban4go_a_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kanban9go_a_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kanban9go_b_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kanbanc1_a_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kanbanc1_c_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kanbanc1_d_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kb_a_tsui_00",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kb_light_a",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kb_obj_a",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbb02_007",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbc01_006_1n",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbc01_006_2n",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbc01_006_3n",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbf01_004",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbf01_005",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbf01_006",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbf01_007",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbf01_008",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbf_02_008",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbf_02_009",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbh_01_006",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbi01_004",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbi01_006",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbi01_007",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbi03_006",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbi03_007",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_004",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_005",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_006",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_007",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_008",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_009",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_010",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_011",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_012",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_013",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_014",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_015",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_019",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_020",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_021",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_022",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_023",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_024",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_025",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_026",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_027",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_028",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbj02_029",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbk01_007",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbk02_004",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbk02_006",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbk02_006_5",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbk02_007",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbk02_008",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbl01_001",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbm01_010",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbm01_011",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbm01_013",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbm01_014",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbs_dia_gouryu_neon",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kbs_hijo_kaidan",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_koga_a_00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_koga_b_00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kyobashi_RKJ_s_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_kyuanbashi_br_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_lamp201_head",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_lamp311",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_lamp701_head",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_lamp_tnl_01",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_lamp_tnl_01_mrc",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_mat_hanaharu_a_00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_mat_hanaharu_b_00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_mat_sitamiti00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_mat_u_window_wall_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_mat_window3_glass_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_matuhatabashi_br_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_obj_dkk_a_00",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_obj_dkk_b",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_obj_tnl_01",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_obj_tnl_box_B",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_obj_tnl_box_D",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_ooi_w_all_komono",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_sglgta_00",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_shibakouen_RKJ_u_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_shiohama_RKJ_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_shlgta_00",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_shock_shingou",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_singou_b",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_singou_c",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_singou_d",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_singou_d_depth",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_singou_e",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_skg_hizyou_Pl_a",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_skg_hizyou_chl_a",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_skg_hizyou_guchi",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_takarabashi_br_light",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_tate_kanban00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_tate_kanban01_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_tdk_00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_tokyotower_sh_glow",
+  "parent": "M_C1_Surface_Masked",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_tokyotower_sh_glow2",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_toshiba_00_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_u_window_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_wal_tnl_08_01",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_wal_tnl_08_03",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_wal_tnl_08_04",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_wal_tnl_09_01_w",
+  "parent": "M_PropMaster",
+  "emissiveMap": true,
+  "emissiveFactor": true,
+  "permutation": false
+ },
+ {
+  "name": "mat_windou2_siro8_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "mat_window3_aka5_sh",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "phone5",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "phone6",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_60",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_arrow_orange_2",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_crossing2",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_over18",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_over19",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_over20",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_over21",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_over22",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_over25",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_over50",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_over60",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_tunnel1",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_tunnel2",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_tunnel3",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_turn2",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "sign_writing_16",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "singal_lamp_between",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "station2",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "station_sign1",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "station_sign2",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "station_sign4",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "station_sign5",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ },
+ {
+  "name": "station_sign6",
+  "parent": "M_PropMaster",
+  "emissiveMap": false,
+  "emissiveFactor": false,
+  "permutation": false
+ }
+]
