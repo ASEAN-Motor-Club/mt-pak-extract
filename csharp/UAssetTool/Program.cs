@@ -5732,7 +5732,11 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
                     .FirstOrDefault(p => p.Name?.Value?.Value == "BasePropertyOverrides");
                 var existing = overrides?.Value.OfType<BoolPropertyData>()
                     .FirstOrDefault(p => p.Name?.Value?.Value == "TwoSided");
-                if (existing != null && existing.Value == two)
+                // No "already correct" shortcut: an instance can carry the right bool while
+                // still missing bOverride_TwoSided, and copying it unchanged would leave the
+                // engine ignoring the flag. Every instance gets the arm written.
+                if (existing != null && existing.Value == two
+                    && overrides.Value.Any(p => p.Name?.Value?.Value == "bOverride_TwoSided"))
                 {
                     File.Copy(path, Path.Combine(outDir, Path.GetFileName(path)), true);
                     if (File.Exists(uexp)) File.Copy(uexp, Path.Combine(outDir, Path.GetFileName(uexp)), true);
@@ -5750,6 +5754,7 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
                     props.Add(overrides);
                 }
                 overrides.Value.RemoveAll(p => p.Name?.Value?.Value == "TwoSided");
+                overrides.Value.RemoveAll(p => p.Name?.Value?.Value == "bOverride_TwoSided");
                 var flag = new BoolPropertyData(FName.FromString(asset, "TwoSided"))
                 {
                     Value = two,
@@ -5761,6 +5766,31 @@ var dumpAsset = new UAsset(dumpPath, EngineVersion.VER_UE5_5, Mappings);
                 };
                 flag.PropertyTypeName = MakeTypeName(asset, flag.PropertyType);
                 overrides.Value.Add(flag);
+                // The engine only honours the bool when the matching bOverride_ arm is set.
+                // Without it the instance silently renders with the PARENT's sidedness, which
+                // is exactly what a runtime probe reported before this arm was added.
+                var arm = new BoolPropertyData(FName.FromString(asset, "bOverride_TwoSided"))
+                {
+                    Value = true,
+                    IsZero = false
+                };
+                arm.PropertyTypeName = MakeTypeName(asset, arm.PropertyType);
+                overrides.Value.Add(arm);
+
+                // Same for a blend override the instance already carries: without the arm the
+                // value is decoration and the parent's blend mode is what renders.
+                bool hasBlend = overrides.Value.Any(p => p.Name?.Value?.Value == "BlendMode");
+                overrides.Value.RemoveAll(p => p.Name?.Value?.Value == "bOverride_BlendMode");
+                if (hasBlend)
+                {
+                    var ba = new BoolPropertyData(FName.FromString(asset, "bOverride_BlendMode"))
+                    {
+                        Value = true,
+                        IsZero = false
+                    };
+                    ba.PropertyTypeName = MakeTypeName(asset, ba.PropertyType);
+                    overrides.Value.Add(ba);
+                }
 
                 asset.Write(Path.Combine(outDir, Path.GetFileName(path)));
                 changed++;
