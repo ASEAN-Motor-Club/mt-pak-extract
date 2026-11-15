@@ -1,11 +1,11 @@
 # Emissive on C1: master choice, thought through before building
 
-Date: 2026-11-14. Supersedes the recommendation given in chat ("reparent the unmasked 65 to
-M_BaseTexture") — that recommendation was wrong and is retracted below.
+Date: 2026-11-14, revised 2026-11-15 after web research.
+Supersedes the chat recommendation "reparent the unmasked 65 onto M_BaseTexture" — retracted in §1.
 
 ## 1. The check that changed the design
 
-`c1/docs/MASTER_CONTRACTS.md` (measured from 283 game-authored MIs, not guessed):
+`c1/docs/MASTER_CONTRACTS.md` (measured from 283 game-authored instances, not guessed):
 
 - **`M_AlphaTest` / `M_AlphaTestOneSided`** — NameMap is exactly `Color`, `Roughness`,
   `T_fenceMetal_01`, `Texture`, `Texture2D`. **No emissive input of any kind.**
@@ -14,84 +14,120 @@ M_BaseTexture") — that recommendation was wrong and is retracted below.
   `WorldPositionOffsetZ`. **Also no emissive input.**
 
 ### Retraction
-I told freeman to reparent the unmasked 65 with an emissive map onto `M_BaseTexture`.
-`M_BaseTexture` does not sample emissive. Doing that would have written `EmissiveColor`
-into 65 MIs that no shader reads — the same class of silent no-op that cost hours tonight
-with the wrong `UAssetTool.dll`. Corrected here before any code was written.
+Reparenting the unmasked 65 onto `M_BaseTexture` would have written `EmissiveColor` into
+packages whose shader never reads it — the same silent no-op that cost hours with the wrong
+`UAssetTool.dll`. Corrected before any code was written.
 
 ## 2. Which masters can actually emit
 
 - **`M_GenericBase`** — `EmissiveTexture` (texture), `ColorTint`, `EmissiveOffset` (vector),
   `AmbientOcculusion`/`Metallic`/`Roughness`/`SeaLevel` (scalar). 13 instances.
   No opacity parameter observed → cannot carry an alpha-test clip.
-- **`M_PolygonMaster`** — `Emissive`, `Emissive_Tint`, `EmissiveIntensity` (set together by
-  `MI_MatteWhite_01`, 11 instances) **plus** `Opacity`, `Use_Opacity`,
-  `Use_OpacityFromAlpha`, `Use_Emissive`. This is the only measured master that can do
-  **alpha AND emissive in one material**.
-  Known landmine: its `BaseColor` colour-map binding is *unproven* — instances reparented
-  there lost their texture in game (P15 → P16).
+  **No static switch observed on the emissive path** — the key property after §3.
+- **`M_PolygonMaster`** — `Emissive`, `Emissive_Tint`, `EmissiveIntensity`, **plus** `Opacity`,
+  `Use_Opacity`, `Use_OpacityFromAlpha`, `Use_Emissive`. The only measured master with
+  alpha **and** emissive. Its `BaseColor` colour-map binding is *unproven* — instances
+  reparented there lost their texture in game (P15 → P16).
 - **`M_Base`** — `Emiisive_Color` (sic, typo in the shipped asset), `Main_texture`. 10 instances.
 
-## 3. The actual decision, with its risk stated
+## 3. Web research (2026-11-15): static switches are compile-time
 
-Masked emissive materials (windows, billboards, light panels — the bulk of the 92) cannot
-keep both properties without landing on `M_PolygonMaster`, whose colour-map binding has
-already burned us once. Two candidate designs:
+Sources consulted:
+- Epic, *Material Parameter Expressions* — static switches change what the shader compiles to;
+  dynamic (scalar/vector/texture) parameters are the ones changeable at runtime.
+- Epic, *Understanding Shader Permutations* — a static switch selects a compiled permutation.
+- Forum threads on changing `StaticSwitchParameter` at runtime: "It's a static switch that
+  actually reduces or recalculates all instructions for the material. Other material branches
+  can be adjusted at run time."
+- *UE4 Modding Guide — Via UAssetGUI* — the supported material-modding pattern is to **copy an
+  existing material instance**, because that "also allows you to change parameters that may not
+  be present in the existing one".
 
-**A. No reparent for masked.** Masked emissive materials stay on `M_AlphaTest` and ship
-without emissive this pass. Only unmasked emissive materials move to `M_GenericBase`.
-- Zero risk of breaking alpha or colour binding.
-- Cost: the windows — the most visible emissive content on a night map — stay dark.
+**Consequence:** a `StaticSwitchParameter` on a **cooked** material instance recompiles nothing.
+It requests a shader permutation that either exists in the cooked shader map or does not. If it
+does not, the instance falls back — default permutation, or default material. We would set
+`Use_Emissive=1`, ship, and see either no glow or a grey surface with no way to tell which link
+broke. This demotes "patch the switch" from the obvious fix to the last resort.
 
-**B. Everything emissive onto `M_PolygonMaster`.** One master, one code path, alpha and
-emissive both available.
-- Full visual result.
-- Risk: if `BaseColor` cannot take a texture on this master, all 92 lose their colour map
-  and render as tinted white — a worse regression than staying dark.
+## 4. The alternatives, ranked
 
-Both are guesses until measured. Therefore: **probe first, mass-apply second.**
+**Option 1 — unconditional-emissive master (`M_GenericBase`).**
+Bind `BaseTexture` (colour map) and `EmissiveTexture` (emissive sheet). Texture parameters are
+runtime values: no permutation is requested, nothing can fall back. Structurally correct.
+Limits: no opacity/clip → **unmasked materials only**; emissive brightness may only be
+expressible through `ColorTint`/`EmissiveOffset` (unverified).
 
-## 4. Probe design
+**Option 2 — clone a game-authored emissive instance and repoint its textures.**
+Take an MI already parented to an emissive master, keep its parent and static-switch state (so
+the cooked permutation already exists), and replace only its texture bindings with ours. This is
+the pattern the modding guide endorses. Safest shader path. Costs: transplanting an unrelated
+instance's parameter set; needs a donor per master family; donor switches must be inspected first.
 
-One small pak, 2–3 replaced MIs at their existing asset paths (no map edits):
-1. an unmasked emissive material reparented to `M_GenericBase` with `EmissiveTexture` bound;
-2. a masked emissive material reparented to `M_PolygonMaster` with `Use_Emissive=1`,
-   `Use_Opacity=1`, `Emissive` bound, clip preserved, `BaseColor` bound to its colour map;
-3. optionally one `M_Base` (`Emiisive_Color`) variant.
+**Option 3 — patch `Use_Emissive` on `M_PolygonMaster` (`--ensure-switch`).**
+Needs a new UAssetTool op mirroring `--ensure-texparam`, because `BindStaticParam`
+(Program.cs:8712) clones from an existing `StaticSwitchParameters` entry and these instances have
+an empty array. Even implemented correctly, §3 says the write may not take effect.
+**Held in reserve — build only if 1 and 2 are eliminated by measurement.**
 
-Pass criteria, checked **in game** on the night map:
-- colour map still visible (proves the texture binding survived the reparent);
-- cutout still correct on the masked one (proves the clip survived);
-- the surface glows (proves the emissive path is live).
+**Option 4 — keep masked materials dark.**
+Masked emissive materials stay on `M_AlphaTest` and ship without emissive this pass. Zero risk,
+visibly incomplete: windows and light panels are the main night-time emissive content.
 
-Fail on (1) or (2) ⇒ fall back to design A for that class. No bulk run before this passes.
+**Option 5 — hand-edit with UAssetGUI.**
+Fine for one-offs and for inspecting what a working emissive MI looks like; not a pipeline.
+A diagnostic tool, not a build path.
 
-## 5. Emissive content rules (unchanged, from EMISSIVE_MATERIALS.md)
+## 5. Decision tree
 
-- Authority for *which* materials emit: `c1/source/merged.materials.json`, verified equal to
-  the archive copy (65 `emissiveMap`, 138 `emissive: true`, union 184; ship set 92 = 65 mapped
-  + 27 dark-albedo/HDR sentinels). `EmissiveStrength` is a decoy (1.0 everywhere) — ignored.
+1. Dump the real `M_GenericBase` from the client pak.
+   - emissive path has **no** static switch → **Option 1** for all unmasked emissive materials.
+   - has a switch → fall through to **Option 2**.
+2. For masked emissive materials, in this order:
+   - **Option 2** if a donor instance exists on a masked+emissive master;
+   - else **Option 3** as a controlled experiment (one material, in game, known-good fallback
+     identified first);
+   - else **Option 4**, and say so plainly rather than shipping something that may be grey.
+3. Never ship a static-switch change without a visual check in game. The failure mode is
+   invisible in the asset data.
+
+## 6. Emissive content rules (unchanged, from EMISSIVE_MATERIALS.md)
+
+- Authority for *which* materials emit: `c1/source/merged.materials.json`, verified equal to the
+  archive copy (65 `emissiveMap`, 138 `emissive: true`, union 184; ship set 92 = 65 mapped +
+  27 dark-albedo/HDR sentinels). `EmissiveStrength` is a decoy (1.0 everywhere) — ignored.
 - Exclusions: `1e-06` factors, `godray_emitter`, `thunderbolt`.
 - **Bind per material, not via an atlas.** The doc's atlas-rect scheme is a web-viewer
-  optimisation; the engine path takes one emissive sheet per material, and we have those
-  sheets from the archive. This removes an entire class of rect/UV bugs.
-- Sentinel materials (no emissive map): `EmissiveTexture` = their own albedo, intensity 1.2,
-  Reinhard-toned, per the doc's `clamp(texel.rgb*2.0, 0, 1)` intent expressed as an engine
-  material parameter rather than a shader formula — verify on the probe which the master
-  actually honours.
+  optimisation; the engine path takes one emissive sheet per material and we have those sheets.
+- Sentinel materials (no emissive map): their own albedo as the emissive texture, intensity 1.2,
+  per-material `emissiveFactor` preserved; verify on the probe which parameter the master honours.
 
-## 6. Order of operations
+## 7. Probe artefacts and current state
 
-1. Probe pak built + verified in game (gates the rest).
-2. `emissive_materials.py` written against the winning master path, dry-run census must
-   reproduce the 92-material set with per-material `mapTo` traceability.
-3. Emissive pass applied **after** the 07c alpha pass (so it sees final parents/param names),
-   before the 07b release merge.
-4. Release pak, `09_verify.sh`, install to a non-live slot; CustomPak.ini untouched.
+- `MI_C1_building_black1` and `MI_C1_building_window1` reparented to `M_PolygonMaster`, colour
+  param renamed to `BaseColor`, `Emissive` texture created and bound, `EmissiveIntensity` /
+  `Emissive_Tint` written. **`Use_Emissive` NOT set** (no donor entry in the instance).
+  Output: `/opt/data/cache/scratch/probe/<stem>/s5/`.
+- That probe is **inconclusive by construction** — per §3 the missing switch may not work even
+  when set. Re-run under Option 1 or 2 instead of chasing it.
+- Emissive sheets already exist as UE textures (`Textures/other/building_black1`,
+  `Textures/lamp/building_internal_lights1`) from the 2,327-texture import. No new imports.
+- Local `M_GenericBase.uasset` copies are **0 bytes** (failed extraction); the real asset must be
+  pulled from the client pak on the Windows install before Option 1 can be evaluated.
 
-## 7. Not to be repeated
+## 8. Order of operations
 
-- Never write a material parameter without first confirming the target master samples it.
-- Never infer a master's capability from a parameter *name* (M_PolygonMaster's `BaseColor`
-  is the standing counter-example).
-- Never reparent a material before checking what the reparent does to its colour map binding.
+1. Extract + dump `M_GenericBase` from the client pak; settle Option 1 vs 2.
+2. Rebuild the probe under the winning option; verify in game (colour visible, cutout correct,
+   surface glows).
+3. Write `emissive_materials.py` against the winning path; dry-run must reproduce the 92-material
+   set with per-material `mapTo` traceability.
+4. Apply emissive **after** the 07c alpha pass, before the 07b release merge.
+5. Release pak, `09_verify.sh`, install to a non-live slot; CustomPak.ini untouched.
+
+## 9. Not to be repeated
+
+- Never write a material parameter without confirming the target master samples it.
+- Never infer a master's capability from a parameter *name* (`M_PolygonMaster.BaseColor` is the
+  standing counter-example).
+- Never treat a static-switch write as effective in a cooked build without a visual check.
+- Never reparent before checking what the reparent does to the colour-map binding.
