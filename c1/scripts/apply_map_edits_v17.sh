@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Post-cook edits: spawn, five garages at the BeamNG spawn sites, one fuel pump,
+# Post-cook edits: spawn, six garages at the BeamNG spawn sites, one fuel pump,
 # and the three game-class references every cooked C1 map needs.
 #
 # WHY post-cook: DriveGameModeBP / MTSunSky / GarageActorBP / FuelPump_01A are
@@ -8,7 +8,7 @@
 # Never set ChildActorClass on the Blueprint template: that bakes a child-actor
 # export and the game dies on load (RF_NeedLoad). Verified by the v14 crash.
 #
-# Usage: apply_map_edits_v16.sh <cooked .umap> <out .umap>
+# Usage: apply_map_edits_v17.sh <cooked .umap> <out .umap>
 # Tool ops used (this UAssetTool build): --move-actor, --clone-actor,
 #   --set-class-ref (first matching export), --set-child-class-refs (all matching
 #   components on actors whose name starts with a prefix).
@@ -29,9 +29,11 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 "$TOOL" --clone-actor "$TMP/s4.umap" "$TMP/s5.umap" BP_C1_Prop_C_0 BP_C1_Prop_C_3 381965 511319 85216 154.0 | tail -1   # Hanedakuko (on deck)
 "$TOOL" --clone-actor "$TMP/s5.umap" "$TMP/s6.umap" BP_C1_Prop_C_0 BP_C1_Prop_C_4 -844349 1606825 86672 259.1 | tail -1  # Shin-yamashita (on deck)
 
+"$TOOL" --clone-actor "$TMP/s6.umap" "$TMP/s6b.umap" BP_C1_Prop_C_0 BP_C1_Prop_C_5 -13950 146710 85530 0 | tail -1  # Heiwajima
+
 # 3. Fuel pump. A distinct actor name so the class-ref pass below touches ONLY
 #    this actor -- the prefix match is the only targeting mechanism available.
-"$TOOL" --clone-actor "$TMP/s6.umap" "$TMP/s7.umap" BP_C1_Prop_C_0 BP_C1_Fuel_C_0 -10260 155550 85540 0 | tail -1
+"$TOOL" --clone-actor "$TMP/s6b.umap" "$TMP/s7.umap" BP_C1_Prop_C_0 BP_C1_Fuel_C_0 -10260 155550 85540 0 | tail -1
 
 # 4. Class references on the map INSTANCES (never on the Blueprint).
 "$TOOL" --set-class-ref "$TMP/s7.umap" "$TMP/s8.umap" WorldSettings DefaultGameMode \
@@ -52,4 +54,4 @@ if grep -qE 'Name=(MTSunSky|GarageActorBP|FuelPump_01A)_C_[0-9]+' "$TMP/dump.txt
     echo "FAIL: baked child-actor instance present -- map will crash on load" >&2
     exit 1
 fi
-echo "EDITS_OK $OUT  (5 garages + 1 fuel pump, drive game mode, sun sky)"
+echo "EDITS_OK $OUT  (6 garages + 1 fuel pump, drive game mode, sun sky)"
