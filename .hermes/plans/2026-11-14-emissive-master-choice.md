@@ -49,6 +49,40 @@ does not, the instance falls back — default permutation, or default material. 
 `Use_Emissive=1`, ship, and see either no glow or a grey surface with no way to tell which link
 broke. This demotes "patch the switch" from the obvious fix to the last resort.
 
+## 3b. MEASURED 2026-11-15: the master is extracted, and the answer is better than §3 feared
+
+Extracted `M_GenericBase` from the staging server pak (AES key + Oodle 2.9.10 + nix libstdc++ —
+see `cache/scratch/rp_extract.sh`). Facts from the real asset, not the docs:
+
+- Path: **`/Game/Synty/PolygonGeneric/Materials/Base/M_GenericBase`** (not AssetsvilleTown2).
+- Its NameMap carries `EmissiveTexture`, `EmissiveTint`, `EmissiveOffset`, `EmissiveStrengh` (sic),
+  `EmissiveTiling`, **`EnableEmissiveTexture`**, and both `DynamicSwitchValues` and
+  `StaticSwitchValues`.
+- Dumped a real game instance on it, `MI_Generic_01_A`: `EnableEmissiveTexture` sits inside
+  **`StaticSwitchParameters`** — so emissive **is** behind a static switch, and Option 1 as
+  written ("no switch on the emissive path") is **false**. Recorded rather than quietly dropped.
+
+**Why this is still good news.** A game-authored instance (`MI_Generic_01_A`) sets that switch
+and works in game, which means the cooked shader map for `M_GenericBase` **already contains the
+emissive permutation**. A static switch on a *different* instance of the same master requests a
+permutation that exists → it compiles nothing new and can take effect. §3's failure mode applies
+to masters whose emissive permutation was **never cooked**; it does not apply here.
+
+**So the ranking changes:**
+- **Option 1'** — reparent to `M_GenericBase`, bind `EmissiveTexture`, set
+  `EnableEmissiveTexture=True`. Viable, and now with evidence the permutation exists.
+- **Option 2** — clone `MI_Generic_01_A` (a known-good emissive instance) and repoint its
+  textures. Still the safest: it inherits the exact parameter set that already works.
+- The `--ensure-switch` op is still needed either way, because `BindStaticParam` refuses to create
+  an entry when the target has none — and our `M_AlphaTest`-derived instances have none.
+
+**Toolchain notes worth keeping** (cost an hour to rediscover):
+- repak needs the Oodle lib **beside the binary** (hash-checked, 2.9.10, sha256 `ed7e98f7…`) and
+  the **nix gcc libstdc++** (`/nix/store/0vqb1mcas5j8dv6bhbrshinlgsg6bvgi-gcc-15.3.0-lib/lib`);
+  the system libstdc++ segfaults it. Wrapper: `cache/scratch/rp_extract.sh`.
+- The server pak is AES-encrypted; the key is in `mt-pak-extract-wt-0719/.env` (the `wt-fmt` copy
+  is unreadable).
+
 ## 4. The alternatives, ranked
 
 **Option 1 — unconditional-emissive master (`M_GenericBase`).**
