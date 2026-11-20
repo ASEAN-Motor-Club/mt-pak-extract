@@ -11,7 +11,7 @@ Part compatibility and the cargo-bed menu are the open items (see **Open work**)
 
 | Piece | Path | Notes |
 |---|---|---|
-| Vehicle pak | `zzz_AMC_DuroUT_v1.0.11_0.7.20_P.pak` (built, not committed) | class + meshes + tables |
+| Vehicle pak | `zzz_AMC_DuroUT_v1.0.10_0.7.20_P.pak` (last known good) (built, not committed) | class + meshes + tables |
 | Dealer bay | `ue4ss/DuroBay/main.lua` | UE4SS Lua, spawns the native dealer point |
 
 Both are needed: the pak gives you the truck, the Lua gives you somewhere to buy it.
@@ -65,10 +65,14 @@ that 0.7.20's actor has, and any populated slot crashes the client with
 5. **Swappable beds are `PartType::CargoBed` rows in `DataAsset/VehicleParts/CargoBed`**
    (Voltex/Kira/Tank...), not `CargoBedAttachment` rows. Clone `Kira_Flatbed_01` for a
    dump body and `Kira_Tank_01` for a tanker so the row struct matches.
-6. **`Duro_CargoBedAttachment_01` is the game's "Toolbox" attachment.** It is a single
-   `CargoBedAttachment` row whose display text is `Toolbox`, and once `Duro_UT_AMC1` is in
-   its `VehicleKeys` it appears as a third entry in the bed list. Do not patch that row —
-   ship the vanilla `CargoBedAttachments` table (or omit it entirely) and the entry is gone.
+6. **The bed menu depends on `CargoBedAttachments`, and `Duro_CargoBedAttachment_01` is
+   the game's "Toolbox" attachment.** That single `CargoBedAttachment` row carries the
+   display text `Toolbox`; with `Duro_UT_AMC1` in its `VehicleKeys` it shows up as a third
+   entry in the bed list, which is the shipped behaviour. Three attempts to remove that
+   entry all killed the whole bed menu: omitting the table (v1.0.11), shipping it
+   unpatched (v1.0.12), and renaming the row (v1.0.13 — `set_display_name` +
+   `set_localization_guid` write a synthetic string-table guid, and the row stops
+   resolving). Treat the row's data as load-bearing for the group and do not touch it.
 
 ## Build
 
@@ -123,6 +127,9 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
   convex collision from it is coarse. Not yet compared against the dumped body's own
   collision.
 - **Rear bulkhead.** Trim the wall behind the seats down to the shell.
+- **"Toolbox" entry in the bed list** — left as-is on purpose. The row doubles as the
+  vehicle's `CargoBedAttachment` and removing or renaming it takes the whole bed menu
+  with it.
 - **`M_Palette`** atlas binding gives a red SCM badge and an over-bright grille;
   cosmetic, deliberately deferred.
 
@@ -138,4 +145,6 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
 | v1.0.8 | `CargoBed0 = None` slot added | pending in-game test |
 | v1.0.9 | tanker barrel/heads re-wound (source was inside-out) | pending in-game test |
 | v1.0.10 | `CargoBed0` set to a real bed row (`Duro_CargoBed_Dump`) | category now exists; `None` produced none |
-| v1.0.11 | dropped the `CargoBedAttachments` table from the pak | removes the stray "Toolbox" entry from the bed list |
+| v1.0.11 | dropped the `CargoBedAttachments` table from the pak | bed menu disappeared — the table's contents govern the group |
+| v1.0.12 | vanilla (unpatched) `CargoBedAttachments` | bed menu disappeared |
+| v1.0.13 | table restored, `Duro_CargoBedAttachment_01` renamed | menu gone again; reverted |
