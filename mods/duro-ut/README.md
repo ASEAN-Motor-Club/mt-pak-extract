@@ -11,7 +11,7 @@ Part compatibility and the cargo-bed menu are the open items (see **Open work**)
 
 | Piece | Path | Notes |
 |---|---|---|
-| Vehicle pak | `zzz_AMC_DuroUT_v1.0.14_0.7.20_P.pak` (built, not committed) | class + meshes + tables |
+| Vehicle pak | `zzz_AMC_DuroUT_v1.0.15_0.7.20_P.pak` (built, not committed) | class + meshes + tables |
 | Dealer bay | `ue4ss/DuroBay/main.lua` | UE4SS Lua, spawns the native dealer point |
 
 Both are needed: the pak gives you the truck, the Lua gives you somewhere to buy it.
@@ -150,6 +150,13 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
   `MappingInformationType: "ByPolygonVertex"` while writing one entry per deduplicated
   control point makes the importer misindex normals, colours and UVs. Emit one entry
   per polygon corner (`glb_to_fbx.py` does this as of v1.0.14).
+- **Expanding `Vertices` per corner means rewriting `PolygonVertexIndex`.** Once the
+  vertex array is unwelded, the corner list is `0,1,2 / 3,4,5 ...` and each polygon's
+  last index is encoded as `-(k+1)`. Leaving the old deduplicated point indices in place
+  connects unrelated vertices: the shell renders as a crumpled translucent wreck while
+  the vertex count and bounds still look right. Check triangle edge statistics instead —
+  the known-good body has median 5.24, p99 90.7, max 351.4 cm; the broken export was
+  p99 218, max 602.
 - **Only the body comes from the glb route.** Beds, tailgate stub and the rest of the
   truck are procedural OBJ (`make_bodies.py`), and every one of those materials is
   untextured `M_Body`, so their `vt 0 0` is harmless.
@@ -169,4 +176,5 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
 | v1.0.11 | dropped the `CargoBedAttachments` table from the pak | bed menu disappeared — the table's contents govern the group |
 | v1.0.12 | vanilla (unpatched) `CargoBedAttachments` | bed menu disappeared |
 | v1.0.13 | table restored, `Duro_CargoBedAttachment_01` renamed | menu gone again; reverted |
-| v1.0.14 | body re-imported from a per-corner FBX with UE-space (V-flipped) UVs | textures sample the paint ramps instead of atlas signage |
+| v1.0.14 | body re-imported from a per-corner FBX with UE-space (V-flipped) UVs | **broken, do not ship** — expanding `Vertices` per corner without rewriting `PolygonVertexIndex` crumpled the shell |
+| v1.0.15 | same UV fix, polygon indices rewritten for the per-corner vertex array | textures sample the paint ramps; geometry matches v1.0.10 |
