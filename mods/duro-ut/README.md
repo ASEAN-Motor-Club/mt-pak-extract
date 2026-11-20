@@ -11,7 +11,7 @@ Part compatibility and the cargo-bed menu are the open items (see **Open work**)
 
 | Piece | Path | Notes |
 |---|---|---|
-| Vehicle pak | `zzz_AMC_DuroUT_v1.0.10_0.7.20_P.pak` (built, not committed) | class + meshes + tables |
+| Vehicle pak | `zzz_AMC_DuroUT_v1.0.11_0.7.20_P.pak` (built, not committed) | class + meshes + tables |
 | Dealer bay | `ue4ss/DuroBay/main.lua` | UE4SS Lua, spawns the native dealer point |
 
 Both are needed: the pak gives you the truck, the Lua gives you somewhere to buy it.
@@ -65,6 +65,10 @@ that 0.7.20's actor has, and any populated slot crashes the client with
 5. **Swappable beds are `PartType::CargoBed` rows in `DataAsset/VehicleParts/CargoBed`**
    (Voltex/Kira/Tank...), not `CargoBedAttachment` rows. Clone `Kira_Flatbed_01` for a
    dump body and `Kira_Tank_01` for a tanker so the row struct matches.
+6. **`Duro_CargoBedAttachment_01` is the game's "Toolbox" attachment.** It is a single
+   `CargoBedAttachment` row whose display text is `Toolbox`, and once `Duro_UT_AMC1` is in
+   its `VehicleKeys` it appears as a third entry in the bed list. Do not patch that row —
+   ship the vanilla `CargoBedAttachments` table (or omit it entirely) and the entry is gone.
 
 ## Build
 
@@ -134,3 +138,4 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
 | v1.0.8 | `CargoBed0 = None` slot added | pending in-game test |
 | v1.0.9 | tanker barrel/heads re-wound (source was inside-out) | pending in-game test |
 | v1.0.10 | `CargoBed0` set to a real bed row (`Duro_CargoBed_Dump`) | category now exists; `None` produced none |
+| v1.0.11 | dropped the `CargoBedAttachments` table from the pak | removes the stray "Toolbox" entry from the bed list |
