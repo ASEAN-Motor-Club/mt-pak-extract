@@ -11,7 +11,7 @@ Part compatibility and the cargo-bed menu are the open items (see **Open work**)
 
 | Piece | Path | Notes |
 |---|---|---|
-| Vehicle pak | `zzz_AMC_DuroUT_v1.0.8_0.7.20_P.pak` (built, not committed) | class + meshes + tables |
+| Vehicle pak | `zzz_AMC_DuroUT_v1.0.9_0.7.20_P.pak` (built, not committed) | class + meshes + tables |
 | Dealer bay | `ue4ss/DuroBay/main.lua` | UE4SS Lua, spawns the native dealer point |
 
 Both are needed: the pak gives you the truck, the Lua gives you somewhere to buy it.
@@ -71,6 +71,12 @@ root-owned — build in a copy), `mod_pack`, and the DUT1 meshes cooked into
 `/var/lib/durocook`.
 
 ```bash
+# 0. author the two rear bodies, then prove no closed island is inside-out
+#    (make_bodies.py writes into scripts/obj/)
+python3 mods/duro-ut/scripts/make_bodies.py
+python3 mods/duro-ut/scripts/check_winding.py mods/duro-ut/scripts/obj/duro_dump_body.obj
+python3 mods/duro-ut/scripts/check_winding.py mods/duro-ut/scripts/obj/duro_tanker_body.obj
+
 # 1. clone the class (byte surgery on the vanilla Duro BP)
 python3 mods/duro-ut/scripts/clone_dut1.py
 
@@ -95,11 +101,15 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
   `None` so the truck stays bedless while having the menu. No vanilla row uses `None`,
   so this is the unproven guess. Fallback: fit `Duro_CargoBedAttachment_01` (vanilla
   flatbed) instead, at the cost of the empty-bed look.
-- **Tanker body orientation.** The cooked `CargoBed_Tanker` renders inverted on the
-  truck; the dump body is fine from the same pipeline. Not yet determined whether the
-  mesh is flipped or the attachment transform is wrong (front/back vs upside-down).
-- **Body re-cook.** The current `Body` was cooked before the v0.4.2 bumper/LED lamp
-  pass, so it wears stock tail lights and no steel step bumper.
+- **Tanker body inside-out (fixed in v1.0.9, needs a look in game).** The cylinder and
+  both dished heads in `make_bodies.py` were wound backwards, so the barrel rendered
+  from the inside. `scripts/check_winding.py` finds this class of bug: every *closed*
+  island of an OBJ is signed-volume tested, and a negative volume means inside-out.
+  Verify with `python3 scripts/check_winding.py <obj>` — all islands must read
+  `closed … vol=+…`. Do not "fix" an open island by volume; its volume is meaningless.
+- **Tanker collision.** The barrel is a single 216-face closed island; auto-generated
+  convex collision from it is coarse. Not yet compared against the dumped body's own
+  collision.
 - **Rear bulkhead.** Trim the wall behind the seats down to the shell.
 - **`M_Palette`** atlas binding gives a red SCM badge and an over-bright grille;
   cosmetic, deliberately deferred.
@@ -114,3 +124,4 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
 | v1.0.6 | patched AeroParts / VehicleParts0 / Wheels / CargoBedAttachments | aero parts and hitches accepted |
 | v1.0.7 | beds added to CargoBed | no menu — no `CargoBed0` slot |
 | v1.0.8 | `CargoBed0 = None` slot added | pending in-game test |
+| v1.0.9 | tanker barrel/heads re-wound (source was inside-out) | pending in-game test |
