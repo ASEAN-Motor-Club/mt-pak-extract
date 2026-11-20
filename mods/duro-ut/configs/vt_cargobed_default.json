@@ -1,0 +1,16 @@
+{
+ "output_filename": "Vehicles_Truck",
+ "patches": [
+  {
+   "row_name": "Duro_UT_AMC1",
+   "patches": [
+    {
+     "path": "Parts",
+     "op": "set_map_entry",
+     "key": "EMTVehiclePartSlot::CargoBed0",
+     "value": "Duro_CargoBed_Dump"
+    }
+   ]
+  }
+ ]
+}
