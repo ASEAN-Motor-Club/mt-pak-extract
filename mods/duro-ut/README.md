@@ -11,7 +11,7 @@ Part compatibility and the cargo-bed menu are the open items (see **Open work**)
 
 | Piece | Path | Notes |
 |---|---|---|
-| Vehicle pak | `zzz_AMC_DuroUT_v1.0.10_0.7.20_P.pak` (last known good) (built, not committed) | class + meshes + tables |
+| Vehicle pak | `zzz_AMC_DuroUT_v1.0.14_0.7.20_P.pak` (built, not committed) | class + meshes + tables |
 | Dealer bay | `ue4ss/DuroBay/main.lua` | UE4SS Lua, spawns the native dealer point |
 
 Both are needed: the pak gives you the truck, the Lua gives you somewhere to buy it.
@@ -130,8 +130,29 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
 - **"Toolbox" entry in the bed list** — left as-is on purpose. The row doubles as the
   vehicle's `CargoBedAttachment` and removing or renaming it takes the whole bed menu
   with it.
-- **`M_Palette`** atlas binding gives a red SCM badge and an over-bright grille;
-  cosmetic, deliberately deferred.
+- **Material slots** — the grille, SCM badge, mirrors and window sills are *not* a
+  slot-assignment problem: the vanilla Duro paints them with `M_Palette` too. Their
+  colour comes from the shared PolygonCity atlas, so they need correct UVs, not a
+  different material. See "Mesh import rules" — fixed in v1.0.14.
+
+## Mesh import rules
+
+- **Flip V when leaving glTF.** glTF texture space starts at the image's top-left and
+  grows v downwards; UE's starts bottom-left and grows upwards. Copying glTF
+  `TEXCOORD_n` straight into an FBX mirrors every texture. The Duro body showed it
+  plainly: its `Palette` geometry covers glTF v 0.5..1.0, which is the paint-ramp area
+  of the shared PolygonCity atlas. Unflipped it samples v 0..0.5 instead — signage
+  tiles and empty padding — which is exactly the red badge and blown-out grille.
+  `scripts/uv_atlas_probe.py` samples the atlas at each polygon's UVs and prints the
+  colour stats plus an overlay; run it before cooking. Unflipped: near-white 60%+ on
+  the paint zones. Flipped: 0% near-white, colours from the ramps.
+- **FBX layers are per polygon-vertex, not per control point.** Declaring
+  `MappingInformationType: "ByPolygonVertex"` while writing one entry per deduplicated
+  control point makes the importer misindex normals, colours and UVs. Emit one entry
+  per polygon corner (`glb_to_fbx.py` does this as of v1.0.14).
+- **Only the body comes from the glb route.** Beds, tailgate stub and the rest of the
+  truck are procedural OBJ (`make_bodies.py`), and every one of those materials is
+  untextured `M_Body`, so their `vt 0 0` is harmless.
 
 ## Pak history (0.7.20)
 
@@ -148,3 +169,4 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
 | v1.0.11 | dropped the `CargoBedAttachments` table from the pak | bed menu disappeared — the table's contents govern the group |
 | v1.0.12 | vanilla (unpatched) `CargoBedAttachments` | bed menu disappeared |
 | v1.0.13 | table restored, `Duro_CargoBedAttachment_01` renamed | menu gone again; reverted |
+| v1.0.14 | body re-imported from a per-corner FBX with UE-space (V-flipped) UVs | textures sample the paint ramps instead of atlas signage |
