@@ -1,0 +1,83 @@
+{
+ "output_filename": "VehicleParts0",
+ "patches": [
+  {
+   "row_name": "Duro_Bullbar_01",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_Bullbar_02",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_Bullbar_03",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_Bullbar_04",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "TrailerHitch_Adjustable1",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "TrailerHitch_Gooseneck_Duro",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  }
+ ]
+}

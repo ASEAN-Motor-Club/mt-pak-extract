@@ -1,0 +1,18 @@
+{
+ "output_filename": "Wheels",
+ "patches": [
+  {
+   "row_name": "Duro",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  }
+ ]
+}

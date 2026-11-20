@@ -1,0 +1,116 @@
+# Duro UT — client-side Motor Town vehicle mod (0.7.20)
+
+A buyable, bedless **Duro UT** for the 0.7.20 client: a clone of the vanilla Duro with
+swappable Dump and Tanker bodies, sold for 1 credit at Gosan. The vanilla Duro is never
+touched and keeps its bed.
+
+Status: the vehicle, its sales row and its buy-anywhere dealer bay all work in game.
+Part compatibility and the cargo-bed menu are the open items (see **Open work**).
+
+## What ships
+
+| Piece | Path | Notes |
+|---|---|---|
+| Vehicle pak | `zzz_AMC_DuroUT_v1.0.8_0.7.20_P.pak` (built, not committed) | class + meshes + tables |
+| Dealer bay | `ue4ss/DuroBay/main.lua` | UE4SS Lua, spawns the native dealer point |
+
+Both are needed: the pak gives you the truck, the Lua gives you somewhere to buy it.
+
+## Architecture
+
+**Cloned class, not a patched Duro.** `scripts/clone_dut1.py` does same-length byte
+surgery on the vanilla `Duro` blueprint (`Duro` → `DUT1`, 4 chars both ways), so meshes
+cook to `/Game/Cars/Models/DUT1/*` and the vanilla `/Game/Cars/Models/Duro/*` paths stay
+stock. The cloned BP must live in its own folder, not the donor's.
+
+**Sales row** `Duro_UT_AMC1` in `DataAsset/Vehicles/Vehicles_Truck`, `Cost = 1`,
+`VehicleClass = /Game/Cars/Models/DUT1/DUT1.DUT1_C`. That is what puts it in Motorpedia
+and the garage list.
+
+**Dealer bay** is spawned at runtime by `ue4ss/DuroBay/main.lua`:
+`StaticFindObject("/Game/Cars/Models/DUT1/DUT1.DUT1_C")` →
+`world:SpawnActor(MTDealerVehicleSpawnPoint, Location, Rotation)` → `SetVehicleClass(cls)`.
+Location `-388065, 103586, -21880` (next to the Brutus tanker at Gosan).
+
+The pak-based dealer route (`ReservedRegistration/Slots/SlotNN` + framework pak) is
+**dead for 0.7.20**: 0.7.19-authored dealer components lack the `VehicleClasses` array
+that 0.7.20's actor has, and any populated slot crashes the client with
+`EXCEPTION_ACCESS_VIOLATION` on world entry. Do not resurrect it.
+
+## The 0.7.20 DataTable rules that cost the most time
+
+1. **`DataAsset/VehicleParts/VehicleParts` is a `CompositeDataTable`.** It rebuilds its
+   rows from its parent tables on load, so *anything written into the composite is
+   discarded*. Row edits must go into the child tables:
+   `AeroParts`, `VehicleParts0`, `Wheels`, `CargoBed`, `CargoBedAttachments`, `Engines`,
+   `Transmissions`, `Horns`, `License`, `UtilityParts`, `Headlights`, `Suspensions`,
+   `LSD`, `FinalDriveRatio`, `BrakeBalance`, `BrakePads`, `BrakePower`, `AeroParts`.
+2. **Paths are not what the names suggest.** The parts tables live under
+   `MotorTown/Content/DataAsset/VehicleParts/<Name>`. There is no
+   `DataAsset/VehicleParts.uasset` and no `DataAsset/CargoBedAttachments.uasset` —
+   shipping to those paths is silently ignored.
+3. **Part compatibility is an allowlist of row names, not classes.**
+   Each part row carries `VehicleKeys: ["Duro"]`. A vehicle row named `Duro_UT_AMC1`
+   matches nothing until `Duro_UT_AMC1` is added to those arrays. Symptom: the
+   "Incompatible Parts" dialog lists even the wheels the truck is wearing, and the
+   Parts menu is empty.
+4. **The cargo-bed menu needs a slot, not just rows.** The vehicle row's `Parts` map
+   (slot enum → part row name) is the slot list. Duro has 23 slots and **no
+   `CargoBed0`** — only Voltex/Kira/Gunthoo do. Without that slot the bed menu does not
+   exist for the vehicle at all. `configs/vt_cargobed_slot.json` adds
+   `EMTVehiclePartSlot::CargoBed0 = None`.
+5. **Swappable beds are `PartType::CargoBed` rows in `DataAsset/VehicleParts/CargoBed`**
+   (Voltex/Kira/Tank...), not `CargoBedAttachment` rows. Clone `Kira_Flatbed_01` for a
+   dump body and `Kira_Tank_01` for a tanker so the row struct matches.
+
+## Build
+
+Prerequisites: the 0.7.20 pak extracted in `mt-pak-extract-wt-0720` (`out/`), the
+`UAssetTool` fork built from `csharp/UAssetTool` (its `obj/` in the shared repo is
+root-owned — build in a copy), `mod_pack`, and the DUT1 meshes cooked into
+`/var/lib/durocook`.
+
+```bash
+# 1. clone the class (byte surgery on the vanilla Duro BP)
+python3 mods/duro-ut/scripts/clone_dut1.py
+
+# 2. patch the four child tables so the Duro rows accept Duro_UT_AMC1
+#    (configs/keys_*.json, --patch-rows, one invocation per table)
+
+# 3. add the two beds to CargoBed (configs/cargobed_rows.json, --add-rows,
+#    templates Kira_Flatbed_01 and Kira_Tank_01)
+
+# 4. add the CargoBed0 slot to the vehicle row (configs/vt_cargobed_slot.json,
+#    --patch-rows on Vehicles_Truck)
+
+# 5. pack: mod_pack stage/ zzz_AMC_DuroUT_vX_0.7.20_P.pak
+```
+
+Every row edit must be re-dumped from the **packed** pak, not the build tree, and the
+patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
+
+## Open work
+
+- **Cargo-bed menu (v1.0.8, untested).** The `CargoBed0` slot is added with value
+  `None` so the truck stays bedless while having the menu. No vanilla row uses `None`,
+  so this is the unproven guess. Fallback: fit `Duro_CargoBedAttachment_01` (vanilla
+  flatbed) instead, at the cost of the empty-bed look.
+- **Tanker body orientation.** The cooked `CargoBed_Tanker` renders inverted on the
+  truck; the dump body is fine from the same pipeline. Not yet determined whether the
+  mesh is flipped or the attachment transform is wrong (front/back vs upside-down).
+- **Body re-cook.** The current `Body` was cooked before the v0.4.2 bumper/LED lamp
+  pass, so it wears stock tail lights and no steel step bumper.
+- **Rear bulkhead.** Trim the wall behind the seats down to the shell.
+- **`M_Palette`** atlas binding gives a red SCM badge and an over-bright grille;
+  cosmetic, deliberately deferred.
+
+## Pak history (0.7.20)
+
+| Version | Change | Outcome |
+|---|---|---|
+| v1.0.0–1.0.3 | slot-based bay + framework paks | truck visible, bay never appeared, crashes |
+| v1.0.4 | first VehicleKeys patch, wrong table paths | no effect (silently ignored) |
+| v1.0.5 | patched the composite | no effect — composite rows are rebuilt |
+| v1.0.6 | patched AeroParts / VehicleParts0 / Wheels / CargoBedAttachments | aero parts and hitches accepted |
+| v1.0.7 | beds added to CargoBed | no menu — no `CargoBed0` slot |
+| v1.0.8 | `CargoBed0 = None` slot added | pending in-game test |

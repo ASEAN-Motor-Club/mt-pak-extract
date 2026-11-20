@@ -1,0 +1,161 @@
+{
+ "output_filename": "AeroParts",
+ "patches": [
+  {
+   "row_name": "Duro_FrontBumper_01",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_FrontBumper_02",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_FrontBumper_03",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_FrontBumper_04",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_RearBumper_01",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_RearBumper_02",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_Bonnet_01",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_Bonnet_02",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_Bonnet_03",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_Fender_01",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_SideSkirt_01",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_Roof_01",
+   "patches": [
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    }
+   ]
+  }
+ ]
+}
