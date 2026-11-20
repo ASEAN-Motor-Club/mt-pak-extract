@@ -100,11 +100,15 @@ patch is proven by the dump showing `Duro_UT_AMC1` inside `VehicleKeys`.
 
 ## Open work
 
-- **Chassis-only ("no bed") option.** The truck now defaults to the dump body because a
-  slot holding `None` produces no category. A bedless default needs an extra
-  `CargoBed` row whose `Aero.Mesh` is null-reffed and whose cargo-space size is zero, so
-  the slot resolves to something the player can pick. Not built yet — a mesh-less bed row
-  is unproven and must not be the default on a fresh buy until it is.
+- **Cargo-bed menu is class-side, not row-side (v1.0.11 test).** Adding
+  `EMTVehiclePartSlot::CargoBed0` to the vehicle row does nothing for a Duro: the DUT1
+  class only enumerates `Bonnet, Bullbar, CargoBedAttachment0, Fender, FrontBumper,
+  RearBumper, Roof, SideSkirt` (see the class dump's `EMTVehiclePartSlot::` names).
+  Swappable-bed vehicles are `CargoBed0` vehicles; the Duro's bed lives on
+  `CargoBedAttachment0`. So beds must be `PartType::CargoBedAttachment` rows in
+  `CargoBedAttachments` and the row needs `CargoBedAttachment0`, which v1.0.11 does.
+  If the category still does not appear, the remaining suspect is the BP's part-slot
+  component set, not any DataTable.
 - **Tanker body inside-out (fixed in v1.0.9, needs a look in game).** The cylinder and
   both dished heads in `make_bodies.py` were wound backwards, so the barrel rendered
   from the inside. `scripts/check_winding.py` finds this class of bug: every *closed*

@@ -1,0 +1,210 @@
+{
+ "output_filename": "CargoBedAttachments",
+ "template_row_match": {
+  "RowName": "Duro_CargoBedAttachment_01"
+ },
+ "rows": [
+  {
+   "row_name": "Duro_CargoBed_Dump",
+   "patches": [
+    {
+     "path": "Name",
+     "op": "set_localization_guid",
+     "value": "AMC Duro Dump Body"
+    },
+    {
+     "path": "Name2",
+     "op": "set_display_name",
+     "value": [
+      "Duro Dump Body"
+     ]
+    },
+    {
+     "path": "Desciption",
+     "op": "set_description",
+     "value": "Duro Dump Body"
+    },
+    {
+     "path": "Cost",
+     "op": "set",
+     "value": 6500
+    },
+    {
+     "path": "bIsHidden",
+     "op": "set",
+     "value": false
+    },
+    {
+     "path": "MassKg",
+     "op": "set",
+     "value": 420.0
+    },
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    },
+    {
+     "path": "Aero.Mesh",
+     "op": "set_import_ref",
+     "class_package": "/Script/Engine",
+     "class_name": "StaticMesh",
+     "package_path": "/Game/Cars/Models/DUT1/CargoBed_Dump",
+     "asset_name": "CargoBed_Dump"
+    },
+    {
+     "path": "CargoBed.CargoSpaceLocation.Location",
+     "op": "set_vector",
+     "x": -201.0,
+     "y": 0.0,
+     "z": 116.0
+    },
+    {
+     "path": "CargoBed.CargoSpaceSize.Size",
+     "op": "set_vector",
+     "x": 246.0,
+     "y": 208.0,
+     "z": 94.0
+    },
+    {
+     "path": "CargoBed.CargoSpaceType",
+     "op": "set_enum",
+     "value": "EMTCargoSpaceType::Dump"
+    },
+    {
+     "path": "CargoBed.bFixCargo",
+     "op": "set",
+     "value": false
+    },
+    {
+     "path": "CargoBed.bUnlimitedHeight",
+     "op": "set",
+     "value": false
+    },
+    {
+     "path": "CargoBed.DumpVolume",
+     "op": "set",
+     "value": 6.0
+    },
+    {
+     "path": "CargoSpaceOccupancy.Location.Location",
+     "op": "set_vector",
+     "x": -96.0,
+     "y": 0.0,
+     "z": 140.0
+    },
+    {
+     "path": "CargoSpaceOccupancy.Size.Size",
+     "op": "set_vector",
+     "x": 52.0,
+     "y": 186.0,
+     "z": 42.0
+    }
+   ]
+  },
+  {
+   "row_name": "Duro_CargoBed_Tanker",
+   "patches": [
+    {
+     "path": "Name",
+     "op": "set_localization_guid",
+     "value": "AMC Duro Tanker Body"
+    },
+    {
+     "path": "Name2",
+     "op": "set_display_name",
+     "value": [
+      "Duro Tanker Body"
+     ]
+    },
+    {
+     "path": "Desciption",
+     "op": "set_description",
+     "value": "Duro Tanker Body"
+    },
+    {
+     "path": "Cost",
+     "op": "set",
+     "value": 12000
+    },
+    {
+     "path": "bIsHidden",
+     "op": "set",
+     "value": false
+    },
+    {
+     "path": "MassKg",
+     "op": "set",
+     "value": 950.0
+    },
+    {
+     "path": "VehicleKeys",
+     "op": "set_name_array",
+     "values": [
+      "Duro",
+      "Duro_UT_AMC1"
+     ]
+    },
+    {
+     "path": "Aero.Mesh",
+     "op": "set_import_ref",
+     "class_package": "/Script/Engine",
+     "class_name": "StaticMesh",
+     "package_path": "/Game/Cars/Models/DUT1/CargoBed_Tanker",
+     "asset_name": "CargoBed_Tanker"
+    },
+    {
+     "path": "CargoBed.CargoSpaceLocation.Location",
+     "op": "set_vector",
+     "x": -192.0,
+     "y": 0.0,
+     "z": 178.0
+    },
+    {
+     "path": "CargoBed.CargoSpaceSize.Size",
+     "op": "set_vector",
+     "x": 236.0,
+     "y": 136.0,
+     "z": 136.0
+    },
+    {
+     "path": "CargoBed.CargoSpaceType",
+     "op": "set_enum",
+     "value": "EMTCargoSpaceType::Tanker"
+    },
+    {
+     "path": "CargoBed.bFixCargo",
+     "op": "set",
+     "value": true
+    },
+    {
+     "path": "CargoBed.bUnlimitedHeight",
+     "op": "set",
+     "value": false
+    },
+    {
+     "path": "CargoBed.DumpVolume",
+     "op": "set",
+     "value": 0.0
+    },
+    {
+     "path": "CargoSpaceOccupancy.Location.Location",
+     "op": "set_vector",
+     "x": -96.0,
+     "y": 0.0,
+     "z": 140.0
+    },
+    {
+     "path": "CargoSpaceOccupancy.Size.Size",
+     "op": "set_vector",
+     "x": 52.0,
+     "y": 186.0,
+     "z": 42.0
+    }
+   ]
+  }
+ ]
+}
